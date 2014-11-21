@@ -30,6 +30,7 @@
 #include <openspace/rendering/renderableephemeris.h>
 #include <openspace/rendering/renderabletrail.h>
 #include <openspace/rendering/renderablepath.h>
+#include <openspace/rendering/renderableflare.h>
 #include <openspace/rendering/renderablefov.h>
 #include <openspace/rendering/renderablesphericalgrid.h>
 #include <openspace/rendering/renderablefieldlines.h>
@@ -73,6 +74,8 @@ void FactoryManager::initialize()
 		"RenderablePath");
 	_manager->factory<Renderable>()->registerClass<RenderableTrail>(
 		"RenderableTrail");
+	_manager->factory<Renderable>()->registerClass<RenderableFlare>(
+		"RenderableFlare");
 	_manager->factory<Renderable>()->registerClass<RenderableFov>(
 		"RenderableFov");
 	_manager->factory<Renderable>()->registerClass<RenderableSphericalGrid>(

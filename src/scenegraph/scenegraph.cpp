@@ -233,7 +233,7 @@ bool SceneGraph::initialize()
 
 	// Done building shaders
     double elapsed = std::chrono::duration_cast<second_>(clock_::now()-beginning).count();
-    LINFO("Time to load shaders: " << elapsed);
+    LINFO("Time to load scene graph shaders: " << elapsed << " seconds");
 
 
     return true;
