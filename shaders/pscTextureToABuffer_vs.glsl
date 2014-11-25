@@ -22,73 +22,26 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEFLARE_H__
-#define __RENDERABLEFLARE_H__
+#version __CONTEXT__
 
-// open space includes
-#include <openspace/rendering/renderablevolume.h>
-#include <openspace/util/updatestructures.h>
+uniform mat4 modelViewProjection;
+uniform mat4 modelTransform;
 
-// ghoul includes
-#include <ghoul/opengl/ghoul_gl.h>
+layout(location = 0) in vec4 in_position;
+layout(location = 1) in vec4 in_color;
 
-namespace ghoul {
-	namespace opengl {
-		class Texture;
-		class ProgramObject;
-		class FramebufferObject;
-	}
+out vec4 vs_position;
+out vec4 vs_color;
+
+#include "PowerScaling/powerScaling_vs.hglsl"
+
+void main()
+{
+	vs_color = in_color;
+	vec4 tmp = in_position;
+	vec4 position = pscTransform(tmp, modelTransform);
+	vs_position = tmp;
+
+	position = modelViewProjection * position;
+	gl_Position =  z_normalization(position);
 }
-
-namespace openspace {
-
-// Forward declare
-class TSP;
-class BrickManager;
-
-
-class RenderableFlare : public RenderableVolume {
-public:
-	RenderableFlare(const ghoul::Dictionary& dictionary);
-	~RenderableFlare();
-
-	bool initialize();
-	bool deinitialize();
-
-	void render(const RenderData& data) override;
-	void update(const UpdateData& data) override;
-
-private:
-
-	typedef std::vector<int> Bricks;
-
-	void launchTSPTraversal(int timestep);
-	void PBOToAtlas(size_t buffer);
-	void buildBrickList(size_t buffer, const Bricks& bricks);
-	void diskToPBO(size_t buffer);
-
-	TSP* _tsp;
-	BrickManager* _brickManager;
-
-	std::string _traversalPath;
-	std::string _raycasterPath;
-
-	GLuint _boxArray;
-	GLuint dispatch_buffer;
-	ghoul::opengl::ProgramObject* _tspTraversal;
-	ghoul::opengl::ProgramObject* _raycasterTsp;
-
-	ghoul::opengl::ProgramObject* _cubeProgram;
-	ghoul::opengl::ProgramObject* _textureToAbuffer;
-
-	GLuint _textures[3];
-
-	ghoul::opengl::FramebufferObject* _fbo;
-	ghoul::opengl::Texture* _backTexture;
-	ghoul::opengl::Texture* _frontTexture;
-	ghoul::opengl::Texture* _outputTexture;
-	ghoul::opengl::Texture* _transferFunction;
-};
-
-} // namespace openspace
-#endif // RENDERABLEFIELDLINES_H_

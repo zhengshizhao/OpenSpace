@@ -231,6 +231,24 @@ bool SceneGraph::initialize()
 	_programs.push_back(tmpProgram);
 	OsEng.ref().configurationManager().setValue("PlaneProgram", tmpProgram);
 
+	// pscColorToTexture program
+	tmpProgram = ProgramObject::Build("pscColorToTexture",
+		"${SHADERS}/pscColorToTexture_vs.glsl",
+		"${SHADERS}/pscColorToTexture_fs.glsl",
+		cb);
+	if (!tmpProgram) return false;
+	_programs.push_back(tmpProgram);
+	OsEng.ref().configurationManager().setValue("pscColorToTexture", tmpProgram);
+
+	// pscTextureToABuffer program
+	tmpProgram = ProgramObject::Build("pscTextureToABuffer",
+		"${SHADERS}/pscTextureToABuffer_vs.glsl",
+		"${SHADERS}/pscTextureToABuffer_fs.glsl",
+		cb);
+	if (!tmpProgram) return false;
+	_programs.push_back(tmpProgram);
+	OsEng.ref().configurationManager().setValue("pscTextureToABuffer", tmpProgram);
+
 	// Done building shaders
     double elapsed = std::chrono::duration_cast<second_>(clock_::now()-beginning).count();
     LINFO("Time to load scene graph shaders: " << elapsed << " seconds");
@@ -290,7 +308,7 @@ void SceneGraph::render(const RenderData& data)
 		LDEBUG("Setting uniforms");
 		// Ignore attribute locations
 		for (auto program : _programs) {
-			program->setIgnoreSubroutineUniformLocationError(true);
+			//program->setIgnoreSubroutineUniformLocationError(true);
 		}
 	}
 

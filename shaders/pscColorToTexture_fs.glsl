@@ -22,73 +22,20 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEFLARE_H__
-#define __RENDERABLEFLARE_H__
+#version __CONTEXT__
 
-// open space includes
-#include <openspace/rendering/renderablevolume.h>
-#include <openspace/util/updatestructures.h>
+in vec4 vs_position;
+in vec4 vs_color;
 
-// ghoul includes
-#include <ghoul/opengl/ghoul_gl.h>
+out vec4 out_color;
 
-namespace ghoul {
-	namespace opengl {
-		class Texture;
-		class ProgramObject;
-		class FramebufferObject;
-	}
+#include "PowerScaling/powerScaling_fs.hglsl"
+
+void main()
+{
+	//vec4 position = vs_position;
+	//float depth = pscDepth(position);
+	//gl_FragDepth = depth;
+	out_color = vs_color;
+	//out_color = vec4(0,0,1,1);
 }
-
-namespace openspace {
-
-// Forward declare
-class TSP;
-class BrickManager;
-
-
-class RenderableFlare : public RenderableVolume {
-public:
-	RenderableFlare(const ghoul::Dictionary& dictionary);
-	~RenderableFlare();
-
-	bool initialize();
-	bool deinitialize();
-
-	void render(const RenderData& data) override;
-	void update(const UpdateData& data) override;
-
-private:
-
-	typedef std::vector<int> Bricks;
-
-	void launchTSPTraversal(int timestep);
-	void PBOToAtlas(size_t buffer);
-	void buildBrickList(size_t buffer, const Bricks& bricks);
-	void diskToPBO(size_t buffer);
-
-	TSP* _tsp;
-	BrickManager* _brickManager;
-
-	std::string _traversalPath;
-	std::string _raycasterPath;
-
-	GLuint _boxArray;
-	GLuint dispatch_buffer;
-	ghoul::opengl::ProgramObject* _tspTraversal;
-	ghoul::opengl::ProgramObject* _raycasterTsp;
-
-	ghoul::opengl::ProgramObject* _cubeProgram;
-	ghoul::opengl::ProgramObject* _textureToAbuffer;
-
-	GLuint _textures[3];
-
-	ghoul::opengl::FramebufferObject* _fbo;
-	ghoul::opengl::Texture* _backTexture;
-	ghoul::opengl::Texture* _frontTexture;
-	ghoul::opengl::Texture* _outputTexture;
-	ghoul::opengl::Texture* _transferFunction;
-};
-
-} // namespace openspace
-#endif // RENDERABLEFIELDLINES_H_
