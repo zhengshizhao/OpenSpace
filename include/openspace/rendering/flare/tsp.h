@@ -25,9 +25,15 @@
 #ifndef __TSP_H__
 #define __TSP_H__
 
+// std includes
 #include <string>
 #include <vector>
 #include <list>
+#include <iostream>
+#include <fstream>
+
+// ghoul includes
+#include <ghoul/opengl/ghoul_gl.h>
 
 namespace openspace {
 class TSP {
@@ -65,6 +71,17 @@ public:
 	bool readCache();
 	bool writeCache();
 	bool construct();
+	bool initalizeSSO();
+
+	const Header& header() const;
+	static long long dataPosition();
+	std::ifstream& file();
+	unsigned int numTotalNodes() const;
+	unsigned int numValuesPerNode() const;
+	unsigned int numBSTNodes() const;
+	unsigned int numOTNodes() const;
+	unsigned int numOTLevels() const;
+	GLuint ssbo() const;
 
 	bool calculateSpatialError();
 	bool calculateTemporalError();
@@ -83,10 +100,12 @@ private:
 	std::list<unsigned int> ChildBricks(unsigned int _brickIndex);
 
 	std::string _filename;
+	std::ifstream _file;
 	std::streampos _dataOffset;
 
 	// Holds the actual structure
 	std::vector<int> data_;
+	GLuint _dataSSBO;
 
 	// Data from file
 	Header _header;

@@ -30,8 +30,6 @@
 #include <ghoul/logging/logmanager.h>
 
 // std
-#include <iostream>
-#include <fstream>
 #include <algorithm>
 #include <queue>
 
@@ -43,12 +41,26 @@ namespace openspace {
 
 TSP::TSP(const std::string& filename)
 	: _filename(filename)
+	, _dataSSBO(0)
+	, paddedBrickDim_(0)
+	, numTotalNodes_(0)
+	, numBSTLevels_(0)
+	, numBSTNodes_(0)
+	, numOTLevels_(0)
+	, numOTNodes_(0)
+	, minSpatialError_(0.0f)
+	, maxSpatialError_(0.0f)
+	, medianSpatialError_(0.0f)
+	, minTemporalError_(0.0f)
+	, maxTemporalError_(0.0f)
+	, medianTemporalError_(0.0f)
 {
-	
+	_file = std::ifstream(_filename, std::ios::in | std::ios::binary);
 }
 
 TSP::~TSP() {
-
+	if (_file.is_open())
+		_file.close();
 }
 
 bool TSP::load() {
@@ -59,7 +71,6 @@ bool TSP::load() {
 
 	if (readCache()) {
 		LINFO("Using cache");
-		return true;
 	}
 	else {
 		if (!construct()) {
@@ -82,18 +93,20 @@ bool TSP::load() {
 			}
 		}
 	}
+	initalizeSSO();
 	return true;
 }
 
 bool TSP::readHeader() {
 
-	std::ifstream file(_filename, std::ios::in | std::ios::binary);
+	
 
-	if (!file.is_open())
+	if (!_file.good())
 		return false;
 
+	_file.seekg(_file.beg);
 
-	file.read(reinterpret_cast<char*>(&_header), sizeof(Header));
+	_file.read(reinterpret_cast<char*>(&_header), sizeof(Header));
 	/*
 	file.read(reinterpret_cast<char*>(&gridType_),			sizeof(unsigned int));
 	file.read(reinterpret_cast<char*>(&numOrigTimesteps_),	sizeof(unsigned int));
@@ -105,12 +118,9 @@ bool TSP::readHeader() {
 	file.read(reinterpret_cast<char*>(&yNumBricks_),		sizeof(unsigned int));
 	file.read(reinterpret_cast<char*>(&zNumBricks_),		sizeof(unsigned int));
 	*/
-	file.close();
 
 	LDEBUG("Brick dimensions: " << _header.xBrickDim_ << " " << _header.yBrickDim_ << " " << _header.zBrickDim_);
 	LDEBUG("Num bricks: " << _header.xNumBricks_ << " " << _header.yNumBricks_ << " " << _header.zNumBricks_);
-
-	_dataOffset = file.tellg();
 
 	paddedBrickDim_ = _header.xBrickDim_ + 2 * paddingWidth_;
 	// TODO support dimensions of different size
@@ -201,13 +211,59 @@ bool TSP::construct() {
 	return true;
 }
 
+bool TSP::initalizeSSO() {
+
+	if (!_dataSSBO)
+		glGenBuffers(1, &_dataSSBO);
+
+	const size_t size = sizeof(GLint)*data_.size();
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _dataSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data_.data(), GL_DYNAMIC_READ);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	return true;
+}
+
+const TSP::Header& TSP::header() const {
+	return _header;
+}
+
+long long TSP::dataPosition() {
+	return sizeof(Header);
+}
+
+std::ifstream& TSP::file() {
+	return _file;
+}
+
+unsigned int TSP::numTotalNodes() const { 
+	return numTotalNodes_; 
+}
+
+unsigned int TSP::numValuesPerNode() const { 
+	return NUM_DATA; 
+}
+
+unsigned int TSP::numBSTNodes() const { 
+	return numBSTNodes_; 
+}
+
+unsigned int TSP::numOTNodes() const { 
+	return numOTNodes_; 
+}
+
+unsigned int TSP::numOTLevels() const { 
+	return numOTLevels_; 
+}
+
+GLuint TSP::ssbo() const {
+	return _dataSSBO;
+}
 
 bool TSP::calculateSpatialError() {
 	unsigned int numBrickVals = paddedBrickDim_*paddedBrickDim_*paddedBrickDim_;
 
-	std::ifstream file(_filename, std::ios::in | std::ios::binary);
-
-	if (!file.is_open())
+	if (!_file.is_open())
 		return false;
 
 	std::vector<float> buffer(numBrickVals);
@@ -219,10 +275,10 @@ bool TSP::calculateSpatialError() {
 	for (unsigned int brick = 0; brick<numTotalNodes_; ++brick) {
 
 		// Offset in file
-		std::streampos offset = _dataOffset + static_cast<long long>(brick*numBrickVals*sizeof(float));
-		file.seekg(offset);
+		std::streampos offset = dataPosition() + static_cast<long long>(brick*numBrickVals*sizeof(float));
+		_file.seekg(offset);
 
-		file.read(reinterpret_cast<char*>(&buffer[0]),
+		_file.read(reinterpret_cast<char*>(&buffer[0]),
 			static_cast<size_t>(numBrickVals)*sizeof(float));
 
 		float average = 0.f;
@@ -267,10 +323,10 @@ bool TSP::calculateSpatialError() {
 				lb != coveredLeafBricks.end(); ++lb) {
 
 				// Read brick
-				std::streampos offset = _dataOffset + static_cast<long long>((*lb)*numBrickVals*sizeof(float));
-				file.seekg(offset);
+				std::streampos offset = dataPosition() + static_cast<long long>((*lb)*numBrickVals*sizeof(float));
+				_file.seekg(offset);
 
-				file.read(reinterpret_cast<char*>(&buffer[0]),
+				_file.read(reinterpret_cast<char*>(&buffer[0]),
 					static_cast<size_t>(numBrickVals)*sizeof(float));
 
 				// Add to sum
@@ -303,8 +359,6 @@ bool TSP::calculateSpatialError() {
 		medianArray[brick] = stdDev;
 
 	}
-
-	file.close();
 
 	std::sort(medianArray.begin(), medianArray.end());
 	//float medError = medianArray[medianArray.size()/2];
@@ -348,9 +402,8 @@ bool TSP::calculateSpatialError() {
 }
 
 bool TSP::calculateTemporalError() {
-	std::ifstream file(_filename, std::ios::in | std::ios::binary);
 
-	if (!file.is_open())
+	if (!_file.is_open())
 		return false;
 
 	LDEBUG("Calculating temporal error");
@@ -377,10 +430,10 @@ bool TSP::calculateTemporalError() {
 		std::vector<float> voxelStdDevs(numBrickVals);
 
 		// Read the whole brick to fill the averages
-		std::streampos offset = _dataOffset + static_cast<long long>(brick*numBrickVals*sizeof(float));
-		file.seekg(offset);
+		std::streampos offset = dataPosition() + static_cast<long long>(brick*numBrickVals*sizeof(float));
+		_file.seekg(offset);
 
-		file.read(reinterpret_cast<char*>(&voxelAverages[0]),
+		_file.read(reinterpret_cast<char*>(&voxelAverages[0]),
 			static_cast<size_t>(numBrickVals)*sizeof(float));
 
 		// Build a list of the BST leaf bricks (within the same octree level) that
@@ -406,11 +459,11 @@ bool TSP::calculateTemporalError() {
 
 					// Sample the leaves at the corresponding voxel position
 
-					std::streampos offset = _dataOffset + static_cast<long long>((*leaf*numBrickVals + voxel)*sizeof(float));
-					file.seekg(offset);
+					std::streampos offset = dataPosition() + static_cast<long long>((*leaf*numBrickVals + voxel)*sizeof(float));
+					_file.seekg(offset);
 
 					float sample;
-					file.read(reinterpret_cast<char*>(&sample), sizeof(float));
+					_file.read(reinterpret_cast<char*>(&sample), sizeof(float));
 
 					stdDev += pow(sample - voxelAverages[voxel], 2.f);
 				}
@@ -435,8 +488,6 @@ bool TSP::calculateTemporalError() {
 		*/
 
 	} // for all bricks
-
-	file.close();
 
 	std::sort(meanArray.begin(), meanArray.end());
 	//float medErr = meanArray[meanArray.size()/2];

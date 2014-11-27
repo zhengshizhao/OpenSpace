@@ -40,20 +40,31 @@ namespace openspace {
 
 class BrickManager {
 public:
+	enum BUFFER_INDEX { EVEN = 0, ODD = 1 };
 
-	BrickManager(const std::string& filename);
+	BrickManager(TSP* tsp);
 	~BrickManager();
 
 	bool readHeader();
 
-	bool initialize();
+	bool initialize(); 
+
+	bool BuildBrickList(BUFFER_INDEX _bufIdx, std::vector<int> &_brickRequest);
+
+	bool FillVolume(float *_in, float *_out,
+		unsigned int _x,
+		unsigned int _y,
+		unsigned int _z);
+	bool DiskToPBO(BUFFER_INDEX _pboIndex);
+	bool PBOToAtlas(BUFFER_INDEX _pboIndex);
 
 private:
-	enum BUFFER_INDEX { EVEN = 0, ODD = 1 };
 
-	std::string _filename;
-	std::streampos _dataOffset;
+	void IncCoord();
+	unsigned int LinearCoord(int _x, int _y, int _z);
+	void CoordsFromLin(int _idx, int &_x, int &_y, int &_z);
 
+	TSP* _tsp;
 	TSP::Header _header;
 
 	unsigned int numBricks_;

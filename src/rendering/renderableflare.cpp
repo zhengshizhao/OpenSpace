@@ -62,7 +62,7 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 	, _tsp(nullptr)
 	, _brickManager(nullptr)
 	, _boxArray(0)
-	, dispatch_buffer(0)
+	, _dispatchBuffers()
 	, _tspTraversal(nullptr)
 	, _raycasterTsp(nullptr)
 	, _cubeProgram(nullptr)
@@ -80,7 +80,7 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 		return;
 
 	_tsp = new TSP(s);
-	_brickManager = new BrickManager(s);
+	_brickManager = new BrickManager(_tsp);
 
 	std::string transferfunctionPath;
 	if (dictionary.getValue(keyTransferFunction, transferfunctionPath)) {
@@ -104,8 +104,8 @@ RenderableFlare::~RenderableFlare() {
 		delete _tsp;
 	if (_brickManager)
 		delete _brickManager;
-	if (dispatch_buffer)
-		glDeleteBuffers(1, &dispatch_buffer);
+	if (_dispatchBuffers[0])
+		glDeleteBuffers(2, _dispatchBuffers);
 	if (_boxArray)
 		glDeleteVertexArrays(1, &_boxArray);
 	if (_tspTraversal)
@@ -143,6 +143,14 @@ bool RenderableFlare::initialize() {
 		OsEng.configurationManager().getValue("pscTextureToABuffer", _textureToAbuffer);
 
 
+		static const struct
+		{
+			GLuint num_groups_x;
+			GLuint num_groups_y;
+			GLuint num_groups_z;
+		} dispatch_params = { 1280 / 16, 720 / 16, 1 };
+		glGenBuffers(2, _dispatchBuffers);
+
 		ghoul::opengl::ShaderObject* tspTraversalObject = new ghoul::opengl::ShaderObject(
 			ghoul::opengl::ShaderObject::ShaderType::ShaderTypeCompute,
 			_traversalPath,
@@ -157,18 +165,11 @@ bool RenderableFlare::initialize() {
 
 		_tspTraversal->activate();
 
-		static const struct
-		{
-			GLuint num_groups_x;
-			GLuint num_groups_y;
-			GLuint num_groups_z;
-		} dispatch_params = { 1280 / 16, 720 / 16, 1 };
-		glGenBuffers(1, &dispatch_buffer);
-		glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, dispatch_buffer);
+		glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, _dispatchBuffers[0]);
 		glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(dispatch_params), &dispatch_params, GL_STATIC_DRAW);
 		_tspTraversal->deactivate();
 
-		/*
+		
 		ghoul::opengl::ShaderObject* raycasterTSPObject = new ghoul::opengl::ShaderObject(
 			ghoul::opengl::ShaderObject::ShaderType::ShaderTypeCompute,
 			_raycasterPath,
@@ -181,113 +182,46 @@ bool RenderableFlare::initialize() {
 		if (!_raycasterTsp->linkProgramObject())
 			LERROR("Could not link shader objects");
 
-			_raycasterTsp->activate();
+		_raycasterTsp->activate();
 
-			static const struct
-			{
-			GLuint num_groups_x;
-			GLuint num_groups_y;
-			GLuint num_groups_z;
-			} dispatch_params = { 1280 / 16, 720 / 16, 1 };
-			glGenBuffers(1, &dispatch_buffer);
-			glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, dispatch_buffer);
-			glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(dispatch_params), &dispatch_params, GL_STATIC_DRAW);
-			_raycasterTsp->deactivate();
-		*/
+		glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, _dispatchBuffers[1]);
+		glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(dispatch_params), &dispatch_params, GL_STATIC_DRAW);
+		_raycasterTsp->deactivate();
 
-		// ============================
-		//      GEOMETRY (box)
-		// ============================
-		const GLfloat size = 0.5f;
-		const GLfloat _w = 0.0f;
-		const GLfloat vertex_data[] = {
-			//  x,     y,     z,     s,
-			-size, -size,  size,  _w,  0.0,  0.0,  1.0,  1.0,
-			 size, -size,  size,  _w,  1.0,  0.0,  1.0,  1.0,
-			 size,  size,  size,  _w,  1.0,  1.0,  1.0,  1.0,
-			-size,  size,  size,  _w,  0.0,  1.0,  1.0,  1.0,
-			-size, -size,  size,  _w,  0.0,  0.0,  1.0,  1.0,
-			 size,  size,  size,  _w,  1.0,  1.0,  1.0,  1.0,
 
-			-size, -size, -size,  _w,  0.0,  0.0,  0.0,  1.0,
-			-size,  size, -size,  _w,  0.0,  1.0,  0.0,  1.0,
-			 size,  size, -size,  _w,  1.0,  1.0,  0.0,  1.0,
-			-size, -size, -size,  _w,  0.0,  0.0,  0.0,  1.0,
-			 size,  size, -size,  _w,  1.0,  1.0,  0.0,  1.0,
-			 size, -size, -size,  _w,  1.0,  0.0,  0.0,  1.0,
-
-			 size, -size, -size,  _w,  1.0,  0.0,  0.0,  1.0,
-			 size,  size,  size,  _w,  1.0,  1.0,  1.0,  1.0,
-			 size, -size,  size,  _w,  1.0,  0.0,  1.0,  1.0,
-			 size, -size, -size,  _w,  1.0,  0.0,  0.0,  1.0,
-			 size,  size, -size,  _w,  1.0,  1.0,  0.0,  1.0,
-			 size,  size,  size,  _w,  1.0,  1.0,  1.0,  1.0,
-
-			-size, -size, -size,  _w,  0.0,  0.0,  0.0,  1.0,
-			-size,  size,  size,  _w,  0.0,  1.0,  1.0,  1.0,
-			-size,  size, -size,  _w,  0.0,  1.0,  0.0,  1.0,
-			-size, -size, -size,  _w,  0.0,  0.0,  0.0,  1.0,
-			-size, -size,  size,  _w,  0.0,  0.0,  1.0,  1.0,
-			-size,  size,  size,  _w,  0.0,  1.0,  1.0,  1.0,
-
-			-size,  size, -size,  _w,  0.0,  1.0,  0.0,  1.0,
-			-size,  size,  size,  _w,  0.0,  1.0,  1.0,  1.0,
-			 size,  size,  size,  _w,  1.0,  1.0,  1.0,  1.0,
-			-size,  size, -size,  _w,  0.0,  1.0,  0.0,  1.0,
-			 size,  size,  size,  _w,  1.0,  1.0,  1.0,  1.0,
-			 size,  size, -size,  _w,  1.0,  1.0,  0.0,  1.0,
-
-			-size, -size, -size,  _w,  0.0,  0.0,  0.0,  1.0,
-			 size, -size,  size,  _w,  1.0,  0.0,  1.0,  1.0,
-			-size, -size,  size,  _w,  0.0,  0.0,  1.0,  1.0,
-			-size, -size, -size,  _w,  0.0,  0.0,  0.0,  1.0,
-			 size, -size, -size,  _w,  1.0,  0.0,  0.0,  1.0,
-			 size, -size,  size,  _w,  1.0,  0.0,  1.0,  1.0,
-		};
-
-		GLuint vertexPositionBuffer;
-		glGenVertexArrays(1, &_boxArray); // generate array
-		glBindVertexArray(_boxArray); // bind array
-		glGenBuffers(1, &vertexPositionBuffer); // generate buffer
-		glBindBuffer(GL_ARRAY_BUFFER, vertexPositionBuffer); // bind buffer
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 8, reinterpret_cast<void*>(0));
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 8, reinterpret_cast<void*>(sizeof(GLfloat) * 4));
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-
-		_fbo = new FramebufferObject();
-		_fbo->activate();
-		int x1, xSize, y1, ySize;
-		sgct::Engine::instance()->getActiveWindowPtr()->getCurrentViewportPixelCoords(x1, y1, xSize, ySize);
-		size_t x = static_cast<size_t>(xSize);
-		size_t y = static_cast<size_t>(ySize);
-
-		const ghoul::opengl::Texture::Format format = ghoul::opengl::Texture::Format::RGBA;
-		GLint internalFormat = GL_RGBA;
-		GLenum dataType = GL_FLOAT;
-
-		_backTexture = new Texture(glm::size3_t(x, y, 1));
-		_frontTexture = new Texture(glm::size3_t(x, y, 1));
-		_outputTexture = new Texture(glm::size3_t(x, y, 1), format, GL_RGBA32F, dataType);
-		_backTexture->uploadTexture();
-		_frontTexture->uploadTexture();
-		_outputTexture->uploadTexture();
-		_fbo->attachTexture(_backTexture, GL_COLOR_ATTACHMENT0);
-		_fbo->attachTexture(_frontTexture, GL_COLOR_ATTACHMENT1);
-		_fbo->deactivate();
+		initializeColorCubes();
 
 		if (_transferFunction)
 			_transferFunction->uploadTexture();
+
+		// Allocate space for the brick request list
+		// Use 0 as default value
+		_brickRequest.resize(_tsp->numTotalNodes(), 0);
 		/*
-		glGenTextures(3, _textures);
-		glBindTexture(GL_TEXTURE_2D, _textures[0]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		glBindTexture(GL_TEXTURE_2D, _textures[1]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		glBindTexture(GL_TEXTURE_2D, _textures[2]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glGenBuffers(1, &_brickRequestBuffer); // generate buffer
+		glBindBuffer(GL_TEXTURE_BUFFER, _brickRequestBuffer);
+		glBufferData(GL_TEXTURE_BUFFER, sizeof(GLint)*_tsp->numTotalNodes(), NULL, GL_DYNAMIC_READ);
+
+		glGenTextures(1, &_brickRequestTexture);
+		glBindTexture(GL_TEXTURE_BUFFER, _brickRequestTexture);
+		glTexBuffer(GL_TEXTURE_BUFFER, GL_R32I, _brickRequestBuffer);
+		glBindTexture(GL_TEXTURE_BUFFER, 0);
+
+		GLuint* data = (GLuint*)glMapBuffer(GL_TEXTURE_BUFFER, GL_WRITE_ONLY);
+		memset(data, 0x00, _tsp->numTotalNodes() * sizeof(GLint));
+		glUnmapBuffer(GL_TEXTURE_BUFFER);
+		glBindBuffer(GL_TEXTURE_BUFFER, 0);
+
 		*/
+		glGenBuffers(1, &_brickSSO);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*_tsp->numTotalNodes(), NULL, GL_DYNAMIC_READ);
+		GLint* data = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+		memset(data, 0x00, _tsp->numTotalNodes() * sizeof(GLint));
+		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+		launchTSPTraversal(0);
 		
 	}
 
@@ -299,6 +233,256 @@ bool RenderableFlare::deinitialize() {
 }
 
 void RenderableFlare::render(const RenderData& data) {
+	const unsigned int currentTimestep = _timestep++ % _tsp->header().numTimesteps_;
+	const unsigned int nextTimestep = currentTimestep < _tsp->header().numTimesteps_ - 1 ? currentTimestep + 1 : 0;
+	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
+	if (currentTimestep % 2 == 0) {
+		currentBuf = BrickManager::EVEN;
+		nextBuf = BrickManager::ODD;
+	}
+	else {
+		currentBuf = BrickManager::ODD;
+		nextBuf = BrickManager::EVEN;
+	}
+
+
+	// Render color cubes
+	renderColorCubeTextures(data);
+
+	// Dispatch TSP traversal
+	launchTSPTraversal(nextTimestep);
+	
+	// PBO to atlas
+	_brickManager->PBOToAtlas(currentBuf);
+
+	// Read _brickSSO
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // Might not work on AMD 
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+#if 0
+	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+	memcpy(_brickRequest.data(), d, sizeof(GLint)*_tsp->numTotalNodes());
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+#else
+	glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint) *_tsp->numTotalNodes(), _brickRequest.data());
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+#endif
+
+	// Dispatch Raycaster for currentTimestep
+	launchRaycaster(currentTimestep);
+
+	// Disk to PBO
+	_brickManager->BuildBrickList(nextBuf, _brickRequest);
+	_brickManager->DiskToPBO(nextBuf);
+
+
+	// To screen
+	_textureToAbuffer->activate();
+
+	setPscUniforms(_textureToAbuffer, &data.camera, data.position);
+	_textureToAbuffer->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
+	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
+
+	// Bind texture
+	ghoul::opengl::TextureUnit unit;
+	unit.activate();
+	_outputTexture->bind();
+	_textureToAbuffer->setUniform("texture1", unit);
+
+	glBindVertexArray(_boxArray);
+	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
+	_textureToAbuffer->deactivate();
+	glDisable(GL_CULL_FACE);
+	glBindImageTexture(5, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+
+}
+
+void RenderableFlare::update(const UpdateData& data) {
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Flare internal functions
+//////////////////////////////////////////////////////////////////////////////////////////
+void RenderableFlare::launchTSPTraversal(int timestep){
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	_tspTraversal->activate();
+
+	// Bind textures
+	ghoul::opengl::TextureUnit unit1;
+	ghoul::opengl::TextureUnit unit2;
+	unit1.activate();
+	_frontTexture->bind();
+	unit2.activate();
+	_backTexture->bind();
+
+	// Set uniforms
+	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
+	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
+
+	_tspTraversal->setUniform("cubeFront", unit1);
+	_tspTraversal->setUniform("cubeBack", unit2);
+	_tspTraversal->setUniform("gridType", _tsp->header().gridType_);
+	_tspTraversal->setUniform("stepSize", 0.02f);
+	_tspTraversal->setUniform("numTimesteps", timesteps);
+	_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
+	_tspTraversal->setUniform("numOTNodes", numOTNodes);
+	_tspTraversal->setUniform("temporalTolerance", -1.0f);
+	_tspTraversal->setUniform("spatialTolerance", -1.0f);
+	_tspTraversal->setUniform("timestep", timestep);
+
+	// bind textures
+	//GLint i = _tspTraversal->uniformLocation("reqList"); // should work but nope?
+	//glBindImageTexture(2, _brickRequestTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _brickSSO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _tsp->ssbo());
+	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+	// Dispatch
+	glDispatchComputeIndirect(0);
+
+	_tspTraversal->deactivate();
+}
+
+void RenderableFlare::launchRaycaster(int timestep) {
+	_raycasterTsp->activate();
+
+	// Bind textures
+	ghoul::opengl::TextureUnit unit1;
+	ghoul::opengl::TextureUnit unit2;
+	unit1.activate();
+	_frontTexture->bind();
+	unit2.activate();
+	_backTexture->bind();
+
+	// Set uniforms
+	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
+	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
+
+	_raycasterTsp->setUniform("cubeFront", unit1);
+	_raycasterTsp->setUniform("cubeBack", unit2);
+	/*
+	_tspTraversal->setUniform("gridType", _tsp->header().gridType_);
+	_tspTraversal->setUniform("stepSize", 0.02f);
+	_tspTraversal->setUniform("numTimesteps", timesteps);
+	_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
+	_tspTraversal->setUniform("numOTNodes", numOTNodes);
+	_tspTraversal->setUniform("temporalTolerance", -1.0f);
+	_tspTraversal->setUniform("spatialTolerance", -1.0f);
+	_tspTraversal->setUniform("timestep", timestep);
+
+	// bind textures
+	//GLint i = _tspTraversal->uniformLocation("reqList"); // should work but nope?
+	//glBindImageTexture(2, _brickRequestTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _brickSSO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _tsp->ssbo());
+	*/
+	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+	// Dispatch
+	glDispatchComputeIndirect(0);
+
+	_raycasterTsp->deactivate();
+}
+
+void RenderableFlare::PBOToAtlas(size_t buffer){
+}
+
+void RenderableFlare::buildBrickList(size_t buffer, const Bricks& bricks){
+}
+
+void RenderableFlare::diskToPBO(size_t buffer){
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Internal helper functions
+//////////////////////////////////////////////////////////////////////////////////////////
+void RenderableFlare::initializeColorCubes() {
+	// ============================
+	//      GEOMETRY (box)
+	// ============================
+	const GLfloat size = 0.5f;
+	const GLfloat _w = 0.0f;
+	const GLfloat vertex_data[] = {
+		//  x,     y,     z,     s,
+		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
+		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
+		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
+		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
+		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
+		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
+
+		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
+		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
+		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
+		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
+		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
+		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
+
+		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
+		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
+		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
+		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
+		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
+		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
+
+		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
+		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
+		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
+		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
+		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
+		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
+
+		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
+		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
+		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
+		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
+		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
+		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
+
+		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
+		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
+		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
+		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
+		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
+		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
+	};
+
+	GLuint vertexPositionBuffer;
+	glGenVertexArrays(1, &_boxArray); // generate array
+	glBindVertexArray(_boxArray); // bind array
+	glGenBuffers(1, &vertexPositionBuffer); // generate buffer
+	glBindBuffer(GL_ARRAY_BUFFER, vertexPositionBuffer); // bind buffer
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 8, reinterpret_cast<void*>(0));
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 8, reinterpret_cast<void*>(sizeof(GLfloat) * 4));
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	_fbo = new FramebufferObject();
+	_fbo->activate();
+	int x1, xSize, y1, ySize;
+	sgct::Engine::instance()->getActiveWindowPtr()->getCurrentViewportPixelCoords(x1, y1, xSize, ySize);
+	size_t x = static_cast<size_t>(xSize);
+	size_t y = static_cast<size_t>(ySize);
+
+	const ghoul::opengl::Texture::Format format = ghoul::opengl::Texture::Format::RGBA;
+	GLint internalFormat = GL_RGBA;
+	GLenum dataType = GL_FLOAT;
+
+	_backTexture = new Texture(glm::size3_t(x, y, 1));
+	_frontTexture = new Texture(glm::size3_t(x, y, 1));
+	_outputTexture = new Texture(glm::size3_t(x, y, 1), format, GL_RGBA32F, dataType);
+	_backTexture->uploadTexture();
+	_frontTexture->uploadTexture();
+	_outputTexture->uploadTexture();
+	_fbo->attachTexture(_backTexture, GL_COLOR_ATTACHMENT0);
+	_fbo->attachTexture(_frontTexture, GL_COLOR_ATTACHMENT1);
+	_fbo->deactivate();
+}
+
+void RenderableFlare::renderColorCubeTextures(const RenderData& data) {
 	GLuint activeFBO = FramebufferObject::getActiveObject(); // Save SGCTs main FBO
 	_fbo->activate();
 	_cubeProgram->activate();
@@ -314,7 +498,7 @@ void RenderableFlare::render(const RenderData& data) {
 		getCurrentViewport()->
 		getEye();
 
-	// oh god why..?
+	// If stereo is activated we don't want to clear the 
 	if (mode == sgct_core::Frustum::FrustumMode::Mono ||
 		mode == sgct_core::Frustum::FrustumMode::StereoLeftEye) {
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -325,7 +509,7 @@ void RenderableFlare::render(const RenderData& data) {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 	}
-	// make sure GL_CULL_FACE is enabled (it should be)
+	// make sure GL_CULL_FACE is enabled (it should be disabled for the abuffer)
 	glEnable(GL_CULL_FACE);
 
 	//      Draw backface
@@ -343,125 +527,6 @@ void RenderableFlare::render(const RenderData& data) {
 	// rebind the previous FBO
 	glBindFramebuffer(GL_FRAMEBUFFER, activeFBO);
 
-	// Prepare positional data
-	//const Camera& camera = data.camera;
-	//const psc& position = data.position;
-	//setPscUniforms(_tspTraversal, &camera, position);
-
-
-	// Dispatch TSP traversal
-	launchTSPTraversal(0);
-	
-
-	
-	/*
-	glTextureBarrierNV();
-	
-	
-	GLsync syncObject = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-	GLenum ret = glClientWaitSync(syncObject, GL_SYNC_FLUSH_COMMANDS_BIT, 1000 * 1000 * 1000);
-	if (ret == GL_WAIT_FAILED || ret == GL_TIMEOUT_EXPIRED)
-		LERROR("glClientWaitSync failed.");
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	glDeleteSync(syncObject);
-	
-
-	
-	glFlush();
-	glFinish();
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	*/
-	// PBO to atlas
-
-	// Dispatch Raycaster
-	//_tspTraversal->activate();
-	//glDispatchComputeIndirect(0);
-	//_tspTraversal->deactivate();
-
-
-	// Disk to PBO
-
-	//glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	// To screen
-	
-	_textureToAbuffer->activate();
-	//glBindImageTexture(5, *_backTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-
-	setPscUniforms(_textureToAbuffer, &camera, position);
-	_textureToAbuffer->setUniform("modelViewProjection", camera.viewProjectionMatrix());
-	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
-
-	//i = _textureToAbuffer->uniformLocation("reqList");
-	//LDEBUG(i);
-	//glBindImageTexture(5, *_backTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-
-	// Bind texture
-	ghoul::opengl::TextureUnit unit;
-	unit.activate();
-	_outputTexture->bind();
-	//glBindTexture(GL_TEXTURE_2D, _textures[2]);
-	//_frontTexture->bind();
-	//_backTexture->bind();
-	_textureToAbuffer->setUniform("texture1", unit);
-
-	glBindVertexArray(_boxArray);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-	_textureToAbuffer->deactivate();
-	glDisable(GL_CULL_FACE);
-	glBindImageTexture(5, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-
-
 }
-
-void RenderableFlare::update(const UpdateData& data) {
-}
-
-void RenderableFlare::launchTSPTraversal(int timestep){
-	_tspTraversal->activate();
-	ghoul::opengl::TextureUnit unit1;
-	ghoul::opengl::TextureUnit unit2;
-	//ghoul::opengl::TextureUnit unit3;
-
-	unit1.activate();
-	_frontTexture->bind();
-	_tspTraversal->setUniform("cubeFront", unit1);
-
-	unit2.activate();
-	_backTexture->bind();
-	_tspTraversal->setUniform("cubeBack", unit2);
-
-	//unit3.activate();
-	//_outputTexture->bind();
-	//_textureToAbuffer->setUniform("reqList", unit3);
-	//glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-	//glBindImageTexture(3, *_frontTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-	//glBindImageTexture(4, *_backTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-	//glBindImageTexture(5, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	/*
-	glFlush();
-	glFinish();
-	glTextureBarrierNV();
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	*/
-
-	//glBindImageTexture(i, _textures[2], 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	//glBindImageTexture(i, *_outputTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-	GLint i = _tspTraversal->uniformLocation("reqList");
-	//LDEBUG(i);
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glDispatchComputeIndirect(0);
-	//glDispatchCompute(1280 / 16, 720 / 16, 1);
-	//glFinish();
-	//glBindImageTexture(2, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-	_tspTraversal->deactivate();
-}
-void RenderableFlare::PBOToAtlas(size_t buffer){
-}
-void RenderableFlare::buildBrickList(size_t buffer, const Bricks& bricks){
-}
-void RenderableFlare::diskToPBO(size_t buffer){
-}
-
 
 } // namespace openspace

@@ -60,13 +60,21 @@ public:
 
 private:
 
+	// Types
 	typedef std::vector<int> Bricks;
 
+	// Flare internal functions
 	void launchTSPTraversal(int timestep);
+	void launchRaycaster(int timestep);
 	void PBOToAtlas(size_t buffer);
 	void buildBrickList(size_t buffer, const Bricks& bricks);
 	void diskToPBO(size_t buffer);
 
+	// Internal helper functions
+	void initializeColorCubes();
+	void renderColorCubeTextures(const RenderData& data);
+
+	// 
 	TSP* _tsp;
 	BrickManager* _brickManager;
 
@@ -74,20 +82,26 @@ private:
 	std::string _raycasterPath;
 
 	GLuint _boxArray;
-	GLuint dispatch_buffer;
+	GLuint _dispatchBuffers[2];
+	//GLuint _brickRequestBuffer, _brickRequestTexture;
+	GLuint _brickSSO;
 	ghoul::opengl::ProgramObject* _tspTraversal;
 	ghoul::opengl::ProgramObject* _raycasterTsp;
 
 	ghoul::opengl::ProgramObject* _cubeProgram;
 	ghoul::opengl::ProgramObject* _textureToAbuffer;
 
-	GLuint _textures[3];
-
 	ghoul::opengl::FramebufferObject* _fbo;
 	ghoul::opengl::Texture* _backTexture;
 	ghoul::opengl::Texture* _frontTexture;
 	ghoul::opengl::Texture* _outputTexture;
 	ghoul::opengl::Texture* _transferFunction;
+
+	// TSP data members
+	Bricks _brickRequest;
+
+	// Animation
+	unsigned int _timestep;
 };
 
 } // namespace openspace
