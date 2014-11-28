@@ -449,4 +449,12 @@ bool BrickManager::PBOToAtlas(BUFFER_INDEX _pboIndex) {
 	return true;
 }
 
+ghoul::opengl::Texture* BrickManager::textureAtlas() {
+	return textureAtlas_;
+}
+
+unsigned int BrickManager::pbo(BUFFER_INDEX _pboIndex) {
+	return pboHandle_[_pboIndex];
+}
+
 }

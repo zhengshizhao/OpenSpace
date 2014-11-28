@@ -98,9 +98,14 @@ bool ABufferSingleLinked::reinitializeInternal() {
 	glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32UI, _fragmentBuffer);
 	glBindTexture(GL_TEXTURE_BUFFER, 0);
 
-	glBindImageTexture(1, _fragmentTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32UI);
+	resetBindings();
 
 	return true;
+}
+
+void ABufferSingleLinked::resetBindings() {
+	glBindImageTexture(0, _anchorPointerTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+	glBindImageTexture(1, _fragmentTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32UI);
 }
 
 void ABufferSingleLinked::clear() {

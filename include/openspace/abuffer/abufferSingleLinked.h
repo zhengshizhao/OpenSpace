@@ -36,6 +36,7 @@ public:
 	ABufferSingleLinked();
 	virtual ~ABufferSingleLinked();
 	virtual bool initialize();
+	virtual void resetBindings();
 
 	virtual void clear();
 	virtual void preRender();

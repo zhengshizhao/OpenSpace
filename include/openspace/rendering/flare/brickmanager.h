@@ -58,6 +58,9 @@ public:
 	bool DiskToPBO(BUFFER_INDEX _pboIndex);
 	bool PBOToAtlas(BUFFER_INDEX _pboIndex);
 
+	ghoul::opengl::Texture* textureAtlas();
+	unsigned int pbo(BUFFER_INDEX _pboIndex);
+
 private:
 
 	void IncCoord();

@@ -35,6 +35,7 @@ public:
 	ABufferFixed();
 	virtual ~ABufferFixed();
 	virtual bool initialize();
+	virtual void resetBindings();
 
 	virtual void clear();
 	virtual void preRender();

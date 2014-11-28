@@ -24,6 +24,7 @@
 
 #include <openspace/rendering/renderableflare.h>
 #include <openspace/engine/openspaceengine.h>
+#include <openspace/abuffer/abuffer.h>
 #include <openspace/rendering/flare/tsp.h>
 #include <openspace/rendering/flare/brickmanager.h>
 
@@ -164,7 +165,7 @@ bool RenderableFlare::initialize() {
 			LERROR("Could not link shader objects");
 
 		_tspTraversal->activate();
-
+		_tspTraversal->setIgnoreUniformLocationError(true);
 		glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, _dispatchBuffers[0]);
 		glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(dispatch_params), &dispatch_params, GL_STATIC_DRAW);
 		_tspTraversal->deactivate();
@@ -221,7 +222,12 @@ bool RenderableFlare::initialize() {
 		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-		launchTSPTraversal(0);
+		// Prepare the first timestep
+		// TODO: How does this work without correct color cube?
+		//launchTSPTraversal(0);
+		//readRequestedBricks();
+		//_brickManager->BuildBrickList(BrickManager::EVEN, _brickRequest);
+		//_brickManager->DiskToPBO(BrickManager::EVEN);
 		
 	}
 
@@ -251,22 +257,12 @@ void RenderableFlare::render(const RenderData& data) {
 
 	// Dispatch TSP traversal
 	launchTSPTraversal(nextTimestep);
-	
+
 	// PBO to atlas
 	_brickManager->PBOToAtlas(currentBuf);
 
 	// Read _brickSSO
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // Might not work on AMD 
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
-#if 0
-	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-	memcpy(_brickRequest.data(), d, sizeof(GLint)*_tsp->numTotalNodes());
-	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-#else
-	glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint) *_tsp->numTotalNodes(), _brickRequest.data());
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-#endif
+	readRequestedBricks();
 
 	// Dispatch Raycaster for currentTimestep
 	launchRaycaster(currentTimestep);
@@ -275,8 +271,8 @@ void RenderableFlare::render(const RenderData& data) {
 	_brickManager->BuildBrickList(nextBuf, _brickRequest);
 	_brickManager->DiskToPBO(nextBuf);
 
-
 	// To screen
+	OsEng.renderEngine().abuffer()->resetBindings();
 	_textureToAbuffer->activate();
 
 	setPscUniforms(_textureToAbuffer, &data.camera, data.position);
@@ -331,17 +327,41 @@ void RenderableFlare::launchTSPTraversal(int timestep){
 	_tspTraversal->setUniform("spatialTolerance", -1.0f);
 	_tspTraversal->setUniform("timestep", timestep);
 
+	/*
+	GLint d;
+	for (int i = 0; i < 8; ++i) {
+		d = 0;
+		glGetIntegeri_v(GL_IMAGE_BINDING_NAME, i, &d);
+		LDEBUG("d" << i << ": " << d);
+	}
+	*/
+
 	// bind textures
-	//GLint i = _tspTraversal->uniformLocation("reqList"); // should work but nope?
-	//glBindImageTexture(2, _brickRequestTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _brickSSO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _tsp->ssbo());
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	GLint i = _tspTraversal->uniformLocation("out_image");
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _brickSSO);
+	//glBindImageTexture(0, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
 	// Dispatch
 	glDispatchComputeIndirect(0);
 
 	_tspTraversal->deactivate();
+	
+	//glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+}
+
+void RenderableFlare::readRequestedBricks() {
+	memset(_brickRequest.data(), 0, _brickRequest.size()*sizeof(int));
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // Might not work on AMD 
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+#if 0
+	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+	memcpy(_brickRequest.data(), d, sizeof(GLint)*_tsp->numTotalNodes());
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+#else
+	glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint) *_tsp->numTotalNodes(), _brickRequest.data());
+#endif
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void RenderableFlare::launchRaycaster(int timestep) {
@@ -361,23 +381,21 @@ void RenderableFlare::launchRaycaster(int timestep) {
 
 	_raycasterTsp->setUniform("cubeFront", unit1);
 	_raycasterTsp->setUniform("cubeBack", unit2);
-	/*
-	_tspTraversal->setUniform("gridType", _tsp->header().gridType_);
-	_tspTraversal->setUniform("stepSize", 0.02f);
-	_tspTraversal->setUniform("numTimesteps", timesteps);
-	_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
-	_tspTraversal->setUniform("numOTNodes", numOTNodes);
-	_tspTraversal->setUniform("temporalTolerance", -1.0f);
-	_tspTraversal->setUniform("spatialTolerance", -1.0f);
-	_tspTraversal->setUniform("timestep", timestep);
+	
+	_raycasterTsp->setUniform("gridType", _tsp->header().gridType_);
+	_raycasterTsp->setUniform("stepSize", 0.02f);
+	_raycasterTsp->setUniform("numTimesteps", timesteps);
+	_raycasterTsp->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
+	_raycasterTsp->setUniform("numOTNodes", numOTNodes);
+	_raycasterTsp->setUniform("temporalTolerance", -1.0f);
+	_raycasterTsp->setUniform("spatialTolerance", -1.0f);
+	_raycasterTsp->setUniform("timestep", timestep);
 
 	// bind textures
-	//GLint i = _tspTraversal->uniformLocation("reqList"); // should work but nope?
-	//glBindImageTexture(2, _brickRequestTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _brickSSO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _tsp->ssbo());
-	*/
 	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glBindImageTexture(4, *_brickManager->textureAtlas(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
 
 	// Dispatch
 	glDispatchComputeIndirect(0);

@@ -65,6 +65,7 @@ private:
 
 	// Flare internal functions
 	void launchTSPTraversal(int timestep);
+	void readRequestedBricks();
 	void launchRaycaster(int timestep);
 	void PBOToAtlas(size_t buffer);
 	void buildBrickList(size_t buffer, const Bricks& bricks);

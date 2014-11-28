@@ -59,6 +59,7 @@ public:
 	virtual void resolve();
     virtual bool initialize() = 0;
 	virtual bool reinitialize();
+	virtual void resetBindings();
 
 	void addVolume(const std::string& tag,ghoul::opengl::Texture* volume);
 	void addTransferFunction(const std::string& tag,ghoul::opengl::Texture* transferFunction);

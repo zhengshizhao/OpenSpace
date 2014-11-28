@@ -118,6 +118,10 @@ bool ABuffer::reinitialize() {
 	return reinitializeInternal();
 }
 
+void ABuffer::resetBindings() {
+
+}
+
 void ABuffer::resolve() {
 #ifndef __APPLE__
 	if( ! _validShader) {
