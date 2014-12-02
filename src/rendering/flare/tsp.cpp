@@ -256,6 +256,14 @@ unsigned int TSP::numOTLevels() const {
 	return numOTLevels_; 
 }
 
+unsigned int TSP::paddedBrickDim() const {
+	return paddedBrickDim_;
+}
+
+unsigned int TSP::numBricksPerAxis() const {
+	return _header.xNumBricks_;
+}
+
 GLuint TSP::ssbo() const {
 	return _dataSSBO;
 }

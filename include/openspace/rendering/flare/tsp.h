@@ -81,6 +81,8 @@ public:
 	unsigned int numBSTNodes() const;
 	unsigned int numOTNodes() const;
 	unsigned int numOTLevels() const;
+	unsigned int paddedBrickDim() const;
+	unsigned int numBricksPerAxis() const;
 	GLuint ssbo() const;
 
 	bool calculateSpatialError();

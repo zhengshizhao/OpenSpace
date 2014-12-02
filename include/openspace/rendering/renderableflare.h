@@ -66,7 +66,7 @@ private:
 	// Flare internal functions
 	void launchTSPTraversal(int timestep);
 	void readRequestedBricks();
-	void launchRaycaster(int timestep);
+	void launchRaycaster(int timestep, const std::vector<int>& brickList);
 	void PBOToAtlas(size_t buffer);
 	void buildBrickList(size_t buffer, const Bricks& bricks);
 	void diskToPBO(size_t buffer);
@@ -85,7 +85,9 @@ private:
 	GLuint _boxArray;
 	GLuint _dispatchBuffers[2];
 	//GLuint _brickRequestBuffer, _brickRequestTexture;
+	GLuint _reqeustedBrickSSO;
 	GLuint _brickSSO;
+	GLuint _brickSSOSize;
 	ghoul::opengl::ProgramObject* _tspTraversal;
 	ghoul::opengl::ProgramObject* _raycasterTsp;
 

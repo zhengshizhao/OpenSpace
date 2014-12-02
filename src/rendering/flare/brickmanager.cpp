@@ -432,17 +432,17 @@ bool BrickManager::PBOToAtlas(BUFFER_INDEX _pboIndex) {
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pboHandle_[_pboIndex]);
 	glm::size3_t dim = textureAtlas_->dimensions();
 	glBindTexture(GL_TEXTURE_3D, *textureAtlas_);
-	glTexSubImage3D(GL_TEXTURE_3D,
-		0,
-		0,
-		0,
-		0,
-		dim[0],
-		dim[1],
-		dim[2],
-		GL_RED,
-		GL_FLOAT,
-		NULL);
+	glTexSubImage3D(GL_TEXTURE_3D,	// target
+		0,							// level
+		0,							// xoffset
+		0,							// yoffset
+		0,							// zoffset
+		dim[0],						// width
+		dim[1],						// height
+		dim[2],						// depth
+		GL_RED,						// format
+		GL_FLOAT,					// type
+		NULL);						// *pixels
 	glBindTexture(GL_TEXTURE_3D, 0);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -455,6 +455,10 @@ ghoul::opengl::Texture* BrickManager::textureAtlas() {
 
 unsigned int BrickManager::pbo(BUFFER_INDEX _pboIndex) {
 	return pboHandle_[_pboIndex];
+}
+
+const std::vector<int>& BrickManager::brickList(BUFFER_INDEX index) const {
+	return brickLists_.at(index);
 }
 
 }

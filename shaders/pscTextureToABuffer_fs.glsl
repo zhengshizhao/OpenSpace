@@ -39,8 +39,8 @@ void main()
 	vec4 position = vs_position;
 	float depth = pscDepth(position);
 
-	//vec2 texelSize = 1.0 / vec2(textureSize(texture1, 0));
-	vec2 texelSize = 1.0 / vec2(1280.0, 720.0);
+	vec2 texelSize = 1.0 / vec2(textureSize(texture1, 0));
+	//vec2 texelSize = 1.0 / vec2(1280.0, 720.0);
   	vec2 screenCoords = gl_FragCoord.xy * texelSize;
 	vec4 diffuse = texture(texture1, screenCoords);
 	//vec4 diffuse = imageLoad(reqList, ivec2(gl_FragCoord.xy));

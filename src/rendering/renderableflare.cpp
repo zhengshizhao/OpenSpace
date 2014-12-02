@@ -176,7 +176,7 @@ bool RenderableFlare::initialize() {
 			_raycasterPath,
 			std::string("_tspTraversal CS"));
 
-		_raycasterTsp = new ghoul::opengl::ProgramObject("_tspTraversal");
+		_raycasterTsp = new ghoul::opengl::ProgramObject("_raycasterTsp");
 		_raycasterTsp->attachObject(raycasterTSPObject);
 		if (!_raycasterTsp->compileShaderObjects())
 			LERROR("Could not compile shader objects");
@@ -214,8 +214,10 @@ bool RenderableFlare::initialize() {
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
 
 		*/
+		glGenBuffers(1, &_reqeustedBrickSSO);
 		glGenBuffers(1, &_brickSSO);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+		_brickSSOSize = 0;
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, _reqeustedBrickSSO);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*_tsp->numTotalNodes(), NULL, GL_DYNAMIC_READ);
 		GLint* data = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
 		memset(data, 0x00, _tsp->numTotalNodes() * sizeof(GLint));
@@ -241,6 +243,7 @@ bool RenderableFlare::deinitialize() {
 void RenderableFlare::render(const RenderData& data) {
 	const unsigned int currentTimestep = _timestep++ % _tsp->header().numTimesteps_;
 	const unsigned int nextTimestep = currentTimestep < _tsp->header().numTimesteps_ - 1 ? currentTimestep + 1 : 0;
+
 	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
 	if (currentTimestep % 2 == 0) {
 		currentBuf = BrickManager::EVEN;
@@ -250,7 +253,6 @@ void RenderableFlare::render(const RenderData& data) {
 		currentBuf = BrickManager::ODD;
 		nextBuf = BrickManager::EVEN;
 	}
-
 
 	// Render color cubes
 	renderColorCubeTextures(data);
@@ -265,7 +267,7 @@ void RenderableFlare::render(const RenderData& data) {
 	readRequestedBricks();
 
 	// Dispatch Raycaster for currentTimestep
-	launchRaycaster(currentTimestep);
+	launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf));
 
 	// Disk to PBO
 	_brickManager->BuildBrickList(nextBuf, _brickRequest);
@@ -289,7 +291,20 @@ void RenderableFlare::render(const RenderData& data) {
 	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
 	_textureToAbuffer->deactivate();
 	glDisable(GL_CULL_FACE);
-	glBindImageTexture(5, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+	ghoul::opengl::ProgramObject* pscColorPassthrough = nullptr;
+	if (OsEng.configurationManager().getValue("pscColorPassthrough", pscColorPassthrough)) {
+		pscColorPassthrough->activate();
+
+
+		setPscUniforms(pscColorPassthrough, &data.camera, data.position);
+		pscColorPassthrough->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
+		pscColorPassthrough->setUniform("modelTransform", glm::mat4(1.0));
+
+		glBindVertexArray(_boxArray);
+		glDrawArrays(GL_LINES, 0, 6 * 6);
+		pscColorPassthrough->deactivate();
+	}
 
 
 }
@@ -339,7 +354,7 @@ void RenderableFlare::launchTSPTraversal(int timestep){
 	// bind textures
 	GLint i = _tspTraversal->uniformLocation("out_image");
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _brickSSO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _reqeustedBrickSSO);
 	//glBindImageTexture(0, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
 	// Dispatch
@@ -353,7 +368,8 @@ void RenderableFlare::launchTSPTraversal(int timestep){
 void RenderableFlare::readRequestedBricks() {
 	memset(_brickRequest.data(), 0, _brickRequest.size()*sizeof(int));
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // Might not work on AMD 
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _reqeustedBrickSSO);
 #if 0
 	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
 	memcpy(_brickRequest.data(), d, sizeof(GLint)*_tsp->numTotalNodes());
@@ -362,25 +378,41 @@ void RenderableFlare::readRequestedBricks() {
 	glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint) *_tsp->numTotalNodes(), _brickRequest.data());
 #endif
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	for (auto x : _brickRequest) {
+		if (x != 0)
+			LDEBUG(x);
+	}
 }
 
-void RenderableFlare::launchRaycaster(int timestep) {
+void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& brickList) {
 	_raycasterTsp->activate();
 
 	// Bind textures
 	ghoul::opengl::TextureUnit unit1;
 	ghoul::opengl::TextureUnit unit2;
+	ghoul::opengl::TextureUnit unit3;
+	ghoul::opengl::TextureUnit unit4;
 	unit1.activate();
 	_frontTexture->bind();
 	unit2.activate();
 	_backTexture->bind();
+	unit3.activate();
+	_transferFunction->bind();
+	unit4.activate();
+	_brickManager->textureAtlas()->bind();
 
 	// Set uniforms
 	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
 	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
+	int rootLevel = static_cast<int>(_tsp->numOTLevels()) - 1;
+	int paddedBrickDim = static_cast<int>(_tsp->paddedBrickDim());
+	int numBricksPerAxis = static_cast<int>(_tsp->numBricksPerAxis());
 
 	_raycasterTsp->setUniform("cubeFront", unit1);
 	_raycasterTsp->setUniform("cubeBack", unit2);
+	_raycasterTsp->setUniform("transferFunction", unit3);
+	_raycasterTsp->setUniform("textureAtlas", unit4);
 	
 	_raycasterTsp->setUniform("gridType", _tsp->header().gridType_);
 	_raycasterTsp->setUniform("stepSize", 0.02f);
@@ -390,12 +422,27 @@ void RenderableFlare::launchRaycaster(int timestep) {
 	_raycasterTsp->setUniform("temporalTolerance", -1.0f);
 	_raycasterTsp->setUniform("spatialTolerance", -1.0f);
 	_raycasterTsp->setUniform("timestep", timestep);
+	_raycasterTsp->setUniform("rootLevel", rootLevel);
+	_raycasterTsp->setUniform("paddedBrickDim", paddedBrickDim);
+	_raycasterTsp->setUniform("numBoxesPerAxis", numBricksPerAxis);
 
+	// set bricks data
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+	GLuint size = sizeof(GLint)*brickList.size();
+	if (size < _brickSSOSize) {
+		glBufferData(GL_SHADER_STORAGE_BUFFER, size, brickList.data(), GL_DYNAMIC_READ);
+		_brickSSOSize = size;
+	}
+	else {
+		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, size, brickList.data());
+	}
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	// bind textures
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _brickSSO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _tsp->ssbo());
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _brickSSO);
 	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glBindImageTexture(4, *_brickManager->textureAtlas(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+	//glBindImageTexture(4, *_brickManager->textureAtlas(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
 
 	// Dispatch
 	glDispatchComputeIndirect(0);
