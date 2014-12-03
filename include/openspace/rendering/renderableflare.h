@@ -96,7 +96,6 @@ private:
 
 	ghoul::opengl::FramebufferObject* _fbo;
 	ghoul::opengl::Texture* _backTexture;
-	ghoul::opengl::Texture* _frontTexture;
 	ghoul::opengl::Texture* _outputTexture;
 	ghoul::opengl::Texture* _transferFunction;
 

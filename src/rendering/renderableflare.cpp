@@ -70,7 +70,6 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 	, _textureToAbuffer(nullptr)
 	, _fbo(nullptr)
 	, _backTexture(nullptr)
-	, _frontTexture(nullptr)
 	, _outputTexture(nullptr)
 	, _transferFunction(nullptr)
 {
@@ -121,8 +120,6 @@ RenderableFlare::~RenderableFlare() {
 		delete _fbo;
 	if (_backTexture)
 		delete _backTexture;
-	if (_frontTexture)
-		delete _frontTexture;
 	if (_transferFunction)
 		delete _transferFunction;
 }
@@ -152,43 +149,22 @@ bool RenderableFlare::initialize() {
 		} dispatch_params = { 1280 / 16, 720 / 16, 1 };
 		glGenBuffers(2, _dispatchBuffers);
 
-		ghoul::opengl::ShaderObject* tspTraversalObject = new ghoul::opengl::ShaderObject(
-			ghoul::opengl::ShaderObject::ShaderType::ShaderTypeCompute,
-			_traversalPath,
-			std::string("_tspTraversal CS") );
+		_tspTraversal = ghoul::opengl::ProgramObject::Build(
+			"tsptraversal", 
+			findPath("passthrough_vs.glsl"), 
+			_traversalPath);
+		if (!_tspTraversal)
+			LERROR("Could not build _tspTraversal");
 
-		_tspTraversal = new ghoul::opengl::ProgramObject("_tspTraversal");
-		_tspTraversal->attachObject(tspTraversalObject);
-		if (!_tspTraversal->compileShaderObjects())
-			LERROR("Could not compile shader objects");
-		if (!_tspTraversal->linkProgramObject())
-			LERROR("Could not link shader objects");
-
-		_tspTraversal->activate();
 		_tspTraversal->setIgnoreUniformLocationError(true);
-		glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, _dispatchBuffers[0]);
-		glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(dispatch_params), &dispatch_params, GL_STATIC_DRAW);
-		_tspTraversal->deactivate();
 
-		
-		ghoul::opengl::ShaderObject* raycasterTSPObject = new ghoul::opengl::ShaderObject(
-			ghoul::opengl::ShaderObject::ShaderType::ShaderTypeCompute,
-			_raycasterPath,
-			std::string("_tspTraversal CS"));
 
-		_raycasterTsp = new ghoul::opengl::ProgramObject("_raycasterTsp");
-		_raycasterTsp->attachObject(raycasterTSPObject);
-		if (!_raycasterTsp->compileShaderObjects())
-			LERROR("Could not compile shader objects");
-		if (!_raycasterTsp->linkProgramObject())
-			LERROR("Could not link shader objects");
-
-		_raycasterTsp->activate();
-
-		glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, _dispatchBuffers[1]);
-		glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(dispatch_params), &dispatch_params, GL_STATIC_DRAW);
-		_raycasterTsp->deactivate();
-
+		_raycasterTsp = ghoul::opengl::ProgramObject::Build(
+			"raycasterTsp",
+			findPath("passthrough_vs.glsl"),
+			_raycasterPath);
+		if (!_raycasterTsp)
+			LERROR("Could not build _raycasterTsp");
 
 		initializeColorCubes();
 
@@ -321,18 +297,14 @@ void RenderableFlare::launchTSPTraversal(int timestep){
 
 	// Bind textures
 	ghoul::opengl::TextureUnit unit1;
-	ghoul::opengl::TextureUnit unit2;
 	unit1.activate();
-	_frontTexture->bind();
-	unit2.activate();
 	_backTexture->bind();
 
 	// Set uniforms
 	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
 	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
 
-	_tspTraversal->setUniform("cubeFront", unit1);
-	_tspTraversal->setUniform("cubeBack", unit2);
+	_tspTraversal->setUniform("cubeBack", unit1);
 	_tspTraversal->setUniform("gridType", _tsp->header().gridType_);
 	_tspTraversal->setUniform("stepSize", 0.02f);
 	_tspTraversal->setUniform("numTimesteps", timesteps);
@@ -392,14 +364,11 @@ void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& bric
 	ghoul::opengl::TextureUnit unit1;
 	ghoul::opengl::TextureUnit unit2;
 	ghoul::opengl::TextureUnit unit3;
-	ghoul::opengl::TextureUnit unit4;
 	unit1.activate();
-	_frontTexture->bind();
-	unit2.activate();
 	_backTexture->bind();
-	unit3.activate();
+	unit2.activate();
 	_transferFunction->bind();
-	unit4.activate();
+	unit3.activate();
 	_brickManager->textureAtlas()->bind();
 
 	// Set uniforms
@@ -409,10 +378,9 @@ void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& bric
 	int paddedBrickDim = static_cast<int>(_tsp->paddedBrickDim());
 	int numBricksPerAxis = static_cast<int>(_tsp->numBricksPerAxis());
 
-	_raycasterTsp->setUniform("cubeFront", unit1);
-	_raycasterTsp->setUniform("cubeBack", unit2);
-	_raycasterTsp->setUniform("transferFunction", unit3);
-	_raycasterTsp->setUniform("textureAtlas", unit4);
+	_raycasterTsp->setUniform("cubeBack", unit1);
+	_raycasterTsp->setUniform("transferFunction", unit2);
+	_raycasterTsp->setUniform("textureAtlas", unit3);
 	
 	_raycasterTsp->setUniform("gridType", _tsp->header().gridType_);
 	_raycasterTsp->setUniform("stepSize", 0.02f);
@@ -537,13 +505,10 @@ void RenderableFlare::initializeColorCubes() {
 	GLenum dataType = GL_FLOAT;
 
 	_backTexture = new Texture(glm::size3_t(x, y, 1));
-	_frontTexture = new Texture(glm::size3_t(x, y, 1));
 	_outputTexture = new Texture(glm::size3_t(x, y, 1), format, GL_RGBA32F, dataType);
 	_backTexture->uploadTexture();
-	_frontTexture->uploadTexture();
 	_outputTexture->uploadTexture();
 	_fbo->attachTexture(_backTexture, GL_COLOR_ATTACHMENT0);
-	_fbo->attachTexture(_frontTexture, GL_COLOR_ATTACHMENT1);
 	_fbo->deactivate();
 }
 
@@ -569,9 +534,6 @@ void RenderableFlare::renderColorCubeTextures(const RenderData& data) {
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
 		glClearColor(0.0, 0.0, 0.0, 0.0);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glDrawBuffer(GL_COLOR_ATTACHMENT1);
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glClear(GL_COLOR_BUFFER_BIT);
 
 	}
 	// make sure GL_CULL_FACE is enabled (it should be disabled for the abuffer)
@@ -582,12 +544,8 @@ void RenderableFlare::renderColorCubeTextures(const RenderData& data) {
 	glCullFace(GL_FRONT);
 	glBindVertexArray(_boxArray);
 	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-	//      Draw frontface (now the normal cull face is is set)
-	glDrawBuffer(GL_COLOR_ATTACHMENT1);
-	glCullFace(GL_BACK);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-	_cubeProgram->deactivate();
 	_fbo->deactivate();
+	glCullFace(GL_BACK);
 
 	// rebind the previous FBO
 	glBindFramebuffer(GL_FRAMEBUFFER, activeFBO);
