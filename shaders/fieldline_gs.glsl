@@ -22,91 +22,78 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEFLARE_H__
-#define __RENDERABLEFLARE_H__
+#version __CONTEXT__
 
-// open space includes
-#include <openspace/rendering/renderablevolume.h>
-#include <openspace/util/updatestructures.h>
+uniform mat4 modelViewProjection;
+uniform mat4 modelTransform;
+uniform vec3 cameraViewDir;
 
-// ghoul includes
-#include <ghoul/opengl/ghoul_gl.h>
+in vec4 vs_color[];
+out vec4 gs_color;
+out vec4 gs_position;
+out vec3 gs_normal;
 
-namespace ghoul {
-	namespace opengl {
-		class Texture;
-		class ProgramObject;
-		class FramebufferObject;
-	}
+#include "PowerScaling/powerScaling_vs.hglsl"
+
+layout(lines_adjacency) in;
+layout(triangle_strip, max_vertices = 4) out;
+
+vec4 prismoid[4];
+
+// Calculate the correct powerscaled position and depth for the ABuffer
+void ABufferEmitVertex(vec4 pos) {
+    // calculate psc position
+    vec4 tmp = pos;
+    vec4 position = pscTransform(tmp, modelTransform);
+    gs_position = tmp;
+
+    // project the position to view space
+    position =  modelViewProjection*position;
+    gl_Position = position;
+    EmitVertex();
 }
 
-namespace openspace {
+// Original code from http://prideout.net/blog/?p=61
+void main() {
+    gs_color = vs_color[0];
 
-// Forward declare
-class TSP;
-class BrickManager;
+    // Get the current and adjacent vertex positions and calculate help vectors u and v
+    vec3 p0, p1, p2, p3;
+    p0 = gl_in[0].gl_Position.xyz; p1 = gl_in[1].gl_Position.xyz;
+    p2 = gl_in[2].gl_Position.xyz; p3 = gl_in[3].gl_Position.xyz;
+    vec3 n0 = normalize(p1-p0);
+    vec3 n1 = normalize(p2-p1);
+    vec3 n2 = normalize(p3-p2);
+    vec3 u = normalize(n0+n1);
+    vec3 v = normalize(n1+n2);
 
+    float EARTH_RADIUS = 6371000.0;
+    float width = 0.1*EARTH_RADIUS;
 
-class RenderableFlare : public RenderableVolume {
-public:
-	RenderableFlare(const ghoul::Dictionary& dictionary);
-	~RenderableFlare();
+    // Calculate normals for all 4 new vertices
+    vec3 normals[4];
+    normals[0] = normalize(cross(cameraViewDir,u));
+    normals[1] = -normals[0];
+    normals[3] = normalize(cross(cameraViewDir,v));
+    normals[2] = -normals[3];
 
-	bool initialize();
-	bool deinitialize();
+    // Calculate positions for the new vertices
+    prismoid[0] = vec4(p1 + normals[0]*width, 0);
+    prismoid[1] = vec4(p1 + normals[1]*width, 0);
+    prismoid[2] = vec4(p2 + normals[2]*width, 0);
+    prismoid[3] = vec4(p2 + normals[3]*width, 0);
 
-	virtual bool isReady() const;
+    // Send normals and verticies to fragment shader
+    gs_normal = normals[0];
+    ABufferEmitVertex(prismoid[0]);
 
-	void render(const RenderData& data) override;
-	void update(const UpdateData& data) override;
+    gs_normal = normals[1];
+    ABufferEmitVertex(prismoid[1]);
 
-private:
+    gs_normal = normals[3];
+    ABufferEmitVertex(prismoid[3]);
 
-	// Types
-	typedef std::vector<int> Bricks;
-
-	// Flare internal functions
-	void launchTSPTraversal(int timestep);
-	void readRequestedBricks();
-	void launchRaycaster(int timestep, const std::vector<int>& brickList);
-	void PBOToAtlas(size_t buffer);
-	void buildBrickList(size_t buffer, const Bricks& bricks);
-	void diskToPBO(size_t buffer);
-
-	// Internal helper functions
-	void initializeColorCubes();
-	void renderColorCubeTextures(const RenderData& data);
-
-	// 
-	TSP* _tsp;
-	BrickManager* _brickManager;
-
-	std::string _traversalPath;
-	std::string _raycasterPath;
-
-	GLuint _boxArray;
-	GLuint _dispatchBuffers[2];
-	//GLuint _brickRequestBuffer, _brickRequestTexture;
-	GLuint _reqeustedBrickSSO;
-	GLuint _brickSSO;
-	GLuint _brickSSOSize;
-	ghoul::opengl::ProgramObject* _tspTraversal;
-	ghoul::opengl::ProgramObject* _raycasterTsp;
-
-	ghoul::opengl::ProgramObject* _cubeProgram;
-	ghoul::opengl::ProgramObject* _textureToAbuffer;
-
-	ghoul::opengl::FramebufferObject* _fbo;
-	ghoul::opengl::Texture* _backTexture;
-	ghoul::opengl::Texture* _outputTexture;
-	ghoul::opengl::Texture* _transferFunction;
-
-	// TSP data members
-	Bricks _brickRequest;
-
-	// Animation
-	unsigned int _timestep;
-};
-
-} // namespace openspace
-#endif // RENDERABLEFIELDLINES_H_
+    gs_normal = normals[2];
+    ABufferEmitVertex(prismoid[2]);
+    EndPrimitive(); 
+}

@@ -22,86 +22,67 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __OPENSPACEENGINE_H__
-#define __OPENSPACEENGINE_H__
+#include <openspace/engine/logfactory.h>
 
-#include <openspace/interaction/interactionhandler.h>
-#include <openspace/interaction/luaconsole.h>
-#include <openspace/rendering/renderengine.h>
-#include <openspace/engine/configurationmanager.h>
+#include <ghoul/logging/htmllog.h>
+#include <ghoul/logging/textlog.h>
 
-#include <ghoul/cmdparser/commandlineparser.h>
+namespace {
+	const std::string _loggerCat = "LogFactory";
+
+	const std::string keyType = "Type";
+	const std::string keyFilename = "FileName";
+	const std::string keyAppend = "Append";
+	const std::string keyTimeStamping = "TimeStamping";
+	const std::string keyDateStamping = "DateStamping";
+	const std::string keyCategoryStamping = "CategoryStamping";
+	const std::string keyLogLevelStamping = "LogLevelStamping";
+
+	const std::string valueHtmlLog = "HTML";
+	const std::string valueTextLog = "Text";
+}
 
 namespace openspace {
 
-// Forward declare to minimize dependencies
-class SyncBuffer;
-class LuaConsole;
+ghoul::logging::Log* LogFactory::createLog(const ghoul::Dictionary& dictionary) {
+	std::string type;
+	bool typeSuccess = dictionary.getValue(keyType, type);
+	if (!typeSuccess) {
+		LERROR("Requested log did not contain a key '" << keyType << "'");
+		return nullptr;
+	}
 
-namespace scripting {
-	class ScriptEngine;
+	std::string filename;
+	bool filenameSuccess = dictionary.getValue(keyFilename, filename);
+	if (!filenameSuccess) {
+		LERROR("Requested log of type '" << keyType << "' did not contain a key '"
+			<< keyFilename << "'");
+		return nullptr;
+	}
+
+	bool append = true;
+	dictionary.getValue(keyAppend, append);
+	bool timeStamp = true;
+	dictionary.getValue(keyTimeStamping, timeStamp);
+	bool dateStamp = true;
+	dictionary.getValue(keyDateStamping, dateStamp);
+	bool categoryStamp = true;
+	dictionary.getValue(keyCategoryStamping, categoryStamp);
+	bool logLevelStamp = true;
+	dictionary.getValue(keyLogLevelStamping, logLevelStamp);
+
+	if (type == valueHtmlLog) {
+		return new ghoul::logging::HTMLLog(
+			filename, timeStamp, dateStamp, categoryStamp, logLevelStamp);
+	}
+	else if (type == valueTextLog) {
+		return new ghoul::logging::TextLog(
+			filename, timeStamp, dateStamp, categoryStamp, logLevelStamp);
+	}
+	else {
+		LERROR("Log with type '" << type << "' did not name a valid log");
+		return nullptr;
+	}
 }
 
-class OpenSpaceEngine {
-public:
-    static bool create(int argc, char** argv, std::vector<std::string>& sgctArguments);
-    static void destroy();
-    static OpenSpaceEngine& ref();
-
-    static bool isInitialized();
-    bool initialize();
-
-    static bool findConfiguration(std::string& filename);
-
-    ConfigurationManager& configurationManager();
-    interaction::InteractionHandler& interactionHandler();
-    RenderEngine& renderEngine();
-	scripting::ScriptEngine& scriptEngine();
-	LuaConsole& console();
-
-    // SGCT callbacks
-    bool initializeGL();
-    void preSynchronization();
-    void postSynchronizationPreDraw();
-    void render();
-	void postDraw();
-	void keyboardCallback(int key, int action);
-	void charCallback(unsigned int codepoint);
-    void mouseButtonCallback(int key, int action);
-    void mousePositionCallback(int x, int y);
-    void mouseScrollWheelCallback(int pos);
-	void externalControlCallback(const char* receivedChars, int size, int clientId);
-    void encode();
-    void decode();
-
-
-
-private:
-    OpenSpaceEngine(std::string programName);
-    ~OpenSpaceEngine();
-
-	void clearAllWindows();
-	bool gatherCommandlineArguments();
-	bool loadSpiceKernels();
-	void runStartupScripts();
-	void loadFonts();
-	void createLogs();
-
-    static OpenSpaceEngine* _engine;
-
-    ConfigurationManager _configurationManager;
-    interaction::InteractionHandler _interactionHandler;
-    RenderEngine _renderEngine;
-	scripting::ScriptEngine _scriptEngine;
-	ghoul::cmdparser::CommandlineParser _commandlineParser;
-	LuaConsole _console;
-
-	SyncBuffer* _syncBuffer;
-
-};
-
-#define OsEng (openspace::OpenSpaceEngine::ref())
-
-}  // namespace openspace
-
-#endif  // __OPENSPACEENGINE_H__
+} // namespace openspace

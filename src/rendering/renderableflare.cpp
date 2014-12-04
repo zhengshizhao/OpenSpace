@@ -216,6 +216,10 @@ bool RenderableFlare::deinitialize() {
 	return true;
 }
 
+bool RenderableFlare::isReady() const {
+	return true;
+}
+
 void RenderableFlare::render(const RenderData& data) {
 	const unsigned int currentTimestep = _timestep++ % _tsp->header().numTimesteps_;
 	const unsigned int nextTimestep = currentTimestep < _tsp->header().numTimesteps_ - 1 ? currentTimestep + 1 : 0;
