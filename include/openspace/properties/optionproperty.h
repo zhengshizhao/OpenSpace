@@ -31,7 +31,7 @@
 
 namespace openspace {
 namespace properties {
-	
+
 /**
  * The OptionProperty is a property that provides a number of predefined (using the 
  * addOption method) options consisting of a <code>description</code> and a

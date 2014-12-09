@@ -24,7 +24,6 @@
 
 #include <openspace/rendering/renderengine.h>
 
-// Open Space
 #include <openspace/abuffer/abuffervisualizer.h>
 #include <openspace/abuffer/abuffer.h>
 #include <openspace/abuffer/abufferframebuffer.h>
@@ -39,17 +38,21 @@
 #include <openspace/util/screenlog.h>
 #include <openspace/util/spicemanager.h>
 #include <openspace/util/syncbuffer.h>
-
-// sgct
-#include <sgct.h>
-
-// ghoul
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/lua/lua_helper.h>
 
-// std
+#include <ghoul/io/texture/texturereader.h>
+#ifdef GHOUL_USE_DEVIL
+#include <ghoul/io/texture/texturereaderdevil.h>
+#endif //GHOUL_USE_DEVIL
+#ifdef GHOUL_USE_FREEIMAGE
+#include <ghoul/io/texture/texturereaderfreeimage.h>
+#endif // GHOUL_USE_FREEIMAGE
+#include <ghoul/io/texture/texturereadercmap.h>
+
 #include <array>
 #include <fstream>
+#include <sgct.h>
 
 // ABuffer defines
 #define ABUFFER_FRAMEBUFFER 0
@@ -73,14 +76,14 @@ namespace luascriptfunctions {
 
 /**
  * \ingroup LuaScripts
- * printImage():
+ * takeScreenshot():
  * Save the rendering to an image file
  */
-int printImage(lua_State* L) {
+int takeScreenshot(lua_State* L) {
 	int nArguments = lua_gettop(L);
 	if (nArguments != 0)
 		return luaL_error(L, "Expected %i arguments, got %i", 0, nArguments);
-	sgct::Engine::instance()->takeScreenshot();
+	OsEng.renderEngine().takeScreenshot();
 	return 0;
 }
 
@@ -132,6 +135,15 @@ bool RenderEngine::initialize()
     _mainCamera->setScaling(glm::vec2(1.0, -8.0));
     _mainCamera->setPosition(psc(0.f, 0.f, 1.499823f, 11.f));
 	OsEng.interactionHandler().setCamera(_mainCamera);
+
+#ifdef GHOUL_USE_DEVIL
+	ghoul::io::TextureReader::addReader(new ghoul::io::impl::TextureReaderDevIL);
+#endif // GHOUL_USE_DEVIL
+#ifdef GHOUL_USE_FREEIMAGE
+	ghoul::io::TextureReader::addReader(new ghoul::io::impl::TextureReaderFreeImage);
+#endif // GHOUL_USE_FREEIMAGE
+
+	ghoul::io::TextureReader::addReader(new ghoul::io::impl::TextureReaderCMAP);
     
 #if ABUFFER_IMPLEMENTATION == ABUFFER_FRAMEBUFFER
     _abuffer = new ABufferFramebuffer();
@@ -188,9 +200,17 @@ bool RenderEngine::initializeGL()
         const glm::vec3 center = (corners[0] + corners[1] + corners[2] + corners[3])
                                  / 4.0f;
 
+#if 0
+// @TODO Remove the ifdef when the next SGCT version is released that requests the
+// getUserPtr to get a name parameter ---abock
+
         // set the eye position, useful during rendering
         const glm::vec3 eyePosition
-              = sgct_core::ClusterManager::instance()->getUserPtr()->getPos();
+              = sgct_core::ClusterManager::instance()->getUserPtr("")->getPos();
+#else
+		const glm::vec3 eyePosition
+			  = sgct_core::ClusterManager::instance()->getUserPtr()->getPos();
+#endif
 
         // get viewdirection, stores the direction in the camera, used for culling
         const glm::vec3 viewdir = glm::normalize(eyePosition - center);
@@ -271,8 +291,15 @@ void RenderEngine::render()
     glDisable(GL_BLEND);
 #endif
     // setup the camera for the current frame
+
+#if 0
+// @TODO: Use this as soon as the new SGCT version is available ---abock
     const glm::vec3 eyePosition
-          = sgct_core::ClusterManager::instance()->getUserPtr()->getPos();
+          = sgct_core::ClusterManager::instance()->getUserPtr("")->getPos();
+#else
+	const glm::vec3 eyePosition
+		  = sgct_core::ClusterManager::instance()->getUserPtr()->getPos();
+#endif
 	//@CHECK  does the dome disparity disappear if this line disappears? ---abock
     const glm::mat4 view
           = glm::translate(glm::mat4(1.0),
@@ -384,7 +411,10 @@ void RenderEngine::render()
 				if (alpha <= 0.0)
 					break;
 
-				std::string lvl = "(" + ghoul::logging::LogManager::stringFromLevel(e->level) + ")";
+				const std::string lvl = "(" + ghoul::logging::LogManager::stringFromLevel(e->level) + ")";
+				const std::string& message = e->message.substr(0, msg_length);
+				nr += std::count(message.begin(), message.end(), '\n');
+
 				Freetype::print(font, 10.f, static_cast<float>(font_size_light * nr * 2), white*alpha, 
 					"%-14s %s%s",									// Format
 					e->timeString.c_str(),							// Time string
@@ -402,7 +432,9 @@ void RenderEngine::render()
 					color = blue;
 
 				Freetype::print(font, static_cast<float>(10 + 39 * font_with_light), static_cast<float>(font_size_light * nr * 2), color*alpha, "%s", lvl.c_str());
-				Freetype::print(font, static_cast<float>(10 + 53 * font_with_light), static_cast<float>(font_size_light * nr * 2), white*alpha, "%s", e->message.substr(0, msg_length).c_str());
+
+				
+				Freetype::print(font, static_cast<float>(10 + 53 * font_with_light), static_cast<float>(font_size_light * nr * 2), white*alpha, "%s", message.c_str());
 				++nr;
 			}
 		}
@@ -507,8 +539,8 @@ scripting::ScriptEngine::LuaLibrary RenderEngine::luaLibrary() {
 		"",
 		{
 			{
-				"printImage",
-				&luascriptfunctions::printImage,
+				"takeScreenshot",
+				&luascriptfunctions::takeScreenshot,
 				"",
 				"Renders the current image to a file on disk"
 			},

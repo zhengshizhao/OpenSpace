@@ -32,11 +32,12 @@
 #include <openspace/query/query.h>
 #include <openspace/util/time.h>
 #include <openspace/abuffer/abuffer.h>
+#include <openspace/engine/gui.h>
 
 // ghoul includes
 #include "ghoul/logging/logmanager.h"
 #include "ghoul/opengl/programobject.h"
-#include "ghoul/opengl/texturereader.h"
+#include "ghoul/io/texture/texturereader.h"
 #include "ghoul/opengl/texture.h"
 
 #include <ghoul/filesystem/filesystem.h>
@@ -353,6 +354,7 @@ bool SceneGraph::loadSceneInternal(const std::string& sceneDescriptionFilePath)
     _root->setName(SceneGraphNode::RootNodeName);
     _nodes.push_back(_root);
     _allNodes.emplace(SceneGraphNode::RootNodeName, _root);
+    _focus = SceneGraphNode::RootNodeName;
 
     Dictionary dictionary;
 	//load default.scene 
@@ -484,6 +486,14 @@ bool SceneGraph::loadSceneInternal(const std::string& sceneDescriptionFilePath)
 
 	glm::mat4 la = glm::lookAt(c->position().vec3(), fn->worldPosition().vec3(), c->lookUpVector());
 	c->setRotation(la);
+
+
+	for (auto node : _nodes) {
+		std::vector<properties::Property*>&& properties = node->propertiesRecursive();
+		for (auto p : properties) {
+			OsEng.gui().registerProperty(p);
+		}
+	}
 
     return true;
 }

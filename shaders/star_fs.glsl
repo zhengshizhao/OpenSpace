@@ -26,10 +26,11 @@
 
 // keep in sync with renderablestars.h:ColorOption enum
 const int COLOROPTION_COLOR = 0;
-const int COLOROPTION_VELOCITY = 1;
+const int COLOROPTION_VELOCITY = 1; 
 const int COLOROPTION_SPEED = 2;
 
-uniform sampler2D texture1;
+uniform sampler2D psfTexture;
+uniform sampler1D colorTexture;
 uniform vec3 Color;
 
 uniform int colorOption;
@@ -47,38 +48,21 @@ layout(location = 4) in vec2 texCoord;
 #include "PowerScaling/powerScaling_fs.hglsl"
 
 //---------------------------------------------------------------------------
-vec4 bv2rgb(float bv)    // RGB <0,1> <- BV <-0.4,+2.0> [-]
-{
-    float t = 0.0; 
-	vec4 c;
 
-	// TODO CHECK: Isn't t uninitialized here?
-	if (t<-0.4) t=-0.4; if (t> 2.0) t= 2.0;
-         if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); c.r=0.61+(0.11*t)+(0.1*t*t); }
-    else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); c.r=0.83+(0.17*t)          ; }
-    else if ((bv>= 0.40)&&(bv<2.10)) { t=(bv-0.40)/(2.10-0.40); c.r=1.00                   ; }
-         if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); c.g=0.70+(0.07*t)+(0.1*t*t); }
-    else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); c.g=0.87+(0.11*t)          ; }
-    else if ((bv>= 0.40)&&(bv<1.60)) { t=(bv-0.40)/(1.60-0.40); c.g=0.98-(0.16*t)          ; }
-    else if ((bv>= 1.60)&&(bv<2.00)) { t=(bv-1.60)/(2.00-1.60); c.g=0.82         -(0.5*t*t); }
-         if ((bv>=-0.40)&&(bv<0.40)) { t=(bv+0.40)/(0.40+0.40); c.b=1.00                   ; }
-    else if ((bv>= 0.40)&&(bv<1.50)) { t=(bv-0.40)/(1.50-0.40); c.b=1.00-(0.47*t)+(0.1*t*t); }
-    else if ((bv>= 1.50)&&(bv<1.94)) { t=(bv-1.50)/(1.94-1.50); c.b=0.63         -(0.6*t*t); }
-	
-	return c;
+vec4 bv2rgb(float bv) {
+    // BV is [-0.4,2.0]
+    float t = (bv + 0.4) / (2.0 + 0.4);
+    return texture(colorTexture, t);
 }
-//---------------------------------------------------------------------------
 
-
-void main(void)
-{
+void main() {
 	// Something in the color calculations need to be changed because before it was dependent
 	// on the gl blend functions since the abuffer was not involved
 
 	vec4 color = vec4(0.0);
 	switch (colorOption) {
 		case COLOROPTION_COLOR: 
-			color = bv2rgb(ge_brightness[0])/1.1;
+			color = bv2rgb(ge_brightness[0].x);
 			break;
 		case COLOROPTION_VELOCITY:
 			color = vec4(abs(ge_velocity), 0.5); 
@@ -92,8 +76,8 @@ void main(void)
 
 	// color.rgb = 1/ color.rgb;
 	// color.a = 1-color.a;
-    framebuffer_output_color = texture(texture1, texCoord)*color;
-    //framebuffer_output_color = vec4(1.0, 0.0, 0.0, 1.0);
+    framebuffer_output_color = texture(psfTexture, texCoord) * color;
+    // framebuffer_output_color = vec4(1.0, 0.0, 0.0, 1.0);
 
     // framebuffer_output_color = vec4(ge_velocity, 1.0);
 
