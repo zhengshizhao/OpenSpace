@@ -220,6 +220,16 @@ bool SceneGraph::initialize()
 	_programs.push_back(tmpProgram);
 	OsEng.ref().configurationManager().setValue("FieldlineProgram", tmpProgram);
 
+	// Planet program
+	tmpProgram = ProgramObject::Build("Planet",
+		"${SHADERS}/planet_vs.glsl",
+		"${SHADERS}/planet_fs.glsl",
+		"${SHADERS}/planet_gs.glsl",
+		cb);
+	if (!tmpProgram) return false;
+	_programs.push_back(tmpProgram);
+	OsEng.ref().configurationManager().setValue("PlanetProgram", tmpProgram);
+
 	// Done building shaders
     double elapsed = std::chrono::duration_cast<second_>(clock_::now()-beginning).count();
     LINFO("Time to load scene graph shaders: " << elapsed << " seconds");

@@ -88,7 +88,8 @@ bool RenderablePlanet::initialize() {
     bool completeSuccess = true;
     if (_programObject == nullptr)
         completeSuccess
-              &= OsEng.ref().configurationManager().getValue("pscShader", _programObject);
+              &= OsEng.ref().configurationManager().getValue("PlanetProgram", _programObject);
+	//&= OsEng.ref().configurationManager().getValue("pscShader", _programObject);
 
     loadTexture();
     completeSuccess &= (_texture != nullptr);
@@ -140,11 +141,11 @@ void RenderablePlanet::render(const RenderData& data)
 	_programObject->setUniform("ModelTransform", transform);
 	setPscUniforms(_programObject, &data.camera, data.position);
 	
-    // Bind texture
-    ghoul::opengl::TextureUnit unit;
-    unit.activate();
-    _texture->bind();
-    _programObject->setUniform("texture1", unit);
+    //// Bind texture
+    //ghoul::opengl::TextureUnit unit;
+    //unit.activate();
+    //_texture->bind();
+    //_programObject->setUniform("texture1", unit);
 
     // render
     _geometry->render();

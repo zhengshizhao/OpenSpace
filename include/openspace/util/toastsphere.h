@@ -22,42 +22,42 @@
 * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
 ****************************************************************************************/
 
-#ifndef __SIMPLESPHEREGEOMETRY_H__
-#define __SIMPLESPHEREGEOMETRY_H__
+#ifndef __TOASTSPHERE_H__
+#define __TOASTSPHERE_H__
 
-#include <openspace/rendering/planets/planetgeometry.h>
-#include <openspace/properties/vectorproperty.h>
-#include <openspace/properties/scalarproperty.h>
-#include <openspace/util/powerscaledsphere.h>
+#include <ghoul/opengl/ghoul_gl.h>
+#include <openspace/util/powerscaledcoordinate.h>
+#include <openspace/util/powerscaledscalar.h>
+#include <vector>
 
 namespace openspace {
 
-class RenderablePlanet;
-class ToastSphere;
-
-namespace planetgeometry {
-
-class SimpleSphereGeometry : public PlanetGeometry {
-public:
-    SimpleSphereGeometry(const ghoul::Dictionary& dictionary);
-    ~SimpleSphereGeometry();
-
-
-    bool initialize(RenderablePlanet* parent) override;
-    void deinitialize() override;
-    void render() override;
-
-private:
-    void createSphere();
-
-    properties::Vec2Property _radius;
-    properties::IntProperty _segments;
-
-    PowerScaledSphere* _planet;
-	ToastSphere* _toastPlanet;
+struct Quadrant {
+	glm::vec4 v0, v1, v2, v3, v4, v5;
+	Quadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3) {
+		v0 = p0;
+		v1 = p1;
+		v2 = p2;
+		v3 = p0;
+		v4 = p3;
+		v5 = p1;
+	}
 };
 
-}  // namespace planetgeometry
-}  // namespace openspace
+class ToastSphere {
+public:
+	ToastSphere(PowerScaledScalar radius);
+	bool initialize();
+	void render();
+private:
+	void createOctaHedron();
+	std::vector<Quadrant> subdivide(Quadrant q, int levels);
 
-#endif // __SIMPLESPHEREGEOMETRY_H__
+	GLuint _VAO;
+	pss _radius;	
+	std::vector<Quadrant> _quadrants;	
+};
+
+} // namespace openspace
+
+#endif // __TOASTSPHERE_H__
