@@ -33,14 +33,31 @@
 namespace openspace {
 
 struct Quadrant {
-	glm::vec4 v0, v1, v2, v3, v4, v5;
+	std::vector<glm::vec4> vertices;
+	std::vector<glm::vec2> toastCoords;
 	Quadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3) {
-		v0 = p0;
-		v1 = p1;
-		v2 = p2;
-		v3 = p0;
-		v4 = p3;
-		v5 = p1;
+		vertices.push_back(p0);
+		vertices.push_back(p1);
+		vertices.push_back(p2);
+		vertices.push_back(p0);
+		vertices.push_back(p3);
+		vertices.push_back(p1);
+	}
+	Quadrant(glm::vec4 p0,  glm::vec4 p1,  glm::vec4 p2,  glm::vec4 p3,
+			 glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3) {
+		vertices.push_back(p0);
+		vertices.push_back(p1);
+		vertices.push_back(p2);
+		vertices.push_back(p0);
+		vertices.push_back(p3);
+		vertices.push_back(p1);
+
+		toastCoords.push_back(tc0);
+		toastCoords.push_back(tc1);
+		toastCoords.push_back(tc2);
+		toastCoords.push_back(tc0);
+		toastCoords.push_back(tc3);
+		toastCoords.push_back(tc1);
 	}
 };
 

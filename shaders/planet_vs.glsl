@@ -25,7 +25,11 @@
 #version __CONTEXT__
 
 layout(location = 0) in vec4 in_position;
+layout(location = 1) in vec2 in_toastCoord;
+
+out vec2 vs_toastCoord;
 
 void main() {
+	vs_toastCoord = in_toastCoord;
 	gl_Position = in_position;
 }

@@ -24,15 +24,18 @@
 
 #version __CONTEXT__
 
+uniform sampler2D texture1;
+
 in vec4 gs_position;
-in vec3 gs_faceNormal;
+in vec2 gs_toastCoord;
+// in vec3 gs_faceNormal;
 
 #include "ABuffer/abufferStruct.hglsl"
 #include "ABuffer/abufferAddToBuffer.hglsl"
 #include "PowerScaling/powerScaling_fs.hglsl"
 
 void main() {
-	vec4 color = vec4(0.5+0.5*gs_faceNormal,1);
+	vec4 color = texture(texture1, gs_toastCoord);
 
 	vec4 position = gs_position;
 	float depth = pscDepth(position);
