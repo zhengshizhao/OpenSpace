@@ -25,7 +25,7 @@
 
 namespace openspace {
 
-ToastQuadrant::ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
 	glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3) 
 	: _isLeaf(true), _parent(nullptr) {
 	_vertices.push_back(p0);
@@ -43,7 +43,7 @@ ToastQuadrant::ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
 	_toastCoords.push_back(tc1);
 }
 
-ToastQuadrant::ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
 	glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
 	ToastQuadrant* parent) : _isLeaf(true), _parent(parent) {
 	_vertices.push_back(p0);
@@ -59,6 +59,75 @@ ToastQuadrant::ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
 	_toastCoords.push_back(tc0);
 	_toastCoords.push_back(tc3);
 	_toastCoords.push_back(tc1);
+}
+
+void ToastQuadrant::subdivide(int levels) {	
+	// Positions
+	glm::vec4 p0 = _vertices[0];
+	glm::vec4 p1 = _vertices[1];
+	glm::vec4 p2 = _vertices[2];
+	glm::vec4 p3 = _vertices[4];
+
+	float radius = glm::length((glm::vec3)p0.xyz);
+	float pss = p0.w;
+
+	glm::vec4 p01 = glm::vec4(radius * glm::normalize(p0.xyz + p1.xyz), pss);
+	glm::vec4 p20 = glm::vec4(radius * glm::normalize(p2.xyz + p0.xyz), pss);
+	glm::vec4 p30 = glm::vec4(radius * glm::normalize(p3.xyz + p0.xyz), pss);
+	glm::vec4 p12 = glm::vec4(radius * glm::normalize(p1.xyz + p2.xyz), pss);
+	glm::vec4 p31 = glm::vec4(radius * glm::normalize(p3.xyz + p1.xyz), pss);
+
+	// Toast coordinates
+	glm::vec2 tc0 = _toastCoords[0];
+	glm::vec2 tc1 = _toastCoords[1];
+	glm::vec2 tc2 = _toastCoords[2];
+	glm::vec2 tc3 = _toastCoords[4];
+	glm::vec2 tc01 = 0.5f*(tc0 + tc1);
+	glm::vec2 tc20 = 0.5f*(tc2 + tc0);
+	glm::vec2 tc30 = 0.5f*(tc3 + tc0);
+	glm::vec2 tc12 = 0.5f*(tc1 + tc2);
+	glm::vec2 tc31 = 0.5f*(tc3 + tc1);
+
+	// New quadrants
+	_children.push_back(new ToastQuadrant(p20, p12, p2, p01, tc20, tc12, tc2, tc01, this));
+	_children.push_back(new ToastQuadrant(p01, p1, p12, p31, tc01, tc1, tc12, tc31, this));
+	_children.push_back(new ToastQuadrant(p0, p01, p20, p30, tc0, tc01, tc20, tc30, this));
+	_children.push_back(new ToastQuadrant(p30, p31, p01, p3, tc30, tc31, tc01, tc3, this));
+	_isLeaf = false;
+
+	levels--;
+	if (levels > 0) { // We need to go deeper
+		_children[0]->subdivide(levels);
+		_children[1]->subdivide(levels);
+		_children[2]->subdivide(levels);
+		_children[3]->subdivide(levels);
+	}
+}
+
+std::vector<glm::vec4> ToastQuadrant::getVertices() {
+	if (_isLeaf) {
+		return _vertices;
+	} else {
+		std::vector<glm::vec4> verticeData, qVerts;
+		for (ToastQuadrant* q : _children) {
+			qVerts = q->getVertices();
+			verticeData.insert(verticeData.end(), qVerts.begin(), qVerts.end());
+		}
+		return verticeData;
+	}
+}
+
+std::vector<glm::vec2> ToastQuadrant::getToastCoords() {
+	if (_isLeaf) {
+		return _toastCoords;
+	} else {
+		std::vector<glm::vec2> toastcoordData, qToastcoords;
+		for (ToastQuadrant* q : _children) {
+			qToastcoords = q->getToastCoords();
+			toastcoordData.insert(toastcoordData.end(), qToastcoords.begin(), qToastcoords.end());
+		}
+		return toastcoordData;
+	}
 }
 
 } //namespace openspace

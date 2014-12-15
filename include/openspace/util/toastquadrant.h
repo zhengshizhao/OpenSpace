@@ -25,26 +25,29 @@
 #ifndef __TOASTQUADRANT_H__
 #define __TOASTQUADRANT_H__
 
-#include <openspace/util/powerscaledcoordinate.h>
+//#include <openspace/util/powerscaledcoordinate.h>
+#include <glm/glm.hpp>
 #include <vector>
 
 namespace openspace {
 
 class ToastQuadrant{
 public:
-	ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
 		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3);
 
-	ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
 		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
 		ToastQuadrant* parent);
 
-	std::vector<psc> getVertices() { return _vertices; };
-	std::vector<glm::vec2> getToastCoords() { return _toastCoords; };
+	void subdivide(int levels = 1);
+
+	std::vector<glm::vec4> getVertices();
+	std::vector<glm::vec2> getToastCoords();
 	bool isLeaf() { return _isLeaf; };
 
 private:
-	std::vector<psc> _vertices;
+	std::vector<glm::vec4> _vertices;
 	std::vector<glm::vec2> _toastCoords;
 	std::vector<ToastQuadrant*> _children;
 	ToastQuadrant* _parent;
