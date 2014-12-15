@@ -24,8 +24,8 @@
 
 #version __CONTEXT__
 
-uniform sampler2D texture1;
-//layout (binding= 5, rgba32f) readonly uniform image2D reqList;
+//uniform sampler2D texture1;
+layout (binding= 3, rgba32f) readonly uniform image2D reqList;
 
 in vec4 vs_position;
 in vec4 vs_color;
@@ -39,13 +39,19 @@ void main()
 	vec4 position = vs_position;
 	float depth = pscDepth(position);
 
-	vec2 texelSize = 1.0 / vec2(textureSize(texture1, 0));
+	//vec2 texelSize = 1.0 / vec2(textureSize(texture1, 0));
 	//vec2 texelSize = 1.0 / vec2(1280.0, 720.0);
-  	vec2 screenCoords = gl_FragCoord.xy * texelSize;
-	vec4 diffuse = texture(texture1, screenCoords);
-	//vec4 diffuse = imageLoad(reqList, ivec2(gl_FragCoord.xy));
+  	//vec2 screenCoords = gl_FragCoord.xy * texelSize;
+	//vec4 diffuse = texture(texture1, screenCoords);
+
+
+	//diffuse = vec4(1.0,0.0,0.0,1.0);
+	vec4 diffuse = imageLoad(reqList, ivec2(gl_FragCoord.xy));
 	//vec4 diffuse = vec4(screenCoords,0,1);
+
+	//diffuse = abs(diffuse) - vec4(43120000.0);
 
 	ABufferStruct_t frag = createGeometryFragment(diffuse, position, depth);
 	addToBuffer(frag);
+
 }

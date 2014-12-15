@@ -129,13 +129,28 @@ RenderableSphericalGrid::RenderableSphericalGrid(const ghoul::Dictionary& dictio
 
 RenderableSphericalGrid::~RenderableSphericalGrid(){
 	deinitialize();
+
+	// Delete not done in deinitialize because new is done in constructor
+	delete[] _varray;
+	delete[] _iarray;
 }
 
 bool RenderableSphericalGrid::isReady() const {
-	return _gridProgram != nullptr;
+	bool ready = true;
+	ready &= (_gridProgram != nullptr);
+	return ready;
 }
 
 bool RenderableSphericalGrid::deinitialize(){
+	glDeleteVertexArrays(1,&_vaoID);
+	_vaoID = 0;
+
+	glDeleteBuffers(1,&_vBufferID);
+	_vBufferID = 0;
+
+	glDeleteBuffers(1,&_iBufferID);
+	_iBufferID = 0;
+
 	return true;
 }
 
@@ -173,7 +188,6 @@ bool RenderableSphericalGrid::initialize(){
 }
 
 void RenderableSphericalGrid::render(const RenderData& data){
-	assert(_gridProgram);
 	_gridProgram->activate();
 
 	// setup the data to the shader
@@ -194,8 +208,8 @@ void RenderableSphericalGrid::render(const RenderData& data){
 	glBindVertexArray(0);
 
 	_gridProgram->deactivate();
-	
 }
+
 void RenderableSphericalGrid::update(const UpdateData& data){
 }
 

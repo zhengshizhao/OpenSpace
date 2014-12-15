@@ -69,7 +69,8 @@ bool TSP::load() {
 		return false;
 	}
 
-	if (readCache()) {
+	//if (readCache()) {
+	if (false) {
 		LINFO("Using cache");
 	}
 	else {

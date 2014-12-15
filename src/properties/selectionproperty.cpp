@@ -37,7 +37,7 @@ SelectionProperty::SelectionProperty(std::string identifier, std::string guiName
 
 void SelectionProperty::addOption(Option option) {
 	// @COPY-N-PASTE from optionproperty.cpp, possible refactoring? ---abock
-	for (auto o : _options) {
+	for (const Option& o : _options) {
 		if (o.value == option.value) {
 			LWARNING("The value of option {" << o.value << " -> " << o.description <<
 				"} was already registered when trying to add option {" << option.value <<
@@ -51,10 +51,10 @@ void SelectionProperty::addOption(Option option) {
 const std::vector<SelectionProperty::Option>& SelectionProperty::options() const {
 	return _options;
 }
-
-void SelectionProperty::setValue(std::vector<int> value) {
-	_values = std::move(value);
-}
+//
+//void SelectionProperty::setValue(std::vector<int> value) {
+//	_values = std::move(value);
+//}
 
 template <>
 std::string PropertyDelegate<TemplateProperty<std::vector<int>>>::className() {

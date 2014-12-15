@@ -55,38 +55,27 @@ namespace {
 }
 //#define DEBUG
 namespace openspace{
-	RenderableTrail::RenderableTrail(const ghoul::Dictionary& dictionary)
-		: Renderable(dictionary)
-		, _colorTexturePath("colorTexture", "Color Texture")
-		, _programObject(nullptr)
-		, _texture(nullptr)
-		, _vaoID(0)
-		, _vBufferID(0)
-		, _iBufferID(0)
-		, _mode(GL_LINE_STRIP){
+RenderableTrail::RenderableTrail(const ghoul::Dictionary& dictionary)
+	: Renderable(dictionary)
+	, _colorTexturePath("colorTexture", "Color Texture")
+	, _programObject(nullptr)
+	, _texture(nullptr)
+	, _vaoID(0)
+	, _vBufferID(0)
+	, _iBufferID(0)
+	, _mode(GL_LINE_STRIP)
+{
 
-		bool b1 = dictionary.getValue(keyBody, _target);
-		bool b2 = dictionary.getValue(keyObserver, _observer);
-		bool b3 = dictionary.getValue(keyFrame, _frame);
-		bool b4 = dictionary.getValue(keyTropicalOrbitPeriod, _tropic);
-		bool b5 = dictionary.getValue(keyEarthOrbitRatio, _ratio);
-		bool b6 = dictionary.getValue(keyDayLength, _day);
+	_successfullDictionaryFetch = true;
+	_successfullDictionaryFetch &= dictionary.getValue(keyBody, _target);
+	_successfullDictionaryFetch &= dictionary.getValue(keyObserver, _observer);
+	_successfullDictionaryFetch &= dictionary.getValue(keyFrame, _frame);
+	_successfullDictionaryFetch &= dictionary.getValue(keyTropicalOrbitPeriod, _tropic);
+	_successfullDictionaryFetch &= dictionary.getValue(keyEarthOrbitRatio, _ratio);
+	_successfullDictionaryFetch &= dictionary.getValue(keyDayLength, _day);
 
-		assert(b1 == true);
-		assert(b2 == true);
-		assert(b3 == true);
-		assert(b4 == true);
-		assert(b5 == true);
-		assert(b6 == true);
-
-		//assert(dictionary.getValue(keyBody               , _target));
-		//assert(dictionary.getValue(keyObserver, _observer));
-		//assert(dictionary.getValue(keyFrame              , _frame));
-		//assert(dictionary.getValue(keyTropicalOrbitPeriod, _tropic));
-		//assert(dictionary.getValue(keyEarthOrbitRatio    , _ratio));
-		//assert(dictionary.getValue(keyDayLength          , _day));//not used now, will be though.
-		// values in modfiles set from here
-		// http://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html
+	// values in modfiles set from here
+	// http://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html
 
 
 	//white is default col
@@ -117,7 +106,8 @@ void RenderableTrail::fullYearSweep(){
 	
 	_isize = (segments + 2);
 	_vsize = (segments + 2);
-	_iarray = new int[_isize];
+	_iarray.clear();
+	//_iarray = new int[_isize];
 	
 	for (int i = 0; i < segments+2; i++){
 		SpiceManager::ref().getTargetState(_target, _observer, _frame, "LT+S", et, _pscpos, _pscvel, lightTime);
@@ -138,7 +128,8 @@ void RenderableTrail::fullYearSweep(){
 		_varray.push_back(1.f );
 		_varray.push_back(1.f );
 #endif
- 		_iarray[i] = i;
+ 		//_iarray[i] = i;
+		_iarray.push_back(i);
 		if (i != 0) //very first point needs to be alllocated twice.
 		et -= _increment;
 	}
@@ -152,7 +143,9 @@ RenderableTrail::~RenderableTrail(){
 }
 
 bool RenderableTrail::isReady() const {
-	return _programObject != nullptr;
+	bool ready = true;
+	ready &= (_programObject != nullptr);
+	return ready;
 }
 
 void RenderableTrail::sendToGPU(){
@@ -174,13 +167,25 @@ void RenderableTrail::sendToGPU(){
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, st, (void*)(4 * sizeof(GLfloat)));
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _iBufferID);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _isize * sizeof(int), _iarray, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _isize * sizeof(int), _iarray.data(), GL_STATIC_DRAW);
 
 	glBindVertexArray(0);
 }
 
 
 bool RenderableTrail::initialize(){
+
+	if (!_successfullDictionaryFetch) {
+		LERROR("The following keys need to be set in the Dictionary. Cannot initialize!");
+		LERROR(keyBody << ": " << _target);
+		LERROR(keyObserver << ": " << _observer);
+		LERROR(keyFrame << ": " << _frame);
+		LERROR(keyTropicalOrbitPeriod << ": " << _tropic);
+		LERROR(keyEarthOrbitRatio << ": " << _ratio);
+		LERROR(keyDayLength << ": " << _day);
+		return false;
+	}
+
 	bool completeSuccess = true;
 	if (_programObject == nullptr)
 		completeSuccess
@@ -201,8 +206,13 @@ bool RenderableTrail::initialize(){
 }
 
 bool RenderableTrail::deinitialize(){
-	delete _texture;
+	if (_texture)
+		delete _texture;
 	_texture = nullptr;
+
+	glDeleteVertexArrays(1, &_vaoID);
+	glDeleteBuffers(1, &_vBufferID);
+	glDeleteBuffers(1, &_iBufferID);
 	return true;
 }
 
@@ -224,6 +234,10 @@ psc pscInterpolate(psc p0, psc p1, float t){
 */
 
 void RenderableTrail::updateTrail(){
+#ifndef NDEBUG
+	if (!_successfullDictionaryFetch)
+		return;
+#endif
 	int m = _stride;
 	float *begin = &_varray[0];
 	//float *end = &_varray[_vsize - 1] + 1;
@@ -265,7 +279,6 @@ void RenderableTrail::updateTrail(){
 }
 
 void RenderableTrail::render(const RenderData& data){
-	assert(_programObject);
 	_programObject->activate();
 
 	// fetch data
@@ -310,7 +323,7 @@ void RenderableTrail::loadTexture()
 	delete _texture;
 	_texture = nullptr;
 	if (_colorTexturePath.value() != "") {
-		_texture = ghoul::io::TextureReader::loadTexture(absPath(_colorTexturePath));
+		_texture = ghoul::io::TextureReader::ref().loadTexture(absPath(_colorTexturePath));
 		if (_texture) {
 			LDEBUG("Loaded texture from '" << absPath(_colorTexturePath) << "'");
 			_texture->uploadTexture();

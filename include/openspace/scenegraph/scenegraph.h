@@ -35,7 +35,6 @@
 #include <openspace/util/updatestructures.h>
 #include <openspace/scripting/scriptengine.h>
 
-// ghoul includes
 #include <ghoul/opengl/programobject.h>
 #include <ghoul/misc/dictionary.h>
 
@@ -44,6 +43,8 @@ namespace openspace {
 
 class SceneGraphNode;
 
+// Notifications:
+// SceneGraphFinishedLoading
 class SceneGraph {
 public:
     // constructors & destructor
@@ -84,11 +85,6 @@ public:
     void render(const RenderData& data);
 
     /*
-     * Prints the SceneGraph tree. For debugging purposes
-     */
-    void printChildren() const;
-
-    /*
      * Returns the root SceneGraphNode
      */
     SceneGraphNode* root() const;
@@ -98,6 +94,8 @@ public:
      * name does not exist
      */
     SceneGraphNode* sceneGraphNode(const std::string& name) const;
+
+	std::vector<SceneGraphNode*> allSceneGraphNodes() const;
 
 	/**
 	 * Returns the Lua library that contains all Lua functions available to change the
@@ -124,6 +122,21 @@ private:
 	std::mutex _programUpdateLock;
 	std::set<ghoul::opengl::ProgramObject*> _programsToUpdate;
 	std::vector<ghoul::opengl::ProgramObject*> _programs;
+
+    typedef std::map<std::string, ghoul::Dictionary> NodeMap;
+    typedef std::multimap<std::string, std::string> DependencyMap;
+    typedef std::vector<std::string> LoadedList;
+
+    struct LoadMaps {
+        NodeMap nodes;
+        DependencyMap dependencies;
+        LoadedList loadedNodes;
+    };
+
+    void loadModules(const std::string& directory, const ghoul::Dictionary& dictionary);
+    void loadModule(LoadMaps& m,const std::string& modulePath);
+    void loadNodes(const std::string& parentName, LoadMaps& m);
+    void loadNode(const ghoul::Dictionary& dictionary);
 };
 
 } // namespace openspace

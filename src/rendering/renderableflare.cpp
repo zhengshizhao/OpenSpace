@@ -72,6 +72,7 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 	, _backTexture(nullptr)
 	, _outputTexture(nullptr)
 	, _transferFunction(nullptr)
+	, _timestep(3)
 {
 	std::string s;
 	dictionary.getValue(keyDataSource, s);
@@ -128,11 +129,11 @@ bool RenderableFlare::initialize() {
 	bool success = true;
 
 	if (_tsp) {
-		success |= _tsp->load();
+		success &= _tsp->load();
 	}
 	if (_brickManager) {
-		success |= _brickManager->readHeader();
-		success |= _brickManager->initialize();
+		success &= _brickManager->readHeader();
+		success &= _brickManager->initialize();
 	}
 	
 	if (success) {
@@ -221,6 +222,9 @@ bool RenderableFlare::isReady() const {
 }
 
 void RenderableFlare::render(const RenderData& data) {
+	//glEnable(GL_SCISSOR_TEST);
+	//glScissor(1280 / 2, 720 / 2, 1, 1);
+
 	const unsigned int currentTimestep = _timestep++ % _tsp->header().numTimesteps_;
 	const unsigned int nextTimestep = currentTimestep < _tsp->header().numTimesteps_ - 1 ? currentTimestep + 1 : 0;
 
@@ -238,64 +242,6 @@ void RenderableFlare::render(const RenderData& data) {
 	renderColorCubeTextures(data);
 
 	// Dispatch TSP traversal
-	launchTSPTraversal(nextTimestep);
-
-	// PBO to atlas
-	_brickManager->PBOToAtlas(currentBuf);
-
-	// Read _brickSSO
-	readRequestedBricks();
-
-	// Dispatch Raycaster for currentTimestep
-	launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf));
-
-	// Disk to PBO
-	_brickManager->BuildBrickList(nextBuf, _brickRequest);
-	_brickManager->DiskToPBO(nextBuf);
-
-	// To screen
-	OsEng.renderEngine().abuffer()->resetBindings();
-	_textureToAbuffer->activate();
-
-	setPscUniforms(_textureToAbuffer, &data.camera, data.position);
-	_textureToAbuffer->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
-
-	// Bind texture
-	ghoul::opengl::TextureUnit unit;
-	unit.activate();
-	_outputTexture->bind();
-	_textureToAbuffer->setUniform("texture1", unit);
-
-	glBindVertexArray(_boxArray);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-	_textureToAbuffer->deactivate();
-	glDisable(GL_CULL_FACE);
-
-	ghoul::opengl::ProgramObject* pscColorPassthrough = nullptr;
-	if (OsEng.configurationManager().getValue("pscColorPassthrough", pscColorPassthrough)) {
-		pscColorPassthrough->activate();
-
-
-		setPscUniforms(pscColorPassthrough, &data.camera, data.position);
-		pscColorPassthrough->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-		pscColorPassthrough->setUniform("modelTransform", glm::mat4(1.0));
-
-		glBindVertexArray(_boxArray);
-		glDrawArrays(GL_LINES, 0, 6 * 6);
-		pscColorPassthrough->deactivate();
-	}
-
-
-}
-
-void RenderableFlare::update(const UpdateData& data) {
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////
-// Flare internal functions
-//////////////////////////////////////////////////////////////////////////////////////////
-void RenderableFlare::launchTSPTraversal(int timestep){
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	_tspTraversal->activate();
 
@@ -316,27 +262,94 @@ void RenderableFlare::launchTSPTraversal(int timestep){
 	_tspTraversal->setUniform("numOTNodes", numOTNodes);
 	_tspTraversal->setUniform("temporalTolerance", -1.0f);
 	_tspTraversal->setUniform("spatialTolerance", -1.0f);
-	_tspTraversal->setUniform("timestep", timestep);
+	_tspTraversal->setUniform("timestep", nextTimestep);
+	_tspTraversal->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
+	_tspTraversal->setUniform("modelTransform", glm::mat4(1.0));
+	setPscUniforms(_tspTraversal, &data.camera, data.position);
 
 	/*
 	GLint d;
 	for (int i = 0; i < 8; ++i) {
-		d = 0;
-		glGetIntegeri_v(GL_IMAGE_BINDING_NAME, i, &d);
-		LDEBUG("d" << i << ": " << d);
+	d = 0;
+	glGetIntegeri_v(GL_IMAGE_BINDING_NAME, i, &d);
+	LDEBUG("d" << i << ": " << d);
 	}
 	*/
 
 	// bind textures
 	GLint i = _tspTraversal->uniformLocation("out_image");
+	glBindVertexArray(_boxArray);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _reqeustedBrickSSO);
-	//glBindImageTexture(0, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
 	// Dispatch
-	glDispatchComputeIndirect(0);
+	//glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
 
 	_tspTraversal->deactivate();
+	//glBindImageTexture(3, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+	// PBO to atlas
+	_brickManager->PBOToAtlas(currentBuf);
+
+	// Read _brickSSO
+	readRequestedBricks();
+
+	// Dispatch Raycaster for currentTimestep
+	//launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf));
+
+	// Disk to PBO
+	_brickManager->BuildBrickList(nextBuf, _brickRequest);
+	_brickManager->DiskToPBO(nextBuf);
+
+	// To screen
+	OsEng.renderEngine().abuffer()->resetBindings();
+	_textureToAbuffer->activate();
+
+	setPscUniforms(_textureToAbuffer, &data.camera, data.position);
+	_textureToAbuffer->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
+	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
+
+	// Bind texture
+	//ghoul::opengl::TextureUnit unit;
+	//unit.activate();
+	//_outputTexture->bind();
+	//_textureToAbuffer->setUniform("texture1", unit);
+	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+	glBindVertexArray(_boxArray);
+	//glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
+	_textureToAbuffer->deactivate();
+	glDisable(GL_CULL_FACE);
+
+	ghoul::opengl::ProgramObject* pscColorPassthrough = nullptr;
+	if (OsEng.configurationManager().getValue("pscColorPassthrough", pscColorPassthrough)) {
+		pscColorPassthrough->activate();
+
+
+		setPscUniforms(pscColorPassthrough, &data.camera, data.position);
+		pscColorPassthrough->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
+		pscColorPassthrough->setUniform("modelTransform", glm::mat4(1.0));
+
+		glBindVertexArray(_boxArray);
+		glDrawArrays(GL_LINES, 0, 6 * 6);
+		pscColorPassthrough->deactivate();
+	}
+
+	//glDisable(GL_SCISSOR_TEST);
+}
+
+void RenderableFlare::update(const UpdateData& data) {
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// Flare internal functions
+//////////////////////////////////////////////////////////////////////////////////////////
+void RenderableFlare::launchTSPTraversal(int timestep){
+
 	
 	//glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 }
