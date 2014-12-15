@@ -28,12 +28,12 @@
 #include <openspace/rendering/planets/planetgeometry.h>
 #include <openspace/properties/vectorproperty.h>
 #include <openspace/properties/scalarproperty.h>
-#include <openspace/util/toastsphere.h>
+#include <openspace/util/powerscaledsphere.h>
 
 namespace openspace {
 
 class RenderablePlanet;
-class PowerScaledSphere;
+class ToastSphere;
 
 namespace planetgeometry {
 

@@ -31,9 +31,15 @@ namespace {
 
 namespace openspace {
 
+<<<<<<< HEAD
 ToastSphere::ToastSphere(PowerScaledScalar radius, int levels) 
 	: _radius(radius)
 	, _levels(levels){}
+=======
+ToastSphere::ToastSphere(PowerScaledScalar radius) {
+	_radius = radius;
+}
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 
 bool ToastSphere::initialize() {
 	createOctaHedron();
@@ -49,8 +55,13 @@ void ToastSphere::render() {
 void ToastSphere::createOctaHedron() {
 	float r = _radius[0];
 	float w = _radius[1];
+<<<<<<< HEAD
 
 	// Octahedron vertices
+=======
+	int levels = 3;
+
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 	glm::vec4 v0 = glm::vec4(0, r, 0, w);
 	glm::vec4 v1 = glm::vec4(0, 0, -r, w);
 	glm::vec4 v2 = glm::vec4(r, 0, 0, w);
@@ -69,23 +80,36 @@ void ToastSphere::createOctaHedron() {
 	glm::vec2 tc53 = glm::vec2(0,	1);
 	glm::vec2 tc54 = glm::vec2(0,	0);
 
+<<<<<<< HEAD
 	// Octahedron quadrants
+=======
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 	_quadrants.push_back(Quadrant(v1, v2, v0, v5, tc1, tc2, tc0, tc51));
 	_quadrants.push_back(Quadrant(v2, v3, v0, v5, tc2, tc3, tc0, tc52));
 	_quadrants.push_back(Quadrant(v3, v4, v0, v5, tc3, tc4, tc0, tc53));
 	_quadrants.push_back(Quadrant(v4, v1, v0, v5, tc4, tc1, tc0, tc54));
 
+<<<<<<< HEAD
 	// Subdivide
 	if (_levels > 0) {
 		std::vector<Quadrant> sQuadrants;
 		for (int i = 0; i < _quadrants.size(); ++i) {
 			std::vector<Quadrant> sQuadrant = subdivide(_quadrants[i], _levels);
+=======
+	if (levels > 0) {
+		std::vector<Quadrant> sQuadrants;
+		for (int i = 0; i < _quadrants.size(); ++i) {
+			std::vector<Quadrant> sQuadrant = subdivide(_quadrants[i], levels);
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 			sQuadrants.insert(sQuadrants.end(), sQuadrant.begin(), sQuadrant.end());
 		}
 		_quadrants = sQuadrants;
 	}
 
+<<<<<<< HEAD
 	// Prepare data for OpenGL
+=======
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 	std::vector<glm::vec4> vertexPosData;
 	std::vector<glm::vec2> vertexToastData;
 	for (Quadrant q : _quadrants) {
@@ -106,7 +130,11 @@ void ToastSphere::createOctaHedron() {
 	glVertexAttribPointer(positionLocation, 4, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<void*>(0));
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+<<<<<<< HEAD
 	// Vertex toastcoords
+=======
+	// Vertex toastcoord
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 	GLuint tcLocation = 1;
 	glGenBuffers(1, &vertexColorBuffer); // generate buffer
 	glBindBuffer(GL_ARRAY_BUFFER, vertexColorBuffer); // bind buffer
@@ -145,7 +173,10 @@ std::vector<Quadrant> ToastSphere::subdivide(Quadrant q, int levels) {
 	glm::vec2 tc12 = 0.5f*(tc1 + tc2);
 	glm::vec2 tc31 = 0.5f*(tc3 + tc1);
 
+<<<<<<< HEAD
 	// New quadrants
+=======
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 	std::vector<Quadrant> quadrants;
 	Quadrant q1 = Quadrant(p20, p12, p2, p01, tc20, tc12, tc2, tc01);
 	Quadrant q2 = Quadrant(p01, p1, p12, p31, tc01, tc1, tc12, tc31);
@@ -153,7 +184,11 @@ std::vector<Quadrant> ToastSphere::subdivide(Quadrant q, int levels) {
 	Quadrant q4 = Quadrant(p30, p31, p01, p3, tc30, tc31, tc01, tc3);
 
 	levels--;
+<<<<<<< HEAD
 	if (levels > 0) { // We need to go deeper
+=======
+	if (levels > 0) {
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 		std::vector<Quadrant> qs1, qs2, qs3, qs4;
 		qs1 = subdivide(q1, levels);
 		qs2 = subdivide(q2, levels);

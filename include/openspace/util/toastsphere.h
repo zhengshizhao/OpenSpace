@@ -63,7 +63,11 @@ struct Quadrant {
 
 class ToastSphere {
 public:
+<<<<<<< HEAD
 	ToastSphere(PowerScaledScalar radius, int levels);
+=======
+	ToastSphere(PowerScaledScalar radius);
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 	bool initialize();
 	void render();
 private:
@@ -71,8 +75,12 @@ private:
 	std::vector<Quadrant> subdivide(Quadrant q, int levels);
 
 	GLuint _VAO;
+<<<<<<< HEAD
 	pss _radius;
 	int _levels;
+=======
+	pss _radius;	
+>>>>>>> 87fae3f5bcbab03c18af20d790989b61095a71b5
 	std::vector<Quadrant> _quadrants;	
 };
 
