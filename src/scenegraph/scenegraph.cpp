@@ -219,6 +219,16 @@ bool SceneGraph::initialize()
 	_programs.push_back(tmpProgram);
 	OsEng.ref().configurationManager().setValue("FieldlineProgram", tmpProgram);
 
+	// Toastplanet program
+	tmpProgram = ProgramObject::Build("ToastPlanet",
+		"${SHADERS}/toastplanet_vs.glsl",
+		"${SHADERS}/toastplanet_fs.glsl",
+		"${SHADERS}/toastplanet_gs.glsl");
+	if (!tmpProgram) return false;
+	tmpProgram->setProgramObjectCallback(cb);
+	_programs.push_back(tmpProgram);
+	OsEng.ref().configurationManager().setValue("ToastPlanetProgram", tmpProgram);
+
 	// Done building shaders
     double elapsed = std::chrono::duration_cast<second_>(clock_::now()-beginning).count();
     LINFO("Time to load scene graph shaders: " << elapsed << " seconds");

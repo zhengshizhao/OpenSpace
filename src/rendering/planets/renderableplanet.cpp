@@ -92,7 +92,8 @@ RenderablePlanet::~RenderablePlanet() {
 
 bool RenderablePlanet::initialize() {
     if (_programObject == nullptr)
-        OsEng.ref().configurationManager().getValue("pscShader", _programObject);
+		OsEng.ref().configurationManager().getValue("ToastPlanetProgram", _programObject);
+        //OsEng.ref().configurationManager().getValue("pscShader", _programObject);
 
     loadTexture();
     _geometry->initialize(this);

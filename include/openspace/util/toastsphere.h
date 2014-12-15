@@ -22,42 +22,60 @@
 * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
 ****************************************************************************************/
 
-#ifndef __SIMPLESPHEREGEOMETRY_H__
-#define __SIMPLESPHEREGEOMETRY_H__
+#ifndef __TOASTSPHERE_H__
+#define __TOASTSPHERE_H__
 
-#include <openspace/rendering/planets/planetgeometry.h>
-#include <openspace/properties/vectorproperty.h>
-#include <openspace/properties/scalarproperty.h>
-#include <openspace/util/toastsphere.h>
+#include <ghoul/opengl/ghoul_gl.h>
+#include <openspace/util/powerscaledcoordinate.h>
+#include <openspace/util/powerscaledscalar.h>
+#include <vector>
 
 namespace openspace {
 
-class RenderablePlanet;
-class PowerScaledSphere;
+struct Quadrant {
+	std::vector<glm::vec4> vertices;
+	std::vector<glm::vec2> toastCoords;
+	Quadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3) {
+		vertices.push_back(p0);
+		vertices.push_back(p1);
+		vertices.push_back(p2);
+		vertices.push_back(p0);
+		vertices.push_back(p3);
+		vertices.push_back(p1);
+	}
+	Quadrant(glm::vec4 p0,  glm::vec4 p1,  glm::vec4 p2,  glm::vec4 p3,
+			 glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3) {
+		vertices.push_back(p0);
+		vertices.push_back(p1);
+		vertices.push_back(p2);
+		vertices.push_back(p0);
+		vertices.push_back(p3);
+		vertices.push_back(p1);
 
-namespace planetgeometry {
-
-class SimpleSphereGeometry : public PlanetGeometry {
-public:
-    SimpleSphereGeometry(const ghoul::Dictionary& dictionary);
-    ~SimpleSphereGeometry();
-
-
-    bool initialize(RenderablePlanet* parent) override;
-    void deinitialize() override;
-    void render() override;
-
-private:
-    void createSphere();
-
-    properties::Vec2Property _radius;
-    properties::IntProperty _segments;
-
-    PowerScaledSphere* _planet;
-	ToastSphere* _toastPlanet;
+		toastCoords.push_back(tc0);
+		toastCoords.push_back(tc1);
+		toastCoords.push_back(tc2);
+		toastCoords.push_back(tc0);
+		toastCoords.push_back(tc3);
+		toastCoords.push_back(tc1);
+	}
 };
 
-}  // namespace planetgeometry
-}  // namespace openspace
+class ToastSphere {
+public:
+	ToastSphere(PowerScaledScalar radius, int levels);
+	bool initialize();
+	void render();
+private:
+	void createOctaHedron();
+	std::vector<Quadrant> subdivide(Quadrant q, int levels);
 
-#endif // __SIMPLESPHEREGEOMETRY_H__
+	GLuint _VAO;
+	pss _radius;
+	int _levels;
+	std::vector<Quadrant> _quadrants;	
+};
+
+} // namespace openspace
+
+#endif // __TOASTSPHERE_H__

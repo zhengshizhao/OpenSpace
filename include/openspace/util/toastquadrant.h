@@ -22,42 +22,35 @@
 * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
 ****************************************************************************************/
 
-#ifndef __SIMPLESPHEREGEOMETRY_H__
-#define __SIMPLESPHEREGEOMETRY_H__
+#ifndef __TOASTQUADRANT_H__
+#define __TOASTQUADRANT_H__
 
-#include <openspace/rendering/planets/planetgeometry.h>
-#include <openspace/properties/vectorproperty.h>
-#include <openspace/properties/scalarproperty.h>
-#include <openspace/util/toastsphere.h>
+#include <openspace/util/powerscaledcoordinate.h>
+#include <vector>
 
 namespace openspace {
 
-class RenderablePlanet;
-class PowerScaledSphere;
-
-namespace planetgeometry {
-
-class SimpleSphereGeometry : public PlanetGeometry {
+class ToastQuadrant{
 public:
-    SimpleSphereGeometry(const ghoul::Dictionary& dictionary);
-    ~SimpleSphereGeometry();
+	ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3);
 
+	ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
+		ToastQuadrant* parent);
 
-    bool initialize(RenderablePlanet* parent) override;
-    void deinitialize() override;
-    void render() override;
+	std::vector<psc> getVertices() { return _vertices; };
+	std::vector<glm::vec2> getToastCoords() { return _toastCoords; };
+	bool isLeaf() { return _isLeaf; };
 
 private:
-    void createSphere();
-
-    properties::Vec2Property _radius;
-    properties::IntProperty _segments;
-
-    PowerScaledSphere* _planet;
-	ToastSphere* _toastPlanet;
+	std::vector<psc> _vertices;
+	std::vector<glm::vec2> _toastCoords;
+	std::vector<ToastQuadrant*> _children;
+	ToastQuadrant* _parent;
+	bool _isLeaf;
 };
 
-}  // namespace planetgeometry
-}  // namespace openspace
+} // namespace openspace
 
-#endif // __SIMPLESPHEREGEOMETRY_H__
+#endif //__TOASTQUADRANT_H__

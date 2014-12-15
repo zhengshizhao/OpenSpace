@@ -21,43 +21,44 @@
 * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  *
 * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
 ****************************************************************************************/
-
-#ifndef __SIMPLESPHEREGEOMETRY_H__
-#define __SIMPLESPHEREGEOMETRY_H__
-
-#include <openspace/rendering/planets/planetgeometry.h>
-#include <openspace/properties/vectorproperty.h>
-#include <openspace/properties/scalarproperty.h>
-#include <openspace/util/toastsphere.h>
+#include <openspace/util/toastquadrant.h>
 
 namespace openspace {
 
-class RenderablePlanet;
-class PowerScaledSphere;
+ToastQuadrant::ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+	glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3) 
+	: _isLeaf(true), _parent(nullptr) {
+	_vertices.push_back(p0);
+	_vertices.push_back(p1);
+	_vertices.push_back(p2);
+	_vertices.push_back(p0);
+	_vertices.push_back(p3);
+	_vertices.push_back(p1);
 
-namespace planetgeometry {
+	_toastCoords.push_back(tc0);
+	_toastCoords.push_back(tc1);
+	_toastCoords.push_back(tc2);
+	_toastCoords.push_back(tc0);
+	_toastCoords.push_back(tc3);
+	_toastCoords.push_back(tc1);
+}
 
-class SimpleSphereGeometry : public PlanetGeometry {
-public:
-    SimpleSphereGeometry(const ghoul::Dictionary& dictionary);
-    ~SimpleSphereGeometry();
+ToastQuadrant::ToastQuadrant(psc p0, psc p1, psc p2, psc p3,
+	glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
+	ToastQuadrant* parent) : _isLeaf(true), _parent(parent) {
+	_vertices.push_back(p0);
+	_vertices.push_back(p1);
+	_vertices.push_back(p2);
+	_vertices.push_back(p0);
+	_vertices.push_back(p3);
+	_vertices.push_back(p1);
 
+	_toastCoords.push_back(tc0);
+	_toastCoords.push_back(tc1);
+	_toastCoords.push_back(tc2);
+	_toastCoords.push_back(tc0);
+	_toastCoords.push_back(tc3);
+	_toastCoords.push_back(tc1);
+}
 
-    bool initialize(RenderablePlanet* parent) override;
-    void deinitialize() override;
-    void render() override;
-
-private:
-    void createSphere();
-
-    properties::Vec2Property _radius;
-    properties::IntProperty _segments;
-
-    PowerScaledSphere* _planet;
-	ToastSphere* _toastPlanet;
-};
-
-}  // namespace planetgeometry
-}  // namespace openspace
-
-#endif // __SIMPLESPHEREGEOMETRY_H__
+} //namespace openspace

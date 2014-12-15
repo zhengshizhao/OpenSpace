@@ -101,7 +101,8 @@ void SimpleSphereGeometry::deinitialize()
 
 void SimpleSphereGeometry::render()
 {
-    _planet->render();
+    //_planet->render();
+	_toastPlanet->render();
 }
 
 void SimpleSphereGeometry::createSphere()
@@ -111,11 +112,15 @@ void SimpleSphereGeometry::createSphere()
     PowerScaledScalar planetSize(_radius);
     _parent->setBoundingSphere(planetSize);
 
-    if(_planet)
-        delete _planet;
+    //if(_planet)
+    //    delete _planet;
 
-    _planet = new PowerScaledSphere(planetSize, _segments);
-    _planet->initialize();
+    //_planet = new PowerScaledSphere(planetSize, _segments);
+    //_planet->initialize();
+
+	_toastPlanet = new ToastSphere(planetSize, 5);
+	_toastPlanet->initialize();
+
 }
 
 }  // namespace planetgeometry
