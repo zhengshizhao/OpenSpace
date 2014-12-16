@@ -141,7 +141,7 @@ bool RenderableFlare::initialize() {
 		OsEng.configurationManager().getValue("pscColorToTexture", _cubeProgram);
 		OsEng.configurationManager().getValue("pscTextureToABuffer", _textureToAbuffer);
 
-
+		/*
 		static const struct
 		{
 			GLuint num_groups_x;
@@ -149,7 +149,7 @@ bool RenderableFlare::initialize() {
 			GLuint num_groups_z;
 		} dispatch_params = { 1280 / 16, 720 / 16, 1 };
 		glGenBuffers(2, _dispatchBuffers);
-
+		*/
 		_tspTraversal = ghoul::opengl::ProgramObject::Build(
 			"tsptraversal", 
 			findPath("passthrough_vs.glsl"), 

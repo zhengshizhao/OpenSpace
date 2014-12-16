@@ -69,8 +69,8 @@ bool TSP::load() {
 		return false;
 	}
 
-	//if (readCache()) {
-	if (false) {
+	if (readCache()) {
+	//if (false) {
 		LINFO("Using cache");
 	}
 	else {
@@ -95,6 +95,7 @@ bool TSP::load() {
 		}
 	}
 	initalizeSSO();
+
 	return true;
 }
 
@@ -387,7 +388,8 @@ bool TSP::calculateSpatialError() {
 		if (stdDevs[i] > 0.f) {
 			stdDevs[i] = pow(stdDevs[i], 0.5f);
 		}
-		data_[i*NUM_DATA + SPATIAL_ERR] = *reinterpret_cast<int*>(&stdDevs[i]);
+		//data_[i*NUM_DATA + SPATIAL_ERR] = *reinterpret_cast<int*>(&stdDevs[i]);
+		data_[i*NUM_DATA + SPATIAL_ERR] = glm::floatBitsToInt(stdDevs[i]);
 		if (stdDevs[i] < minNorm) {
 			minNorm = stdDevs[i];
 		}
@@ -514,7 +516,8 @@ bool TSP::calculateTemporalError() {
 		if (errors[i] > 0.f) {
 			errors[i] = pow(errors[i], 0.25f);
 		}
-		data_[i*NUM_DATA + TEMPORAL_ERR] = *reinterpret_cast<int*>(&errors[i]);
+		//data_[i*NUM_DATA + TEMPORAL_ERR] = *reinterpret_cast<int*>(&errors[i]);
+		data_[i*NUM_DATA + TEMPORAL_ERR] = glm::floatBitsToInt(errors[i]);
 		if (errors[i] < minNorm) {
 			minNorm = errors[i];
 		}
