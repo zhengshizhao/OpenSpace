@@ -61,6 +61,12 @@ ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4
 	_toastCoords.push_back(tc1);
 }
 
+ToastQuadrant::~ToastQuadrant() {
+	for (ToastQuadrant* q : _children) {
+		delete q;
+	}
+}
+
 void ToastQuadrant::subdivide(int levels) {	
 	// Positions
 	glm::vec4 p0 = _vertices[0];

@@ -39,6 +39,7 @@ public:
 	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
 		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
 		ToastQuadrant* parent);
+	~ToastQuadrant();
 
 	void subdivide(int levels = 1);
 

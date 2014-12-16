@@ -22,6 +22,7 @@
 * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
 ****************************************************************************************/
 
+#include <openspace/util/constants.h>
 #include <openspace/util/toastsphere.h>
 #include <openspace/util/toastquadrant.h>
 #include <ghoul/logging/logmanager.h>
@@ -32,14 +33,67 @@ namespace {
 
 namespace openspace {
 
-ToastSphere::ToastSphere(PowerScaledScalar radius, int levels) 
-	: _radius(radius)
-	, _levels(levels)
-	, _numVertices(0){}
+namespace constants {
+namespace toastsphere {
+const std::string keyRadius = "Radius";
+const std::string keyLevels = "Levels";
+}  // namespace simplespheregeometry
+}
 
-bool ToastSphere::initialize() {
+namespace planetgeometry {
+
+ToastSphere::ToastSphere(const ghoul::Dictionary& dictionary)
+	: PlanetGeometry()
+	, _radius("radius", "Radius", glm::vec2(1.f, 0.f), glm::vec2(-10.f, -20.f),
+		glm::vec2(10.f, 20.f))
+	, _levels("levels", "Levels", 3, 1, 10)
+	, _numVertices(0) {
+
+	using constants::scenegraphnode::keyName;
+	using constants::toastsphere::keyRadius;
+	using constants::toastsphere::keyLevels;
+
+	// The name is passed down from the SceneGraphNode
+	std::string name;
+	bool success = dictionary.getValue(keyName, name);
+	assert(success);
+
+	glm::vec2 radius;
+	success = dictionary.getValue(keyRadius, radius);
+	if (!success) {
+		LERROR("ToastSphere of '" << name << "' did not provide a key '"
+			<< keyRadius << "'");
+	}
+	else
+		_radius = radius;
+
+	double levels;
+	success = dictionary.getValue(keyLevels, levels);
+	if (!success) {
+		LERROR("ToastSphere of '" << name << "' did not provide a key '"
+			<< keyLevels << "'");
+	}
+	else
+		_levels = static_cast<int>(levels);
+
+	addProperty(_radius);
+	_radius.onChange(std::bind(&ToastSphere::createOctaHedron, this));
+	addProperty(_levels);
+	_levels.onChange(std::bind(&ToastSphere::createOctaHedron, this));
+}
+
+ToastSphere::~ToastSphere(){}
+
+bool ToastSphere::initialize(RenderablePlanet* parent) {
+	bool success = PlanetGeometry::initialize(parent);	
 	createOctaHedron();
-	return true;
+	return success;
+}
+
+void ToastSphere::deinitialize() {
+	for (ToastQuadrant* q : _quadrants) {
+		delete q;
+	}
 }
 
 void ToastSphere::render() {
@@ -49,8 +103,11 @@ void ToastSphere::render() {
 }
 
 void ToastSphere::createOctaHedron() {
-	float r = _radius[0];
-	float w = _radius[1];
+	PowerScaledScalar planetSize(_radius);
+	_parent->setBoundingSphere(planetSize);
+
+	float r = planetSize[0];
+	float w = planetSize[1];
 
 	// Octahedron vertices
 	glm::vec4 v0 = glm::vec4(0, r, 0, w);
@@ -61,15 +118,15 @@ void ToastSphere::createOctaHedron() {
 	glm::vec4 v5 = glm::vec4(0, -r, 0, w);
 
 	// Toast texture coordinates. South pole (v5) gets split into four
-	glm::vec2 tc0 =  glm::vec2(0.5,	0.5);
-	glm::vec2 tc1 =  glm::vec2(0.5,	0);
-	glm::vec2 tc2 =  glm::vec2(1,	0.5);
-	glm::vec2 tc3 =  glm::vec2(0.5,	1);
-	glm::vec2 tc4 =  glm::vec2(0,	0.5);
-	glm::vec2 tc51 = glm::vec2(1,	0);
-	glm::vec2 tc52 = glm::vec2(1,	1);
-	glm::vec2 tc53 = glm::vec2(0,	1);
-	glm::vec2 tc54 = glm::vec2(0,	0);
+	glm::vec2 tc0 = glm::vec2(0.5, 0.5);
+	glm::vec2 tc1 = glm::vec2(0.5, 0);
+	glm::vec2 tc2 = glm::vec2(1, 0.5);
+	glm::vec2 tc3 = glm::vec2(0.5, 1);
+	glm::vec2 tc4 = glm::vec2(0, 0.5);
+	glm::vec2 tc51 = glm::vec2(1, 0);
+	glm::vec2 tc52 = glm::vec2(1, 1);
+	glm::vec2 tc53 = glm::vec2(0, 1);
+	glm::vec2 tc54 = glm::vec2(0, 0);
 
 	// Octahedron quadrants
 	_quadrants.push_back(new ToastQuadrant(v1, v2, v0, v5, tc1, tc2, tc0, tc51));
@@ -83,7 +140,7 @@ void ToastSphere::createOctaHedron() {
 		_quadrants[1]->subdivide(_levels);
 		_quadrants[2]->subdivide(_levels);
 		_quadrants[3]->subdivide(_levels);
-	}	
+	}
 
 	// Prepare data for OpenGL
 	std::vector<glm::vec4> vertexPosData, qVerts;
@@ -122,4 +179,5 @@ void ToastSphere::createOctaHedron() {
 	glBindVertexArray(0);
 }
 
+} // namespace planetgeometry
 } //namespace openspace

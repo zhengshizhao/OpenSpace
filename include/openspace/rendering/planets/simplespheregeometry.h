@@ -33,7 +33,6 @@ namespace openspace {
 
 class RenderablePlanet;
 class PowerScaledSphere;
-class ToastSphere;
 
 namespace planetgeometry {
 
@@ -53,7 +52,6 @@ private:
     properties::IntProperty _segments;
 
     PowerScaledSphere* _planet;
-	ToastSphere* _toastPlanet;
 };
 
 }  // namespace planetgeometry

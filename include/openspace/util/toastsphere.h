@@ -25,30 +25,40 @@
 #ifndef __TOASTSPHERE_H__
 #define __TOASTSPHERE_H__
 
-#include <ghoul/opengl/ghoul_gl.h>
+#include <openspace/rendering/planets/planetgeometry.h>
+#include <openspace/properties/vectorproperty.h>
+#include <openspace/properties/scalarproperty.h>
 #include <openspace/util/powerscaledscalar.h>
+#include <ghoul/opengl/ghoul_gl.h>
 #include <vector>
 
 namespace openspace {
 
+class RenderablePlanet;
 class ToastQuadrant;
 
-class ToastSphere {
-public:
-	ToastSphere(PowerScaledScalar radius, int levels);
+namespace planetgeometry {
 
-	bool initialize();
-	void render();
+class ToastSphere : public PlanetGeometry {
+public:
+	ToastSphere(const ghoul::Dictionary& dictionary);
+	~ToastSphere();
+
+	bool initialize(RenderablePlanet* parent) override;
+	void deinitialize() override;
+	void render() override;
+
 private:
 	void createOctaHedron();
 
 	GLsizei _numVertices;
 	GLuint _VAO;
-	pss _radius;
-	int _levels;
+	properties::Vec2Property _radius;
+	properties::IntProperty _levels;
 	std::vector<ToastQuadrant*> _quadrants;
 };
 
+} // namespace planetgeometry
 } // namespace openspace
 
 #endif // __TOASTSPHERE_H__

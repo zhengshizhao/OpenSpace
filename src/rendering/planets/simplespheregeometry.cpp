@@ -25,7 +25,6 @@
 #include <openspace/rendering/planets/simplespheregeometry.h>
 #include <openspace/util/constants.h>
 #include <openspace/util/powerscaledsphere.h>
-#include <openspace/util/toastsphere.h>
 
 namespace {
     const std::string _loggerCat = "SimpleSphereGeometry";
@@ -102,8 +101,7 @@ void SimpleSphereGeometry::deinitialize()
 
 void SimpleSphereGeometry::render()
 {
-    //_planet->render();
-	_toastPlanet->render();
+    _planet->render();
 }
 
 void SimpleSphereGeometry::createSphere()
@@ -113,15 +111,11 @@ void SimpleSphereGeometry::createSphere()
     PowerScaledScalar planetSize(_radius);
     _parent->setBoundingSphere(planetSize);
 
-    //if(_planet)
-    //    delete _planet;
+    if(_planet)
+        delete _planet;
 
-    //_planet = new PowerScaledSphere(planetSize, _segments);
-    //_planet->initialize();
-
-	_toastPlanet = new ToastSphere(planetSize, 3);
-	_toastPlanet->initialize();
-
+    _planet = new PowerScaledSphere(planetSize, _segments);
+    _planet->initialize();
 }
 
 }  // namespace planetgeometry

@@ -40,6 +40,7 @@
 #include <openspace/rendering/planets/simplespheregeometry.h>
 #include <openspace/rendering/model/modelgeometry.h>
 #include <openspace/rendering/model/wavefrontgeometry.h>
+#include <openspace/util/toastsphere.h>
 
 // positioninformation
 #include <openspace/scenegraph/staticephemeris.h>
@@ -93,6 +94,9 @@ void FactoryManager::initialize()
     _manager->addFactory(new ghoul::TemplateFactory<planetgeometry::PlanetGeometry>);
     _manager->factory<planetgeometry::PlanetGeometry>()
           ->registerClass<planetgeometry::SimpleSphereGeometry>("SimpleSphere");
+	
+	_manager->factory<planetgeometry::PlanetGeometry>()
+		->registerClass<planetgeometry::ToastSphere>("ToastSphere");
 	
 	// Add ModelGeometry
 	_manager->addFactory(new ghoul::TemplateFactory<modelgeometry::ModelGeometry>);
