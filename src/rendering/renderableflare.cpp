@@ -226,6 +226,7 @@ void RenderableFlare::render(const RenderData& data) {
 	//glScissor(1280 / 2, 720 / 2, 1, 1);
 
 	const unsigned int currentTimestep = _timestep++ % _tsp->header().numTimesteps_;
+	//const unsigned int currentTimestep = 0;
 	const unsigned int nextTimestep = currentTimestep < _tsp->header().numTimesteps_ - 1 ? currentTimestep + 1 : 0;
 
 	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
@@ -258,7 +259,7 @@ void RenderableFlare::render(const RenderData& data) {
 	_tspTraversal->setUniform("gridType", _tsp->header().gridType_);
 	_tspTraversal->setUniform("stepSize", 0.02f);
 	_tspTraversal->setUniform("numTimesteps", timesteps);
-	_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
+	//_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
 	_tspTraversal->setUniform("numOTNodes", numOTNodes);
 	_tspTraversal->setUniform("temporalTolerance", -1.0f);
 	_tspTraversal->setUniform("spatialTolerance", -1.0f);
@@ -298,7 +299,7 @@ void RenderableFlare::render(const RenderData& data) {
 	readRequestedBricks();
 
 	// Dispatch Raycaster for currentTimestep
-	//launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf));
+	launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf));
 
 	// Disk to PBO
 	_brickManager->BuildBrickList(nextBuf, _brickRequest);
@@ -359,7 +360,7 @@ void RenderableFlare::readRequestedBricks() {
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // Might not work on AMD 
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _reqeustedBrickSSO);
-#if 0
+#if 1
 	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
 	memcpy(_brickRequest.data(), d, sizeof(GLint)*_tsp->numTotalNodes());
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
@@ -368,10 +369,13 @@ void RenderableFlare::readRequestedBricks() {
 #endif
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	for (auto x : _brickRequest) {
-		if (x != 0)
-			LDEBUG(x);
+	/*
+	for (size_t i = 0; i < _brickRequest.size(); ++i) {
+		if (_brickRequest.at(i) != 0)
+			LDEBUG(i << ": " << _brickRequest.at(i));
 	}
+	LDEBUG("=================");
+	*/
 }
 
 void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& brickList) {
@@ -402,7 +406,7 @@ void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& bric
 	_raycasterTsp->setUniform("gridType", _tsp->header().gridType_);
 	_raycasterTsp->setUniform("stepSize", 0.02f);
 	_raycasterTsp->setUniform("numTimesteps", timesteps);
-	_raycasterTsp->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
+	//_raycasterTsp->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
 	_raycasterTsp->setUniform("numOTNodes", numOTNodes);
 	_raycasterTsp->setUniform("temporalTolerance", -1.0f);
 	_raycasterTsp->setUniform("spatialTolerance", -1.0f);
