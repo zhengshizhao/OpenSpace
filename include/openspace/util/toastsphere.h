@@ -28,9 +28,15 @@
 #include <openspace/rendering/planets/planetgeometry.h>
 #include <openspace/properties/vectorproperty.h>
 #include <openspace/properties/scalarproperty.h>
-#include <openspace/util/powerscaledscalar.h>
 #include <ghoul/opengl/ghoul_gl.h>
 #include <vector>
+
+namespace ghoul {
+	namespace opengl {
+		class ProgramObject;
+		class Texture;
+	}
+}
 
 namespace openspace {
 
@@ -46,16 +52,24 @@ public:
 
 	bool initialize(RenderablePlanet* parent) override;
 	void deinitialize() override;
+	void bindTexture(ghoul::opengl::ProgramObject* programObject) override;
+	void loadTexture() override;
 	void render() override;
 
+	void setDetailLevel(int level);
 private:
-	void createOctaHedron();
+	void updateDetailLevel();
+	void createOctaHedron();	
+
+	void generateOpenGLData(int detailLevel = INT_MAX);
+	void cleanupOpenGLData();
 
 	GLsizei _numVertices;
-	GLuint _VAO;
+	GLuint _VAO, _vertexPositionBuffer, _vertexToastcoordBuffer;
 	properties::Vec2Property _radius;
-	properties::IntProperty _levels;
+	properties::IntProperty _maxLevel, _currentLevel;
 	std::vector<ToastQuadrant*> _quadrants;
+	ghoul::opengl::Texture* _texture;
 };
 
 } // namespace planetgeometry

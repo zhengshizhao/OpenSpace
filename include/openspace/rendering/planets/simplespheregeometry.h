@@ -29,6 +29,13 @@
 #include <openspace/properties/vectorproperty.h>
 #include <openspace/properties/scalarproperty.h>
 
+namespace ghoul {
+	namespace opengl {
+		class ProgramObject;
+		class Texture;
+	}
+}
+
 namespace openspace {
 
 class RenderablePlanet;
@@ -43,6 +50,8 @@ public:
 
     bool initialize(RenderablePlanet* parent) override;
     void deinitialize() override;
+	void bindTexture(ghoul::opengl::ProgramObject* programObject) override;
+	void loadTexture() override;
     void render() override;
 
 private:
@@ -52,6 +61,7 @@ private:
     properties::IntProperty _segments;
 
     PowerScaledSphere* _planet;
+	ghoul::opengl::Texture* _texture;
 };
 
 }  // namespace planetgeometry

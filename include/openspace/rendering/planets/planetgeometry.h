@@ -29,6 +29,12 @@
 #include <openspace/rendering/planets/renderableplanet.h>
 #include <ghoul/misc/dictionary.h>
 
+namespace ghoul {
+	namespace opengl {
+		class ProgramObject;
+	}
+}
+
 namespace openspace {
 
 namespace planetgeometry {
@@ -41,7 +47,9 @@ public:
     virtual ~PlanetGeometry();
     virtual bool initialize(RenderablePlanet* parent);
     virtual void deinitialize();
-    virtual void render() = 0;
+	virtual void bindTexture(ghoul::opengl::ProgramObject* programObject) = 0;
+	virtual void loadTexture() = 0;
+    virtual void render() = 0;	
 
 protected:
     RenderablePlanet* _parent;

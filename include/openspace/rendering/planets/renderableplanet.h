@@ -35,7 +35,6 @@
 namespace ghoul {
     namespace opengl {
         class ProgramObject;
-        class Texture;
     }
 }
 
@@ -53,17 +52,15 @@ public:
     bool initialize() override;
     bool deinitialize() override;
 	bool isReady() const override;
-
+	
 	void render(const RenderData& data) override;
     void update(const UpdateData& data) override;
 
-protected:
-    void loadTexture();
+	properties::StringProperty getTexturePath() { return _colorTexturePath; };
 
 private:
     properties::StringProperty _colorTexturePath;
     ghoul::opengl::ProgramObject* _programObject;
-    ghoul::opengl::Texture* _texture;
     planetgeometry::PlanetGeometry* _geometry;
 
 	glm::dmat3 _stateMatrix;

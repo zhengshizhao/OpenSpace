@@ -31,9 +31,10 @@
 #include <openspace/engine/openspaceengine.h>
 
 #include <ghoul/opengl/programobject.h>
-#include <ghoul/opengl/texture.h>
-#include <ghoul/opengl/textureunit.h>
-#include <ghoul/io/texture/texturereader.h>
+//#include <ghoul/opengl/texture.h>
+//#include <ghoul/opengl/textureunit.h>
+//#include <ghoul/io/texture/texturereader.h>
+
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/misc/assert.h>
 
@@ -49,7 +50,6 @@ RenderablePlanet::RenderablePlanet(const ghoul::Dictionary& dictionary)
     : Renderable(dictionary)
 	, _colorTexturePath("colorTexture", "Color Texture")
     , _programObject(nullptr)
-    , _texture(nullptr)
     , _geometry(nullptr)
 {
 	std::string name;
@@ -83,7 +83,17 @@ RenderablePlanet::RenderablePlanet(const ghoul::Dictionary& dictionary)
 	addPropertySubOwner(_geometry);
 
 	addProperty(_colorTexturePath);
-    _colorTexturePath.onChange(std::bind(&RenderablePlanet::loadTexture, this));
+    _colorTexturePath.onChange(std::bind(&planetgeometry::PlanetGeometry::loadTexture, _geometry));
+
+	// Temporary hack to support the two different shaders for 
+	// ToastSphere and SimpleSphere (hc)
+	std::string geometryType;
+	geometryDictionary.getValue(constants::planetgeometry::keyType, geometryType);
+	if (geometryType == "ToastSphere" && _programObject == nullptr) {
+		OsEng.ref().configurationManager().getValue("ToastPlanetProgram", _programObject);
+	} else if (_programObject == nullptr) {
+		OsEng.ref().configurationManager().getValue("pscShader", _programObject);
+	}
 }
 
 RenderablePlanet::~RenderablePlanet() {
@@ -91,11 +101,9 @@ RenderablePlanet::~RenderablePlanet() {
 }
 
 bool RenderablePlanet::initialize() {
-    if (_programObject == nullptr)
-        //OsEng.ref().configurationManager().getValue("pscShader", _programObject);
-		OsEng.ref().configurationManager().getValue("ToastPlanetProgram", _programObject);
+    //if (_programObject == nullptr)
+    //    OsEng.ref().configurationManager().getValue("pscShader", _programObject);
 	
-    loadTexture();
     _geometry->initialize(this);
 
     return isReady();
@@ -106,24 +114,19 @@ bool RenderablePlanet::deinitialize() {
         _geometry->deinitialize();
         delete _geometry;
     }
-    if(_texture)
-        delete _texture;
 
     _geometry = nullptr;
-    _texture = nullptr;
     return true;
 }
 
 bool RenderablePlanet::isReady() const {
     bool ready = true;
     ready &= (_programObject != nullptr);
-    ready &= (_texture != nullptr);
     ready &= (_geometry != nullptr);
 	return ready;
 }
 
-void RenderablePlanet::render(const RenderData& data)
-{
+void RenderablePlanet::render(const RenderData& data) {
     // activate shader
     _programObject->activate();
 
@@ -144,18 +147,13 @@ void RenderablePlanet::render(const RenderData& data)
 	//glm::vec3 camSpaceEye = (-(modelview*data.position.vec4())).xyz;
 
     // setup the data to the shader
-//	_programObject->setUniform("camdir", camSpaceEye);
+	//_programObject->setUniform("camdir", camSpaceEye);
 	_programObject->setUniform("ViewProjection", data.camera.viewProjectionMatrix());
 	_programObject->setUniform("ModelTransform", transform);
 	setPscUniforms(_programObject, &data.camera, data.position);
-	
-    // Bind texture
-    ghoul::opengl::TextureUnit unit;
-    unit.activate();
-    _texture->bind();
-    _programObject->setUniform("texture1", unit);
 
-    // render
+    // bind texture and render
+	_geometry->bindTexture(_programObject);
     _geometry->render();
 
     // disable shader
@@ -165,22 +163,6 @@ void RenderablePlanet::render(const RenderData& data)
 void RenderablePlanet::update(const UpdateData& data){
 	// set spice-orientation in accordance to timestamp
 	openspace::SpiceManager::ref().getPositionTransformMatrix(_target, "GALACTIC", data.time, _stateMatrix);
-}
-
-void RenderablePlanet::loadTexture()
-{
-    delete _texture;
-    _texture = nullptr;
-    if (_colorTexturePath.value() != "") {
-        _texture = ghoul::io::TextureReader::ref().loadTexture(absPath(_colorTexturePath));
-        if (_texture) {
-            LDEBUG("Loaded texture from '" << absPath(_colorTexturePath) << "'");
-			_texture->uploadTexture();
-
-			// Textures of planets looks much smoother with AnisotropicMipMap rather than linear
-			_texture->setFilter(ghoul::opengl::Texture::FilterMode::AnisotropicMipMap);
-        }
-    }
 }
 
 }  // namespace openspace

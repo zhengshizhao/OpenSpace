@@ -26,6 +26,12 @@
 #include <openspace/util/constants.h>
 #include <openspace/util/powerscaledsphere.h>
 
+#include <ghoul/filesystem/filesystem.h>
+#include <ghoul/opengl/programobject.h>
+#include <ghoul/opengl/texture.h>
+#include <ghoul/opengl/textureunit.h>
+#include <ghoul/io/texture/texturereader.h>
+
 namespace {
     const std::string _loggerCat = "SimpleSphereGeometry";
 }
@@ -47,6 +53,7 @@ SimpleSphereGeometry::SimpleSphereGeometry(const ghoul::Dictionary& dictionary)
               glm::vec2(10.f, 20.f))
     , _segments("segments", "Segments", 20, 1, 50)
     , _planet(nullptr)
+	, _texture(nullptr)
 {
 	using constants::scenegraphnode::keyName;
 	using constants::simplespheregeometry::keyRadius;
@@ -89,6 +96,7 @@ bool SimpleSphereGeometry::initialize(RenderablePlanet* parent)
 {
     bool success = PlanetGeometry::initialize(parent);
     createSphere();
+	loadTexture();
     return success;
 }
 
@@ -97,6 +105,29 @@ void SimpleSphereGeometry::deinitialize()
 	if (_planet)
 	    delete _planet;
     _planet = nullptr;
+}
+
+void SimpleSphereGeometry::bindTexture(ghoul::opengl::ProgramObject* programObject) {
+	ghoul::opengl::TextureUnit unit;
+	unit.activate();
+	_texture->bind();
+	programObject->setUniform("texture1", unit);
+}
+
+void SimpleSphereGeometry::loadTexture() {
+	delete _texture;
+	_texture = nullptr;
+	properties::StringProperty texturePath = _parent->getTexturePath();
+	if (texturePath.value() != "") {
+		_texture = ghoul::io::TextureReader::ref().loadTexture(absPath(texturePath));
+		if (_texture) {
+			LDEBUG("Loaded texture from '" << absPath(texturePath) << "'");
+			_texture->uploadTexture();
+
+			// Textures of planets looks much smoother with AnisotropicMipMap rather than linear
+			_texture->setFilter(ghoul::opengl::Texture::FilterMode::AnisotropicMipMap);
+		}
+	}
 }
 
 void SimpleSphereGeometry::render()

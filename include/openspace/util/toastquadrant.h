@@ -34,17 +34,17 @@ namespace openspace {
 class ToastQuadrant{
 public:
 	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
-		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3);
+		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, int level);
 
 	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
-		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
+		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, int level,
 		ToastQuadrant* parent);
 	~ToastQuadrant();
 
 	void subdivide(int levels = 1);
 
-	std::vector<glm::vec4> getVertices();
-	std::vector<glm::vec2> getToastCoords();
+	std::vector<glm::vec4> getVertices(int detailLevel);
+	std::vector<glm::vec2> getToastCoords(int detailLevel);
 	bool isLeaf() { return _isLeaf; };
 
 private:
@@ -52,6 +52,7 @@ private:
 	std::vector<glm::vec2> _toastCoords;
 	std::vector<ToastQuadrant*> _children;
 	ToastQuadrant* _parent;
+	int _level;
 	bool _isLeaf;
 };
 
