@@ -25,35 +25,57 @@
 #ifndef __TOASTQUADRANT_H__
 #define __TOASTQUADRANT_H__
 
-//#include <openspace/util/powerscaledcoordinate.h>
+#include <ghoul/opengl/ghoul_gl.h>
 #include <glm/glm.hpp>
 #include <vector>
+
+namespace ghoul {
+	namespace opengl {
+		class ProgramObject;
+		class Texture;
+	}
+}
 
 namespace openspace {
 
 class ToastQuadrant{
 public:
 	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
-		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, int level);
+		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, 
+		glm::ivec2 tilePos, int rootQuadrant, int level);
 
 	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
-		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, int level,
+		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
+		glm::ivec2 tilePos, int rootQuadrant, int level,
 		ToastQuadrant* parent);
 	~ToastQuadrant();
 
-	void subdivide(int levels = 1);
+	void subdivide(int levels = 1);	
+	void draw(int detailLevel);
+	void updateDetailLevel(int newLevel);
 
-	std::vector<glm::vec4> getVertices(int detailLevel);
-	std::vector<glm::vec2> getToastCoords(int detailLevel);
 	bool isLeaf() { return _isLeaf; };
+	void setProgramObject(ghoul::opengl::ProgramObject* programObject);
+	int getRootQuadrant() { return _rootQuadrant; };
 
 private:
+	void bindTileTexture();
+	void loadTileTexture();
+
+	void generateOpenGLData();
+	void cleanupOpenGLData();
+
+	GLuint _VAO, _vertexPositionBuffer, _vertexToastcoordBuffer;
 	std::vector<glm::vec4> _vertices;
 	std::vector<glm::vec2> _toastCoords;
 	std::vector<ToastQuadrant*> _children;
 	ToastQuadrant* _parent;
-	int _level;
-	bool _isLeaf;
+	ghoul::opengl::Texture* _texture;
+	int _level, _rootQuadrant;
+	bool _isLeaf, _beingDrawn, _tileLoaded;
+	ghoul::opengl::ProgramObject* _programObject;
+	std::string _texturePath;
+	glm::ivec2 _tilePos;
 };
 
 } // namespace openspace

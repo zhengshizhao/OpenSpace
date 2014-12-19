@@ -59,10 +59,7 @@ public:
 	void setDetailLevel(int level);
 private:
 	void updateDetailLevel();
-	void createOctaHedron();	
-
-	void generateOpenGLData(int detailLevel = INT_MAX);
-	void cleanupOpenGLData();
+	void createOctaHedron();
 
 	GLsizei _numVertices;
 	GLuint _VAO, _vertexPositionBuffer, _vertexToastcoordBuffer;

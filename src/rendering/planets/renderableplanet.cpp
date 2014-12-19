@@ -31,10 +31,6 @@
 #include <openspace/engine/openspaceengine.h>
 
 #include <ghoul/opengl/programobject.h>
-//#include <ghoul/opengl/texture.h>
-//#include <ghoul/opengl/textureunit.h>
-//#include <ghoul/io/texture/texturereader.h>
-
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/misc/assert.h>
 
