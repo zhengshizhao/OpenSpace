@@ -256,7 +256,7 @@ void SceneGraphNode::render(const RenderData& data) {
 
 	RenderData newData = {data.camera, thisPosition, data.doPerformanceMeasurement};
 
-	_performanceRecord.renderTime = 0.f;
+	_performanceRecord.renderTime = 0;
     if (_renderableVisible && _renderable->isVisible() && _renderable->isReady() && _renderable->isEnabled()) {
 		if (data.doPerformanceMeasurement) {
 			glFinish();
@@ -319,7 +319,7 @@ PowerScaledScalar SceneGraphNode::calculateBoundingSphere(){
     // set the bounding sphere to 0.0
 	_boundingSphere = 0.0;
 	
-    if (_children.size() > 0) {  // node
+    if (!_children.empty()) {  // node
         PowerScaledScalar maxChild;
 
         // loop though all children and find the one furthest away/with the largest
@@ -367,7 +367,7 @@ Renderable* SceneGraphNode::renderable() {
 }
 
 // private helper methods
-bool SceneGraphNode::sphereInsideFrustum(const psc s_pos, const PowerScaledScalar& s_rad,
+bool SceneGraphNode::sphereInsideFrustum(const psc& s_pos, const PowerScaledScalar& s_rad,
                                          const Camera* camera)
 {
     // direction the camera is looking at in power scale

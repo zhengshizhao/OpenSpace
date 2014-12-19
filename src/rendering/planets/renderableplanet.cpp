@@ -84,11 +84,6 @@ RenderablePlanet::RenderablePlanet(const ghoul::Dictionary& dictionary)
 
 	addProperty(_colorTexturePath);
     _colorTexturePath.onChange(std::bind(&RenderablePlanet::loadTexture, this));
-
-	std::string s = _colorTexturePath.description();
-	ghoul::Dictionary d;
-	ghoul::lua::loadDictionaryFromString(s, d);
-
 }
 
 RenderablePlanet::~RenderablePlanet() {
@@ -138,7 +133,7 @@ void RenderablePlanet::render(const RenderData& data)
 		
 	for (int i = 0; i < 3; i++){
 		for (int j = 0; j < 3; j++){
-			transform[i][j] = _stateMatrix[i][j];
+			transform[i][j] = static_cast<float>(_stateMatrix[i][j]);
 		}
 	}
 	transform = transform* rot;
