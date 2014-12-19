@@ -87,7 +87,6 @@ RenderableFieldlines::RenderableFieldlines(const ghoul::Dictionary& dictionary)
 }
 
 RenderableFieldlines::~RenderableFieldlines() {
-	deinitialize();
 }
 
 bool RenderableFieldlines::isReady() const {
@@ -95,7 +94,7 @@ bool RenderableFieldlines::isReady() const {
 }
 
 bool RenderableFieldlines::initialize() {
-	if(_filenames.size() == 0) {
+	if(_filenames.empty()) {
 		LWARNING("No proper filenames provided, cannot initialize!");
 		return false;
 	}
@@ -115,8 +114,8 @@ bool RenderableFieldlines::initialize() {
 		// Arrange data for glMultiDrawArrays
 		for (int j = 0; j < fieldlinesData.size(); ++j) {
 			_lineStart.push_back(prevEnd);
-			_lineCount.push_back(fieldlinesData[j].size());
-			prevEnd = prevEnd + fieldlinesData[j].size();
+			_lineCount.push_back(static_cast<int>(fieldlinesData[j].size()));
+			prevEnd = prevEnd + static_cast<int>(fieldlinesData[j].size());
 			vertexData.insert( vertexData.end(), fieldlinesData[j].begin(), fieldlinesData[j].end());
 		}
 	}
@@ -165,7 +164,7 @@ void RenderableFieldlines::render(const RenderData& data) {
 
 	//	------ DRAW FIELDLINES -----------------
 	glBindVertexArray(_fieldlineVAO);
-	glMultiDrawArrays(GL_LINE_STRIP_ADJACENCY, &_lineStart[0], &_lineCount[0], _lineStart.size());
+	glMultiDrawArrays(GL_LINE_STRIP_ADJACENCY, &_lineStart[0], &_lineCount[0], static_cast<GLsizei>(_lineStart.size()));
 	glBindVertexArray(0);
 
 	_shader->deactivate();
@@ -193,11 +192,12 @@ std::vector<std::vector<LinePoint> > RenderableFieldlines::getFieldlinesData(std
 
 		//	------ VARIBLES / LORENTZ -----------------
 		if (hintsDictionary.hasKey("Variables")) {
-			bool xVar, yVar, zVar;
+			bool xVar;
 			xVar = hintsDictionary.getValue("Variables.1", xVariable);
 			if (xVar && xVariable == "Lorentz") {
 				lorentz = true;
 			} else {
+				bool yVar, zVar;
 
 				yVar = hintsDictionary.getValue("Variables.2", yVariable);
 				zVar = hintsDictionary.getValue("Variables.3", zVariable);
