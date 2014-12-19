@@ -201,6 +201,8 @@ bool BrickManager::BuildBrickList(BUFFER_INDEX _bufIdx,
 				brickLists_[_bufIdx][3 * i + 2] = z;
 
 				// Mark coordinate as used
+				// @BUG bricksInPBO returns -76 (ish)  ---abock
+				// Possible failures: method ordering, wrong values returned from traversal
 				usedCoords_[_bufIdx][bricksInPBO_[_bufIdx][i]] = true;
 
 			}

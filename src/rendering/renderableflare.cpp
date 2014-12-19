@@ -243,6 +243,7 @@ void RenderableFlare::render(const RenderData& data) {
 	renderColorCubeTextures(data);
 
 	// Dispatch TSP traversal
+	// @REFACTOR move into readRequestedBricks function ---abock
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	_tspTraversal->activate();
 
@@ -306,6 +307,7 @@ void RenderableFlare::render(const RenderData& data) {
 	_brickManager->DiskToPBO(nextBuf);
 
 	// To screen
+	// @REFACTOR Possible remove and rendering directly to ABuffer (#95) ---abock
 	OsEng.renderEngine().abuffer()->resetBindings();
 	_textureToAbuffer->activate();
 
