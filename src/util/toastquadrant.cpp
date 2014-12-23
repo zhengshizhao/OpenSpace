@@ -38,11 +38,12 @@ namespace {
 namespace openspace {
 
 ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
+	glm::vec2 tex0, glm::vec2 tex1, glm::vec2 tex2, glm::vec2 tex3,
 	glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, 
 	glm::ivec2 tilePos, int rootQuadrant, int level)
 	: _isLeaf(true), _level(level), _parent(nullptr), _texture(nullptr), 
 	_tilePos(tilePos), _beingDrawn(false), _tileLoaded(false),
-	_rootQuadrant(rootQuadrant) {
+	_rootQuadrant(rootQuadrant), _texturePath("") {
 
 	_vertices.push_back(p0);
 	_vertices.push_back(p1);
@@ -50,6 +51,13 @@ ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4
 	_vertices.push_back(p0);
 	_vertices.push_back(p3);
 	_vertices.push_back(p1);
+
+	_texCoords.push_back(tex0);
+	_texCoords.push_back(tex1);
+	_texCoords.push_back(tex2);
+	_texCoords.push_back(tex0);
+	_texCoords.push_back(tex3);
+	_texCoords.push_back(tex1);
 
 	_toastCoords.push_back(tc0);
 	_toastCoords.push_back(tc1);
@@ -59,17 +67,15 @@ ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4
 	_toastCoords.push_back(tc1);
 
 	generateOpenGLData();
-
-	// I know, I know
-	_texturePath = "C:/tiles/earth_bluemarble_toast/";
 }
 
 ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
+	glm::vec2 tex0, glm::vec2 tex1, glm::vec2 tex2, glm::vec2 tex3,
 	glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, 
 	glm::ivec2 tilePos, int rootQuadrant, int level,
 	ToastQuadrant* parent) : _isLeaf(true), _level(level), _parent(parent), 
 	_texture(nullptr), _tilePos(tilePos), _beingDrawn(false), _tileLoaded(false),
-	_rootQuadrant(rootQuadrant) {
+	_rootQuadrant(rootQuadrant), _texturePath("") {
 
 	_vertices.push_back(p0);
 	_vertices.push_back(p1);
@@ -78,6 +84,13 @@ ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4
 	_vertices.push_back(p3);
 	_vertices.push_back(p1);
 
+	_texCoords.push_back(tex0);
+	_texCoords.push_back(tex1);
+	_texCoords.push_back(tex2);
+	_texCoords.push_back(tex0);
+	_texCoords.push_back(tex3);
+	_texCoords.push_back(tex1);
+
 	_toastCoords.push_back(tc0);
 	_toastCoords.push_back(tc1);
 	_toastCoords.push_back(tc2);
@@ -85,10 +98,9 @@ ToastQuadrant::ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4
 	_toastCoords.push_back(tc3);
 	_toastCoords.push_back(tc1);
 
-	generateOpenGLData();
+	_texturePath = _parent->getTexturePath();
 
-	// I know, I know
-	_texturePath = "C:/tiles/earth_bluemarble_toast/";
+	generateOpenGLData();
 }
 
 ToastQuadrant::~ToastQuadrant() {
@@ -97,15 +109,26 @@ ToastQuadrant::~ToastQuadrant() {
 
 	_children.clear();
 	_vertices.clear();
+	_texCoords.clear();
 	_toastCoords.clear();
 	cleanupOpenGLData();
+	cleanupTexture();
 }
 
 void ToastQuadrant::subdivide(int levels) {
-	if (levels < 1)
+	// Only subdivide leaf-nodes
+	if (!_isLeaf) {
+		levels--;
+		if (levels > 0) {
+			_children[0]->subdivide(levels);
+			_children[1]->subdivide(levels);
+			_children[2]->subdivide(levels);
+			_children[3]->subdivide(levels);
+		}
 		return;
+	}
 
-	// Positions
+	// Parent vertices
 	glm::vec4 p0 = _vertices[0];
 	glm::vec4 p1 = _vertices[1];
 	glm::vec4 p2 = _vertices[2];
@@ -114,11 +137,18 @@ void ToastQuadrant::subdivide(int levels) {
 	float radius = glm::length((glm::vec3)p0.xyz);
 	float pss = p0.w;
 
+	// New vertices
 	glm::vec4 p01 = glm::vec4(radius * glm::normalize(p0.xyz + p1.xyz), pss);
 	glm::vec4 p20 = glm::vec4(radius * glm::normalize(p2.xyz + p0.xyz), pss);
 	glm::vec4 p30 = glm::vec4(radius * glm::normalize(p3.xyz + p0.xyz), pss);
 	glm::vec4 p12 = glm::vec4(radius * glm::normalize(p1.xyz + p2.xyz), pss);
 	glm::vec4 p31 = glm::vec4(radius * glm::normalize(p3.xyz + p1.xyz), pss);
+
+	// Tile texture coordinates
+	glm::vec2 s0t1 = _texCoords[0];
+	glm::vec2 s1t0 = _texCoords[1];
+	glm::vec2 s0t0 = _texCoords[2];
+	glm::vec2 s1t1 = _texCoords[4];
 
 	// Toast coordinates
 	glm::vec2 tc0 = _toastCoords[0];
@@ -130,13 +160,8 @@ void ToastQuadrant::subdivide(int levels) {
 	glm::vec2 tc30 = 0.5f*(tc3 + tc0);
 	glm::vec2 tc12 = 0.5f*(tc1 + tc2);
 	glm::vec2 tc31 = 0.5f*(tc3 + tc1);
-	
-	// Tile texture coordinates
-	glm::vec2 s0t1 = _toastCoords[0];
-	glm::vec2 s1t0 = _toastCoords[1];
-	glm::vec2 s0t0 = _toastCoords[2];
-	glm::vec2 s1t1 = _toastCoords[4];
 
+	// Two cases for tile positions depending on orientation of root quadrant
 	glm::ivec2 tilePos0, tilePos1, tilePos2, tilePos3;
 	if (_rootQuadrant == 1 || _rootQuadrant == 3){
 		tilePos0 = _tilePos * 2 + (glm::ivec2)s0t0;
@@ -153,21 +178,17 @@ void ToastQuadrant::subdivide(int levels) {
 	_isLeaf = false;
 
 	// Child quadrants
-	//_children.push_back(new ToastQuadrant(p20, p12, p2, p01, tc20, tc12, tc2, tc01, _level+1, this));
-	//_children.push_back(new ToastQuadrant(p01, p1, p12, p31, tc01, tc1, tc12, tc31, _level+1, this));
-	//_children.push_back(new ToastQuadrant(p0, p01, p20, p30, tc0, tc01, tc20, tc30, _level+1, this));
-	//_children.push_back(new ToastQuadrant(p30, p31, p01, p3, tc30, tc31, tc01, tc3, _level+1, this));
-	_children.push_back(new ToastQuadrant(p20, p12, p2, p01, 
-		s0t1, s1t0, s0t0, s1t1, tilePos0, _rootQuadrant, _level + 1, this));
+	_children.push_back(new ToastQuadrant(p20, p12, p2, p01, s0t1, s1t0, s0t0, s1t1,
+		tc20, tc12, tc2, tc01, tilePos0, _rootQuadrant, _level + 1, this));
 	
-	_children.push_back(new ToastQuadrant(p01, p1, p12, p31, 
-		s0t1, s1t0, s0t0, s1t1, tilePos1, _rootQuadrant, _level + 1, this));
+	_children.push_back(new ToastQuadrant(p01, p1, p12, p31, s0t1, s1t0, s0t0, s1t1,
+		tc01, tc1, tc12, tc31, tilePos1, _rootQuadrant, _level + 1, this));
 	
-	_children.push_back(new ToastQuadrant(p0, p01, p20, p30, 
-		s0t1, s1t0, s0t0, s1t1, tilePos2, _rootQuadrant, _level + 1, this));
+	_children.push_back(new ToastQuadrant(p0, p01, p20, p30, s0t1, s1t0, s0t0, s1t1,
+		tc0, tc01, tc20, tc30, tilePos2, _rootQuadrant, _level + 1, this));
 	
-	_children.push_back(new ToastQuadrant(p30, p31, p01, p3, 
-		s0t1, s1t0, s0t0, s1t1, tilePos3, _rootQuadrant, _level + 1, this));
+	_children.push_back(new ToastQuadrant(p30, p31, p01, p3, s0t1, s1t0, s0t0, s1t1,
+		tc30, tc31, tc01, tc3, tilePos3, _rootQuadrant, _level + 1, this));
 
 	levels--;
 	if (levels > 0) { // We need to go deeper
@@ -195,18 +216,17 @@ void ToastQuadrant::bindTileTexture() {
 }
 
 void ToastQuadrant::loadTileTexture() {
-	delete _texture;
-	_texture = nullptr;
+	cleanupTexture(); // Make sure there is no previous texture
 	std::stringstream ss;
 	ss << _level + 1 << "/" << _tilePos.x << "/" << _tilePos.x << "_" << _tilePos.y;
 	std::string tilePosition = ss.str();
-
-	std::string tilePath = _texturePath + tilePosition + ".png";
+	std::string tilePath = _texturePath + "/" + tilePosition + ".png";
 
 	_texture = ghoul::io::TextureReader::ref().loadTexture(tilePath);
 	if (_texture) {
 		LDEBUG("Loaded texture from '" + tilePath + "'");
 		_texture->uploadTexture();
+		_tileLoaded = true;
 
 		// Textures of planets looks much smoother with AnisotropicMipMap rather than linear
 		_texture->setFilter(ghoul::opengl::Texture::FilterMode::AnisotropicMipMap);
@@ -215,11 +235,9 @@ void ToastQuadrant::loadTileTexture() {
 
 void ToastQuadrant::draw(int detailLevel) {
 	if (_isLeaf || detailLevel == _level) {
-		if (!_tileLoaded) {
+		if (!_tileLoaded) // Load tile when being used the first time
 			loadTileTexture();
-			_tileLoaded = true;
-		}
-			
+
 		bindTileTexture();
 
 		glBindVertexArray(_VAO);
@@ -252,6 +270,14 @@ void ToastQuadrant::updateDetailLevel(int newLevel) {
 	}
 }
 
+void ToastQuadrant::updateTexturePath(std::string texturePath) {
+	_texturePath = texturePath;
+	cleanupTexture(); // Clean up textures from old path
+
+	for (ToastQuadrant* q : _children)
+		q->updateTexturePath(texturePath);
+}
+
 void ToastQuadrant::generateOpenGLData() {
 	glGenVertexArrays(1, &_VAO); // generate array
 	glBindVertexArray(_VAO); // bind array
@@ -265,13 +291,13 @@ void ToastQuadrant::generateOpenGLData() {
 	glVertexAttribPointer(positionLocation, 4, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<void*>(0));
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// Vertex toastcoords
-	GLuint tcLocation = 1;
-	glGenBuffers(1, &_vertexToastcoordBuffer); // generate buffer
-	glBindBuffer(GL_ARRAY_BUFFER, _vertexToastcoordBuffer); // bind buffer
-	glBufferData(GL_ARRAY_BUFFER, 6*sizeof(glm::vec2), &_toastCoords[0], GL_STATIC_DRAW);
-	glEnableVertexAttribArray(tcLocation); // Set location
-	glVertexAttribPointer(tcLocation, 2, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<void*>(0));
+	// Texture coordinates
+	GLuint texLocation = 1;
+	glGenBuffers(1, &_vertexTexcoordBuffer); // generate buffer
+	glBindBuffer(GL_ARRAY_BUFFER, _vertexTexcoordBuffer); // bind buffer
+	glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(glm::vec2), &_texCoords[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(texLocation); // Set location
+	glVertexAttribPointer(texLocation, 2, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<void*>(0));
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glBindVertexArray(0);
@@ -280,14 +306,20 @@ void ToastQuadrant::generateOpenGLData() {
 void ToastQuadrant::cleanupOpenGLData() {
 	if (_vertexPositionBuffer)
 		glDeleteBuffers(1, &_vertexPositionBuffer);
-	if (_vertexToastcoordBuffer)
-		glDeleteBuffers(1, &_vertexToastcoordBuffer);
+	if (_vertexTexcoordBuffer)
+		glDeleteBuffers(1, &_vertexTexcoordBuffer);
 	if (_VAO)
 		glDeleteVertexArrays(1, &_VAO);
 
 	_vertexPositionBuffer = GL_FALSE;
-	_vertexToastcoordBuffer = GL_FALSE;
+	_vertexTexcoordBuffer = GL_FALSE;
 	_VAO = GL_FALSE;
+}
+
+void ToastQuadrant::cleanupTexture() {
+	delete _texture;
+	_texture = nullptr;
+	_tileLoaded = false;
 }
 
 } //namespace openspace

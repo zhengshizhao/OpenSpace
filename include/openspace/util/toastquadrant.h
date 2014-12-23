@@ -41,41 +41,48 @@ namespace openspace {
 class ToastQuadrant{
 public:
 	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
+		glm::vec2 tex0, glm::vec2 tex1, glm::vec2 tex2, glm::vec2 tex3,
 		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3, 
 		glm::ivec2 tilePos, int rootQuadrant, int level);
 
 	ToastQuadrant(glm::vec4 p0, glm::vec4 p1, glm::vec4 p2, glm::vec4 p3,
+		glm::vec2 tex0, glm::vec2 tex1, glm::vec2 tex2, glm::vec2 tex3,
 		glm::vec2 tc0, glm::vec2 tc1, glm::vec2 tc2, glm::vec2 tc3,
 		glm::ivec2 tilePos, int rootQuadrant, int level,
 		ToastQuadrant* parent);
 	~ToastQuadrant();
 
-	void subdivide(int levels = 1);	
+	void subdivide(int levels);	
 	void draw(int detailLevel);
-	void updateDetailLevel(int newLevel);
 
-	bool isLeaf() { return _isLeaf; };
+	void updateDetailLevel(int newLevel);
+	void updateTexturePath(std::string texturePath);
 	void setProgramObject(ghoul::opengl::ProgramObject* programObject);
+
 	int getRootQuadrant() { return _rootQuadrant; };
+	std::string getTexturePath() { return _texturePath; };
 
 private:
 	void bindTileTexture();
 	void loadTileTexture();
-
 	void generateOpenGLData();
 	void cleanupOpenGLData();
+	void cleanupTexture();
 
-	GLuint _VAO, _vertexPositionBuffer, _vertexToastcoordBuffer;
-	std::vector<glm::vec4> _vertices;
-	std::vector<glm::vec2> _toastCoords;
-	std::vector<ToastQuadrant*> _children;
-	ToastQuadrant* _parent;
+	GLuint _VAO, _vertexPositionBuffer, _vertexTexcoordBuffer;
 	ghoul::opengl::Texture* _texture;
-	int _level, _rootQuadrant;
-	bool _isLeaf, _beingDrawn, _tileLoaded;
 	ghoul::opengl::ProgramObject* _programObject;
+
+	std::vector<glm::vec4> _vertices;
+	std::vector<glm::vec2> _toastCoords, _texCoords;
 	std::string _texturePath;
 	glm::ivec2 _tilePos;
+
+	std::vector<ToastQuadrant*> _children;
+	ToastQuadrant* _parent;
+
+	int _level, _rootQuadrant;
+	bool _isLeaf, _beingDrawn, _tileLoaded;	
 };
 
 } // namespace openspace

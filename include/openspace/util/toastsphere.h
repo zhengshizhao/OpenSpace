@@ -28,13 +28,11 @@
 #include <openspace/rendering/planets/planetgeometry.h>
 #include <openspace/properties/vectorproperty.h>
 #include <openspace/properties/scalarproperty.h>
-#include <ghoul/opengl/ghoul_gl.h>
 #include <vector>
 
 namespace ghoul {
 	namespace opengl {
 		class ProgramObject;
-		class Texture;
 	}
 }
 
@@ -56,17 +54,15 @@ public:
 	void loadTexture() override;
 	void render() override;
 
-	void setDetailLevel(int level);
 private:
 	void updateDetailLevel();
+	void updateMaxDetailLevel();
 	void createOctaHedron();
 
-	GLsizei _numVertices;
-	GLuint _VAO, _vertexPositionBuffer, _vertexToastcoordBuffer;
+	RenderablePlanet* _parent;
 	properties::Vec2Property _radius;
 	properties::IntProperty _maxLevel, _currentLevel;
 	std::vector<ToastQuadrant*> _quadrants;
-	ghoul::opengl::Texture* _texture;
 };
 
 } // namespace planetgeometry

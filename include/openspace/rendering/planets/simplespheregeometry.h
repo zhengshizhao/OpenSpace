@@ -52,7 +52,7 @@ public:
     void deinitialize() override;
 	void bindTexture(ghoul::opengl::ProgramObject* programObject) override;
 	void loadTexture() override;
-    void render() override;
+	void render() override;
 
 private:
     void createSphere();

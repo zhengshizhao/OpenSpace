@@ -71,17 +71,30 @@ RenderablePlanet::RenderablePlanet(const ghoul::Dictionary& dictionary)
 
     // TODO: textures need to be replaced by a good system similar to the geometry as soon
     // as the requirements are fixed (ab)
-    std::string texturePath = "";
-	success = dictionary.getValue("Textures.Color", texturePath);
-	if (success)
-        _colorTexturePath = path + "/" + texturePath;
+    std::string textureType = "";
+	success = dictionary.getValue("Textures.Type", textureType);
+	
+	if (success) {
+		std::string texturePath = "";
+		if (textureType == "toast") {
+			success = dictionary.getValue("Textures.TileRoot", texturePath);
+			if (success)
+				_colorTexturePath = path + "/" + texturePath;
+		} else if (textureType == "simple") {			
+			success = dictionary.getValue("Textures.Color", texturePath);
+			if (success)
+				_colorTexturePath = path + "/" + texturePath;
+		} else {
+			LERROR("Unrecognized texture type " + texturePath);
+		}
+	}       
 
 	addPropertySubOwner(_geometry);
 
 	addProperty(_colorTexturePath);
     _colorTexturePath.onChange(std::bind(&planetgeometry::PlanetGeometry::loadTexture, _geometry));
 
-	// Temporary hack to support the two different shaders for 
+	// Check geometry type to support the two different shaders for 
 	// ToastSphere and SimpleSphere (hc)
 	std::string geometryType;
 	geometryDictionary.getValue(constants::planetgeometry::keyType, geometryType);
@@ -95,12 +108,8 @@ RenderablePlanet::RenderablePlanet(const ghoul::Dictionary& dictionary)
 RenderablePlanet::~RenderablePlanet() {
 }
 
-bool RenderablePlanet::initialize() {
-    //if (_programObject == nullptr)
-    //    OsEng.ref().configurationManager().getValue("pscShader", _programObject);
-	
+bool RenderablePlanet::initialize() {	
     _geometry->initialize(this);
-
     return isReady();
 }
 
@@ -137,7 +146,7 @@ void RenderablePlanet::render(const RenderData& data) {
 		}
 	}
 	transform = transform* rot;
-	
+
 	//glm::mat4 modelview = data.camera.viewMatrix()*data.camera.modelMatrix();
 	//glm::vec3 camSpaceEye = (-(modelview*data.position.vec4())).xyz;
 
