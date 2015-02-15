@@ -172,16 +172,6 @@ bool SceneGraph::initialize()
 	_programs.push_back(tmpProgram);
     OsEng.ref().configurationManager().setValue("pscShader", tmpProgram);
 
-	// pscstandard
-	tmpProgram = ProgramObject::Build("EphemerisProgram",
-		"${SHADERS}/ephemeris_vs.glsl",
-		"${SHADERS}/ephemeris_fs.glsl");
-	if (!tmpProgram) return false;
-	tmpProgram->setProgramObjectCallback(cb);
-	_programs.push_back(tmpProgram);
-	OsEng.ref().configurationManager().setValue("EphemerisProgram", tmpProgram);
-
-
     // RaycastProgram
 	tmpProgram = ProgramObject::Build("RaycastProgram",
 		"${SHADERS}/exitpoints.vert",
@@ -208,16 +198,6 @@ bool SceneGraph::initialize()
 	tmpProgram->setProgramObjectCallback(cb);
 	_programs.push_back(tmpProgram);
 	OsEng.ref().configurationManager().setValue("PlaneProgram", tmpProgram);
-
-	// Fieldline program
-	tmpProgram = ProgramObject::Build("Fieldline",
-		"${SHADERS}/fieldline_vs.glsl",
-		"${SHADERS}/fieldline_fs.glsl",
-		"${SHADERS}/fieldline_gs.glsl");
-	if (!tmpProgram) return false;
-	tmpProgram->setProgramObjectCallback(cb);
-	_programs.push_back(tmpProgram);
-	OsEng.ref().configurationManager().setValue("FieldlineProgram", tmpProgram);
 
 	// Toastplanet program
 	tmpProgram = ProgramObject::Build("ToastPlanet",
@@ -450,6 +430,13 @@ bool SceneGraph::loadSceneInternal(const std::string& sceneDescriptionFilePath)
 
 	glm::mat4 la = glm::lookAt(c->position().vec3(), fn->worldPosition().vec3(), c->lookUpVector());
 	c->setRotation(la);
+
+	glm::vec3 viewOffset;
+	if (cameraDictionary.hasKey(constants::scenegraph::keyViewOffset)
+		&& cameraDictionary.getValue(constants::scenegraph::keyViewOffset, viewOffset)) {
+	    glm::quat rot = glm::quat(viewOffset);
+	    c->rotate(rot);
+	}
 
 
 	for (SceneGraphNode* node : _nodes) {
