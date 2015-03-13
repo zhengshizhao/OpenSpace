@@ -279,7 +279,6 @@ void RenderableFlare::render(const RenderData& data) {
 	*/
 
 	// bind textures
-	GLint i = _tspTraversal->uniformLocation("out_image");
 	glBindVertexArray(_boxArray);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _reqeustedBrickSSO);
@@ -300,7 +299,7 @@ void RenderableFlare::render(const RenderData& data) {
 	readRequestedBricks();
 
 	// Dispatch Raycaster for currentTimestep
-	launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf));
+	launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf), data);
 
 	// Disk to PBO
 	_brickManager->BuildBrickList(nextBuf, _brickRequest);
@@ -314,6 +313,19 @@ void RenderableFlare::render(const RenderData& data) {
 	setPscUniforms(_textureToAbuffer, &data.camera, data.position);
 	_textureToAbuffer->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
 	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
+
+        // begin debug! --emiax
+        //_outputTexture->downloadTexture();
+        //const int* pd = reinterpret_cast<const int*>(_outputTexture->pixelData());
+
+        //int nPixels = _outputTexture->width() * _outputTexture->height();
+        //        for (int i = 0; i < nPixels; i++) {
+        //  int data = pd[i];
+        //  if (data != 0xcdcdcdcd && data != 0) {
+        //    //std::cout << " " << pd[i] << std::endl;
+        //  }
+        //}
+        // end debug --emiax
 
 	// Bind texture
 	//ghoul::opengl::TextureUnit unit;
@@ -380,7 +392,7 @@ void RenderableFlare::readRequestedBricks() {
 	*/
 }
 
-void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& brickList) {
+  void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data) {
 	_raycasterTsp->activate();
 
 	// Bind textures
@@ -400,6 +412,12 @@ void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& bric
 	int rootLevel = static_cast<int>(_tsp->numOTLevels()) - 1;
 	int paddedBrickDim = static_cast<int>(_tsp->paddedBrickDim());
 	int numBricksPerAxis = static_cast<int>(_tsp->numBricksPerAxis());
+
+	const Camera& camera = data.camera;
+	const psc& position = data.position;
+	setPscUniforms(_raycasterTsp, &camera, position);
+        _raycasterTsp->setUniform("modelViewProjection", camera.viewProjectionMatrix());
+	_raycasterTsp->setUniform("modelTransform", glm::mat4(1.0));
 
 	_raycasterTsp->setUniform("cubeBack", unit1);
 	_raycasterTsp->setUniform("transferFunction", unit2);
@@ -436,7 +454,10 @@ void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& bric
 	//glBindImageTexture(4, *_brickManager->textureAtlas(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
 
 	// Dispatch
-	glDispatchComputeIndirect(0);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glBindVertexArray(_boxArray);
+	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
 
 	_raycasterTsp->deactivate();
 }

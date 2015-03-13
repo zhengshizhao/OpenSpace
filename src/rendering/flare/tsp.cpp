@@ -22,6 +22,7 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
+#include <sgct.h>
 #include <openspace/rendering/flare/tsp.h>
 
 // ghoul
