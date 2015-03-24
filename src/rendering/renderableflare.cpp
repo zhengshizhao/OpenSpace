@@ -45,7 +45,6 @@ using ghoul::opengl::Texture;
 
 namespace {
 	const std::string _loggerCat = "RenderableFlare";
-
 	const std::string keyDataSource = "Source";
 	const std::string keyTransferFunction = "TransferFunction";
 	const std::string keyWorksizeX = "local_worksize_x";
@@ -96,7 +95,7 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 	dictionary.getValue(keyRaycasterTSP, _raycasterPath);
 	_traversalPath = findPath(_traversalPath);
 	_raycasterPath = findPath(_raycasterPath);
-	
+
 	setBoundingSphere(PowerScaledScalar(2.0, 0.0));
 }
 
@@ -135,7 +134,6 @@ bool RenderableFlare::initialize() {
 		success &= _brickManager->readHeader();
 		success &= _brickManager->initialize();
 	}
-	
 	if (success) {
 
 		OsEng.configurationManager().getValue("pscColorToTexture", _cubeProgram);
@@ -207,7 +205,6 @@ bool RenderableFlare::initialize() {
 		//readRequestedBricks();
 		//_brickManager->BuildBrickList(BrickManager::EVEN, _brickRequest);
 		//_brickManager->DiskToPBO(BrickManager::EVEN);
-		
 	}
 
 	return success;
@@ -225,9 +222,12 @@ void RenderableFlare::render(const RenderData& data) {
 	//glEnable(GL_SCISSOR_TEST);
 	//glScissor(1280 / 2, 720 / 2, 1, 1);
 
-	const unsigned int currentTimestep = _timestep++ % _tsp->header().numTimesteps_;
-	//const unsigned int currentTimestep = 0;
-	const unsigned int nextTimestep = currentTimestep < _tsp->header().numTimesteps_ - 1 ? currentTimestep + 1 : 0;
+	const int numTimesteps = _tsp->header().numTimesteps_;
+	const int currentTimestep = _timestep % numTimesteps;
+	const int nextTimestep = (currentTimestep + 1) % numTimesteps;
+
+	// TODO: use open space central time to determine timestep.
+	_timestep++;
 
 	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
 	if (currentTimestep % 2 == 0) {
@@ -253,15 +253,17 @@ void RenderableFlare::render(const RenderData& data) {
 	_backTexture->bind();
 
 	// Set uniforms
-	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
 	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
+	int gridType = static_cast<int>(_tsp->header().gridType_);
 
 	_tspTraversal->setUniform("cubeBack", unit1);
-	_tspTraversal->setUniform("gridType", _tsp->header().gridType_);
-	_tspTraversal->setUniform("stepSize", 0.02f);
-	_tspTraversal->setUniform("numTimesteps", timesteps);
+	_tspTraversal->setUniform("gridType", gridType);
+	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
+	_tspTraversal->setUniform("stepSize", 1.0f/128);
+	_tspTraversal->setUniform("numTimesteps", numTimesteps);
 	//_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
 	_tspTraversal->setUniform("numOTNodes", numOTNodes);
+
 	_tspTraversal->setUniform("temporalTolerance", -1.0f);
 	_tspTraversal->setUniform("spatialTolerance", -1.0f);
 	_tspTraversal->setUniform("timestep", nextTimestep);
@@ -314,19 +316,6 @@ void RenderableFlare::render(const RenderData& data) {
 	_textureToAbuffer->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
 	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
 
-        // begin debug! --emiax
-        //_outputTexture->downloadTexture();
-        //const int* pd = reinterpret_cast<const int*>(_outputTexture->pixelData());
-
-        //int nPixels = _outputTexture->width() * _outputTexture->height();
-        //        for (int i = 0; i < nPixels; i++) {
-        //  int data = pd[i];
-        //  if (data != 0xcdcdcdcd && data != 0) {
-        //    //std::cout << " " << pd[i] << std::endl;
-        //  }
-        //}
-        // end debug --emiax
-
 	// Bind texture
 	//ghoul::opengl::TextureUnit unit;
 	//unit.activate();
@@ -365,8 +354,6 @@ void RenderableFlare::update(const UpdateData& data) {
 //////////////////////////////////////////////////////////////////////////////////////////
 void RenderableFlare::launchTSPTraversal(int timestep){
 
-	
-	//glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 }
 
 void RenderableFlare::readRequestedBricks() {
@@ -375,26 +362,22 @@ void RenderableFlare::readRequestedBricks() {
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _reqeustedBrickSSO);
 #if 1
-	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+
+	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_WRITE);
 	memcpy(_brickRequest.data(), d, sizeof(GLint)*_tsp->numTotalNodes());
+
+	// Clear the buffer after fetching brick request.
+	memset(d, 0, _brickRequest.size()*sizeof(int));
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 #else
 	glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint) *_tsp->numTotalNodes(), _brickRequest.data());
 #endif
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	/*
-	for (size_t i = 0; i < _brickRequest.size(); ++i) {
-		if (_brickRequest.at(i) != 0)
-			LDEBUG(i << ": " << _brickRequest.at(i));
-	}
-	LDEBUG("=================");
-	*/
 }
 
   void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data) {
 	_raycasterTsp->activate();
-
 	// Bind textures
 	ghoul::opengl::TextureUnit unit1;
 	ghoul::opengl::TextureUnit unit2;
@@ -412,19 +395,21 @@ void RenderableFlare::readRequestedBricks() {
 	int rootLevel = static_cast<int>(_tsp->numOTLevels()) - 1;
 	int paddedBrickDim = static_cast<int>(_tsp->paddedBrickDim());
 	int numBricksPerAxis = static_cast<int>(_tsp->numBricksPerAxis());
+	int gridType = static_cast<int>(_tsp->header().gridType_);
 
 	const Camera& camera = data.camera;
 	const psc& position = data.position;
 	setPscUniforms(_raycasterTsp, &camera, position);
-        _raycasterTsp->setUniform("modelViewProjection", camera.viewProjectionMatrix());
+	_raycasterTsp->setUniform("modelViewProjection", camera.viewProjectionMatrix());
 	_raycasterTsp->setUniform("modelTransform", glm::mat4(1.0));
 
 	_raycasterTsp->setUniform("cubeBack", unit1);
 	_raycasterTsp->setUniform("transferFunction", unit2);
 	_raycasterTsp->setUniform("textureAtlas", unit3);
-	
-	_raycasterTsp->setUniform("gridType", _tsp->header().gridType_);
-	_raycasterTsp->setUniform("stepSize", 0.02f);
+
+	_raycasterTsp->setUniform("gridType", gridType);
+	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
+	_raycasterTsp->setUniform("stepSize", 1.0f/128);
 	_raycasterTsp->setUniform("numTimesteps", timesteps);
 	//_raycasterTsp->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
 	_raycasterTsp->setUniform("numOTNodes", numOTNodes);
@@ -435,16 +420,23 @@ void RenderableFlare::readRequestedBricks() {
 	_raycasterTsp->setUniform("paddedBrickDim", paddedBrickDim);
 	_raycasterTsp->setUniform("numBoxesPerAxis", numBricksPerAxis);
 
-	// set bricks data
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
 	GLuint size = sizeof(GLint)*brickList.size();
-	if (size < _brickSSOSize) {
-		glBufferData(GL_SHADER_STORAGE_BUFFER, size, brickList.data(), GL_DYNAMIC_READ);
-		_brickSSOSize = size;
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+
+	// TODO: Should we ignore reducing the buffer size if possible?
+	// if (size > _bricksSSOSize) { ... ?
+
+	if (size != _brickSSOSize) {
+	  // Buffer needs to be resized.
+	  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*brickList.size(), NULL, GL_DYNAMIC_READ);
+	  _brickSSOSize = size;
 	}
-	else {
-		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, size, brickList.data());
-	}
+
+	GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+	// Upload brick list to GPU
+	memcpy(to, brickList.data(), sizeof(GLint)*brickList.size());
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 	// bind textures
@@ -477,12 +469,12 @@ void RenderableFlare::diskToPBO(size_t buffer){
 //////////////////////////////////////////////////////////////////////////////////////////
 void RenderableFlare::initializeColorCubes() {
 	// ============================
-	//      GEOMETRY (box)
+	//	GEOMETRY (box)
 	// ============================
 	const GLfloat size = 0.5f;
 	const GLfloat _w = 0.0f;
 	const GLfloat vertex_data[] = {
-		//  x,     y,     z,     s,
+		//  x,	   y,	  z,	 s,
 		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
 		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
 		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
@@ -583,7 +575,7 @@ void RenderableFlare::renderColorCubeTextures(const RenderData& data) {
 	// make sure GL_CULL_FACE is enabled (it should be disabled for the abuffer)
 	glEnable(GL_CULL_FACE);
 
-	//      Draw backface
+	//	Draw backface
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glCullFace(GL_FRONT);
 	glBindVertexArray(_boxArray);

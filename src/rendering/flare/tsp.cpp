@@ -102,8 +102,6 @@ bool TSP::load() {
 
 bool TSP::readHeader() {
 
-	
-
 	if (!_file.good())
 		return false;
 
@@ -122,6 +120,7 @@ bool TSP::readHeader() {
 	file.read(reinterpret_cast<char*>(&zNumBricks_),		sizeof(unsigned int));
 	*/
 
+	LDEBUG("Grid type: " << _header.gridType_);
 	LDEBUG("Brick dimensions: " << _header.xBrickDim_ << " " << _header.yBrickDim_ << " " << _header.zBrickDim_);
 	LDEBUG("Num bricks: " << _header.xNumBricks_ << " " << _header.yNumBricks_ << " " << _header.zNumBricks_);
 

@@ -180,6 +180,7 @@ bool BrickManager::BuildBrickList(BUFFER_INDEX _bufIdx,
 
 	// For every non-zero entry in the request list, assign a texture atlas
 	// coordinate. For zero entries, signal "no brick" using -1.
+
 	for (unsigned int i = 0; i<_brickRequest.size(); ++i) {
 
 		if (_brickRequest[i] > 0) {
@@ -201,8 +202,6 @@ bool BrickManager::BuildBrickList(BUFFER_INDEX _bufIdx,
 				brickLists_[_bufIdx][3 * i + 2] = z;
 
 				// Mark coordinate as used
-				// @BUG bricksInPBO returns -76 (ish)  ---abock
-				// Possible failures: method ordering, wrong values returned from traversal
 				usedCoords_[_bufIdx][bricksInPBO_[_bufIdx][i]] = true;
 
 			}
@@ -238,6 +237,7 @@ bool BrickManager::BuildBrickList(BUFFER_INDEX _bufIdx,
 
 	}
 
+
 	// Brick list is build, reset coordinate list
 	for (auto it = usedCoords_[_bufIdx].begin();
 		it != usedCoords_[_bufIdx].end(); ++it) {
@@ -256,7 +256,6 @@ bool BrickManager::FillVolume(float *_in, float *_out,
 	unsigned int _z) {
 
 	//timer_.start();
-
 	unsigned int xMin = _x*paddedBrickDim_;
 	unsigned int yMin = _y*paddedBrickDim_;
 	unsigned int zMin = _z*paddedBrickDim_;
@@ -280,7 +279,6 @@ bool BrickManager::FillVolume(float *_in, float *_out,
 			}
 		}
 	}
-
 	return true;
 }
 
@@ -351,7 +349,7 @@ bool BrickManager::DiskToPBO(BUFFER_INDEX _pboIndex) {
 		while (brickIndexProbe < brickLists_[_pboIndex].size() / 3 &&
 			brickLists_[_pboIndex][3 * brickIndexProbe] != -1) {
 			sequence++;
-			if (bricksInPBO_[_pboIndex][brickIndexProbe++] != -1) {
+			if (bricksInPBO_[_pboIndex][brickIndexProbe] != -1) {
 				inPBO++;
 			}
 			brickIndexProbe++;
@@ -420,7 +418,6 @@ bool BrickManager::DiskToPBO(BUFFER_INDEX _pboIndex) {
 					// This needs to be done because the values are in brick order, and
 					// the volume needs to be filled with one big float array.
 					FillVolume(&seqBuffer[numBrickVals_*i], mappedBuffer, x, y, z);
-
 					// Update the atlas list since the brick will be uploaded
 					//INFO(brickIndex+i);
 					bricksInPBO_[_pboIndex][brickIndex + i] = LinearCoord(x, y, z);
