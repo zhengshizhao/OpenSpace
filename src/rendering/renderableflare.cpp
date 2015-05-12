@@ -27,6 +27,7 @@
 #include <openspace/abuffer/abuffer.h>
 #include <openspace/rendering/flare/tsp.h>
 #include <openspace/rendering/flare/brickmanager.h>
+#include <openspace/rendering/flare/brickselector.h>
 
 // ghoul includes
 #include <ghoul/opengl/framebufferobject.h>
@@ -71,7 +72,9 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 	, _backTexture(nullptr)
 	, _outputTexture(nullptr)
 	, _transferFunction(nullptr)
-	, _timestep(3)
+	, _timestep(0)
+	, _spatialTolerance(-1.0)
+	, _temporalTolerance(-1.0)
 {
 	std::string s;
 	dictionary.getValue(keyDataSource, s);
@@ -81,6 +84,7 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 
 	_tsp = new TSP(s);
 	_brickManager = new BrickManager(_tsp);
+	_brickSelector = new BrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
 
 	std::string transferfunctionPath;
 	if (dictionary.getValue(keyTransferFunction, transferfunctionPath)) {
@@ -219,15 +223,9 @@ bool RenderableFlare::isReady() const {
 }
 
 void RenderableFlare::render(const RenderData& data) {
-	//glEnable(GL_SCISSOR_TEST);
-	//glScissor(1280 / 2, 720 / 2, 1, 1);
-
 	const int numTimesteps = _tsp->header().numTimesteps_;
 	const int currentTimestep = _timestep % numTimesteps;
 	const int nextTimestep = (currentTimestep + 1) % numTimesteps;
-
-	// TODO: use open space central time to determine timestep.
-	_timestep++;
 
 	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
 	if (currentTimestep % 2 == 0) {
@@ -242,63 +240,14 @@ void RenderableFlare::render(const RenderData& data) {
 	// Render color cubes
 	renderColorCubeTextures(data);
 
-	// Dispatch TSP traversal
-	// @REFACTOR move into readRequestedBricks function ---abock
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	_tspTraversal->activate();
-
-	// Bind textures
-	ghoul::opengl::TextureUnit unit1;
-	unit1.activate();
-	_backTexture->bind();
-
-	// Set uniforms
-	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
-	int gridType = static_cast<int>(_tsp->header().gridType_);
-
-	_tspTraversal->setUniform("cubeBack", unit1);
-	_tspTraversal->setUniform("gridType", gridType);
-	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
-	_tspTraversal->setUniform("stepSize", 1.0f/128);
-	_tspTraversal->setUniform("numTimesteps", numTimesteps);
-	//_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
-	_tspTraversal->setUniform("numOTNodes", numOTNodes);
-
-	_tspTraversal->setUniform("temporalTolerance", -1.0f);
-	_tspTraversal->setUniform("spatialTolerance", -1.0f);
-	_tspTraversal->setUniform("timestep", nextTimestep);
-	_tspTraversal->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-	_tspTraversal->setUniform("modelTransform", glm::mat4(1.0));
-	setPscUniforms(_tspTraversal, &data.camera, data.position);
-
-	/*
-	GLint d;
-	for (int i = 0; i < 8; ++i) {
-	d = 0;
-	glGetIntegeri_v(GL_IMAGE_BINDING_NAME, i, &d);
-	LDEBUG("d" << i << ": " << d);
+	if (false) {
+		selectBricksGpu(data);
+	} else {
+		_brickSelector->selectBricks(nextTimestep, _brickRequest.data());
 	}
-	*/
-
-	// bind textures
-	glBindVertexArray(_boxArray);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _reqeustedBrickSSO);
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-	// Dispatch
-	//glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-
-	_tspTraversal->deactivate();
-	//glBindImageTexture(3, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 	// PBO to atlas
 	_brickManager->PBOToAtlas(currentBuf);
-
-	// Read _brickSSO
-	readRequestedBricks();
 
 	// Dispatch Raycaster for currentTimestep
 	launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf), data);
@@ -317,10 +266,6 @@ void RenderableFlare::render(const RenderData& data) {
 	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
 
 	// Bind texture
-	//ghoul::opengl::TextureUnit unit;
-	//unit.activate();
-	//_outputTexture->bind();
-	//_textureToAbuffer->setUniform("texture1", unit);
 	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
 	glBindVertexArray(_boxArray);
@@ -343,8 +288,72 @@ void RenderableFlare::render(const RenderData& data) {
 		pscColorPassthrough->deactivate();
 	}
 
-	//glDisable(GL_SCISSOR_TEST);
+	// TODO: use open space central time to determine timestep.
+	_timestep++;
 }
+
+void RenderableFlare::selectBricksGpu(const RenderData& data) {
+	const int numTimesteps = _tsp->header().numTimesteps_;
+	const int currentTimestep = _timestep % numTimesteps;
+	const int nextTimestep = (currentTimestep + 1) % numTimesteps;
+
+	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
+	if (currentTimestep % 2 == 0) {
+		currentBuf = BrickManager::EVEN;
+		nextBuf = BrickManager::ODD;
+	}
+	else {
+		currentBuf = BrickManager::ODD;
+		nextBuf = BrickManager::EVEN;
+	}
+
+
+	// Dispatch TSP traversal
+	// @REFACTOR move into readRequestedBricks function ---abock
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	_tspTraversal->activate();
+
+	// Bind textures
+	ghoul::opengl::TextureUnit unit1;
+	unit1.activate();
+	_backTexture->bind();
+
+	// Set uniforms
+	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
+	int gridType = static_cast<int>(_tsp->header().gridType_);
+
+	_tspTraversal->setUniform("cubeBack", unit1);
+	_tspTraversal->setUniform("gridType", gridType);
+	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
+	_tspTraversal->setUniform("stepSize", 1.0f/128);
+	_tspTraversal->setUniform("numTimesteps", numTimesteps);
+	_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
+	_tspTraversal->setUniform("numOTNodes", numOTNodes);
+
+	_tspTraversal->setUniform("temporalTolerance", _temporalTolerance);
+	_tspTraversal->setUniform("spatialTolerance", _spatialTolerance);
+	_tspTraversal->setUniform("timestep", nextTimestep);
+	_tspTraversal->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
+	_tspTraversal->setUniform("modelTransform", glm::mat4(1.0));
+	setPscUniforms(_tspTraversal, &data.camera, data.position);
+
+	// bind textures
+	glBindVertexArray(_boxArray);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _reqeustedBrickSSO);
+	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+	// Dispatch
+	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
+
+	_tspTraversal->deactivate();
+	glBindImageTexture(3, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+	readRequestedBricks();
+}
+
 
 void RenderableFlare::update(const UpdateData& data) {
 }
@@ -352,9 +361,6 @@ void RenderableFlare::update(const UpdateData& data) {
 //////////////////////////////////////////////////////////////////////////////////////////
 // Flare internal functions
 //////////////////////////////////////////////////////////////////////////////////////////
-void RenderableFlare::launchTSPTraversal(int timestep){
-
-}
 
 void RenderableFlare::readRequestedBricks() {
 	memset(_brickRequest.data(), 0, _brickRequest.size()*sizeof(int));

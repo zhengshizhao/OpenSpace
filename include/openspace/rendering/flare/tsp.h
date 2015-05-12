@@ -88,6 +88,16 @@ public:
 	bool calculateSpatialError();
 	bool calculateTemporalError();
 
+	float getSpatialError(unsigned int _brickIndex);
+	float getTemporalError(unsigned int _brickIndex);
+	unsigned int getFirstChild(unsigned int _brickIndex);
+
+	unsigned int getBstLeft(unsigned int _brickIndex);
+	unsigned int getBstRight(unsigned int _brickIndex);
+
+	bool isBstLeaf(unsigned int _brickIndex);
+	bool isOctreeLeaf(unsigned int _brickIndex);
+
 private:
 	// Returns a list of the octree leaf nodes that a given input 
 	// brick covers. If the input is already a leaf, the list will

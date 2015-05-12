@@ -45,6 +45,7 @@ namespace openspace {
 // Forward declare
 class TSP;
 class BrickManager;
+class BrickSelector;
 
 
 class RenderableFlare : public RenderableVolume {
@@ -66,7 +67,6 @@ private:
 	typedef std::vector<int> Bricks;
 
 	// Flare internal functions
-	void launchTSPTraversal(int timestep);
 	void readRequestedBricks();
 	void launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data);
 	void PBOToAtlas(size_t buffer);
@@ -76,10 +76,15 @@ private:
 	// Internal helper functions
 	void initializeColorCubes();
 	void renderColorCubeTextures(const RenderData& data);
+	void selectBricksGpu(const RenderData& data);
 
 	// 
 	TSP* _tsp;
 	BrickManager* _brickManager;
+	BrickSelector* _brickSelector;
+
+	float _spatialTolerance;
+	float _temporalTolerance;
 
 	std::string _traversalPath;
 	std::string _raycasterPath;

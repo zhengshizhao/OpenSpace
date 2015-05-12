@@ -56,7 +56,7 @@ TSP::TSP(const std::string& filename)
 	, maxTemporalError_(0.0f)
 	, medianTemporalError_(0.0f)
 {
-	_file = std::ifstream(_filename, std::ios::in | std::ios::binary);
+	_file.open(_filename, std::ios::in | std::ios::binary);
 }
 
 TSP::~TSP() {
@@ -621,6 +621,44 @@ bool TSP::writeCache() {
 	return true;
 }
 
+float TSP::getSpatialError(unsigned int _brickIndex) {
+	return reinterpret_cast<float &>(data_[_brickIndex*NUM_DATA + SPATIAL_ERR]);
+}
+
+float TSP::getTemporalError(unsigned int _brickIndex) {
+	return reinterpret_cast<float &>(data_[_brickIndex*NUM_DATA + TEMPORAL_ERR]);
+}
+
+unsigned int TSP::getFirstChild(unsigned int _brickIndex) {
+	return data_[_brickIndex*NUM_DATA + CHILD_INDEX];
+}
+
+unsigned int TSP::getBstLeft(unsigned int _brickIndex) {
+	if (_brickIndex < numOTNodes_) {
+		// BST Root
+		return data_[_brickIndex*NUM_DATA] + numOTNodes_;
+	}
+	return data_[_brickIndex*NUM_DATA + CHILD_INDEX];
+}
+
+unsigned int TSP::getBstRight(unsigned int _brickIndex) {
+	if (_brickIndex < numOTNodes_) {
+		// BST Root
+		return data_[_brickIndex*NUM_DATA] + 2*numOTNodes_;
+	}
+	return data_[_brickIndex*NUM_DATA + CHILD_INDEX] + numOTNodes_;
+}
+
+bool TSP::isBstLeaf(unsigned int _brickIndex) {
+	if (_brickIndex < numOTNodes_) {
+		return false;
+	}
+	return data_[_brickIndex*NUM_DATA + CHILD_INDEX] == -1;
+}
+
+bool TSP::isOctreeLeaf(unsigned int _brickIndex) {
+	return data_[_brickIndex*NUM_DATA + CHILD_INDEX] == -1;
+}
 
 std::list<unsigned int> TSP::CoveredLeafBricks(unsigned int _brickIndex) {
 	std::list<unsigned int> out;
