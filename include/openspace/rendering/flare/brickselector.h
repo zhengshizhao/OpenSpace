@@ -34,7 +34,8 @@ class BrickSelector {
 public:
     BrickSelector(TSP* tsp, float spatialTolerance, float temporalTolerance);
     ~BrickSelector();
-
+    void setSpatialTolerance(float spatialTolerance);
+    void setTemporalTolerance(float temporalTolerance);
     void selectBricks(int timestep,
                       int* bricks);
 private:
