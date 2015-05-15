@@ -39,6 +39,14 @@ BrickSelector::~BrickSelector() {
 
 }
 
+void BrickSelector::setSpatialTolerance(float spatialTolerance) {
+    _spatialTolerance = spatialTolerance;
+}
+
+void BrickSelector::setTemporalTolerance(float temporalTolerance) {
+    _temporalTolerance = temporalTolerance;
+}
+
 void BrickSelector::selectBricks(int timestep, int* bricks) {
     int numTimeSteps = _tsp->header().numTimesteps_;
     selectBricks(timestep, 0, 0, 0, numTimeSteps, bricks);

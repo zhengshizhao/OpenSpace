@@ -243,6 +243,8 @@ void RenderableFlare::render(const RenderData& data) {
 	if (false) {
 		selectBricksGpu(data);
 	} else {
+		_brickSelector->setSpatialTolerance(_spatialTolerance);
+		_brickSelector->setTemporalTolerance(_temporalTolerance);
 		_brickSelector->selectBricks(nextTimestep, _brickRequest.data());
 	}
 
@@ -417,10 +419,9 @@ void RenderableFlare::readRequestedBricks() {
 	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
 	_raycasterTsp->setUniform("stepSize", 1.0f/128);
 	_raycasterTsp->setUniform("numTimesteps", timesteps);
-	//_raycasterTsp->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
 	_raycasterTsp->setUniform("numOTNodes", numOTNodes);
-	_raycasterTsp->setUniform("temporalTolerance", -1.0f);
-	_raycasterTsp->setUniform("spatialTolerance", -1.0f);
+	_raycasterTsp->setUniform("temporalTolerance", _temporalTolerance);
+	_raycasterTsp->setUniform("spatialTolerance", _spatialTolerance);
 	_raycasterTsp->setUniform("timestep", timestep);
 	_raycasterTsp->setUniform("rootLevel", rootLevel);
 	_raycasterTsp->setUniform("paddedBrickDim", paddedBrickDim);
