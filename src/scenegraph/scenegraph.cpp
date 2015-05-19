@@ -191,6 +191,15 @@ bool SceneGraph::initialize()
 	_programs.push_back(tmpProgram);
     OsEng.ref().configurationManager().setValue("RaycastProgram", tmpProgram);
 
+    // MultiresRaycastProgram
+    tmpProgram = ProgramObject::Build("MultiresRaycastProgram",
+        "${SHADERS}/multiresRaycaster_vs.glsl",
+        "${SHADERS}/multiresRaycaster_fs.glsl");
+    if (!tmpProgram) return false;
+    tmpProgram->setProgramObjectCallback(cb);
+    _programs.push_back(tmpProgram);
+    OsEng.ref().configurationManager().setValue("MultiresRaycastProgram", tmpProgram);
+
 	// Grid program
 	tmpProgram = ProgramObject::Build("Grid",
 		"${SHADERS}/grid_vs.glsl",

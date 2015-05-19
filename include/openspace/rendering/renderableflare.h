@@ -45,6 +45,7 @@ namespace openspace {
 // Forward declare
 class TSP;
 class BrickManager;
+class AtlasManager;
 class BrickSelector;
 
 
@@ -69,6 +70,7 @@ private:
 	// Flare internal functions
 	void readRequestedBricks();
 	void launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data);
+	void raycast(int timestep, const std::vector<unsigned int>&atlasMap, const RenderData& data);
 	void PBOToAtlas(size_t buffer);
 	void buildBrickList(size_t buffer, const Bricks& bricks);
 	void diskToPBO(size_t buffer);
@@ -81,6 +83,7 @@ private:
 	// 
 	TSP* _tsp;
 	BrickManager* _brickManager;
+	AtlasManager* _atlasManager;
 	BrickSelector* _brickSelector;
 
 	float _spatialTolerance;
@@ -97,6 +100,7 @@ private:
 	GLuint _brickSSOSize;
 	ghoul::opengl::ProgramObject* _tspTraversal;
 	ghoul::opengl::ProgramObject* _raycasterTsp;
+	ghoul::opengl::ProgramObject* _multiresRaycaster;
 
 	ghoul::opengl::ProgramObject* _cubeProgram;
 	ghoul::opengl::ProgramObject* _textureToAbuffer;
@@ -108,6 +112,7 @@ private:
 
 	// TSP data members
 	Bricks _brickRequest;
+	std::vector<int> _brickIndices;
 
 	// Animation
 	unsigned int _timestep;

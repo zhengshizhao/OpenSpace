@@ -30,6 +30,43 @@
 
 namespace openspace {
 
+struct BrickCover {
+  int lowX, highX, lowY, highY, lowZ, highZ;
+
+  BrickCover() {}
+
+  BrickCover(int numBricks) {
+    lowX = lowY = lowZ = 0;
+    highX = highY = highZ = numBricks;
+  }
+
+  BrickCover split(bool x, bool y, bool z) {
+    BrickCover child;
+    if (x) {
+      child.lowX = lowX + (highX - lowX) / 2;
+      child.highX = highX;
+    } else {
+      child.lowX = lowX;
+      child.highX = lowX + (highX - lowX) / 2;
+    }
+    if (y) {
+      child.lowY = lowY + (highY - lowY) / 2;
+      child.highY = highY;
+    } else {
+      child.lowY = lowY;
+      child.highY = lowY + (highY - lowY) / 2;
+    }
+    if (z) {
+      child.lowZ = lowZ + (highZ - lowZ) / 2;
+      child.highZ = highZ;
+    } else {
+      child.lowZ = lowZ;
+      child.highZ = lowZ + (highZ - lowZ) / 2;
+    }
+    return child;
+  }
+};
+
 class BrickSelector {
 public:
     BrickSelector(TSP* tsp, float spatialTolerance, float temporalTolerance);
@@ -37,7 +74,7 @@ public:
     void setSpatialTolerance(float spatialTolerance);
     void setTemporalTolerance(float temporalTolerance);
     void selectBricks(int timestep,
-                      int* bricks);
+                      std::vector<int>& bricks);
 private:
     TSP* _tsp;
     float _spatialTolerance;
@@ -45,21 +82,28 @@ private:
 
     void traverseOT(int timestep,
                     unsigned int brickIndex,
-                    int* bricks);
+                    BrickCover coveredBricks,
+                    std::vector<int>& bricks);
 
     void traverseBST(int timestep,
                      unsigned int brickIndex,
                      unsigned int bstRootBrickIndex,
                      int timeSpanStart,
                      int timeSpanEnd,
-                     int* bricks);
+                     BrickCover coveredBricks,
+                     std::vector<int>& bricks);
 
     void selectBricks(int timestep,
                       unsigned int brickIndex,
                       unsigned int bstRootBrickIndex,
                       int timeSpanStart,
                       int timeSpanEnd,
-                      int* bricks);
+                      BrickCover coveredBricks,
+                      std::vector<int>& bricks);
+
+    int linearCoords(int x, int y, int z);
+
+    void selectCover(BrickCover coveredBricks, unsigned int brickIndex, std::vector<int>& bricks);
 };
 
 } // namespace openspace

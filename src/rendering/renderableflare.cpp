@@ -27,6 +27,7 @@
 #include <openspace/abuffer/abuffer.h>
 #include <openspace/rendering/flare/tsp.h>
 #include <openspace/rendering/flare/brickmanager.h>
+#include <openspace/rendering/flare/atlasmanager.h>
 #include <openspace/rendering/flare/brickselector.h>
 
 // ghoul includes
@@ -66,6 +67,7 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 	, _dispatchBuffers()
 	, _tspTraversal(nullptr)
 	, _raycasterTsp(nullptr)
+	, _multiresRaycaster(nullptr)
 	, _cubeProgram(nullptr)
 	, _textureToAbuffer(nullptr)
 	, _fbo(nullptr)
@@ -73,8 +75,8 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 	, _outputTexture(nullptr)
 	, _transferFunction(nullptr)
 	, _timestep(0)
-	, _spatialTolerance(-1.0)
-	, _temporalTolerance(-1.0)
+	, _spatialTolerance(0.000001)
+	, _temporalTolerance(0.000001)
 {
 	std::string s;
 	dictionary.getValue(keyDataSource, s);
@@ -84,6 +86,7 @@ RenderableFlare::RenderableFlare(const ghoul::Dictionary& dictionary)
 
 	_tsp = new TSP(s);
 	_brickManager = new BrickManager(_tsp);
+	_atlasManager = new AtlasManager(_tsp);
 	_brickSelector = new BrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
 
 	std::string transferfunctionPath;
@@ -138,6 +141,9 @@ bool RenderableFlare::initialize() {
 		success &= _brickManager->readHeader();
 		success &= _brickManager->initialize();
 	}
+	if (_atlasManager) {
+		_atlasManager->initialize();
+	}
 	if (success) {
 
 		OsEng.configurationManager().getValue("pscColorToTexture", _cubeProgram);
@@ -169,6 +175,8 @@ bool RenderableFlare::initialize() {
 		if (!_raycasterTsp)
 			LERROR("Could not build _raycasterTsp");
 
+		OsEng.configurationManager().getValue("MultiresRaycastProgram", _multiresRaycaster);
+
 		initializeColorCubes();
 
 		if (_transferFunction)
@@ -177,6 +185,7 @@ bool RenderableFlare::initialize() {
 		// Allocate space for the brick request list
 		// Use 0 as default value
 		_brickRequest.resize(_tsp->numTotalNodes(), 0);
+		_brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
 		/*
 		glGenBuffers(1, &_brickRequestBuffer); // generate buffer
 		glBindBuffer(GL_TEXTURE_BUFFER, _brickRequestBuffer);
@@ -242,21 +251,26 @@ void RenderableFlare::render(const RenderData& data) {
 
 	if (false) {
 		selectBricksGpu(data);
+
+		// PBO to atlas
+		_brickManager->PBOToAtlas(currentBuf);
+
+		// Dispatch Raycaster for currentTimestep
+		launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf), data);
+
+		// Disk to PBO
+		_brickManager->BuildBrickList(nextBuf, _brickRequest);
+		_brickManager->DiskToPBO(nextBuf);
+
 	} else {
 		_brickSelector->setSpatialTolerance(_spatialTolerance);
 		_brickSelector->setTemporalTolerance(_temporalTolerance);
-		_brickSelector->selectBricks(nextTimestep, _brickRequest.data());
+		_brickSelector->selectBricks(nextTimestep, _brickIndices);
+
+		_atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
+
+		raycast(currentTimestep, _atlasManager->atlasMap(), data);
 	}
-
-	// PBO to atlas
-	_brickManager->PBOToAtlas(currentBuf);
-
-	// Dispatch Raycaster for currentTimestep
-	launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf), data);
-
-	// Disk to PBO
-	_brickManager->BuildBrickList(nextBuf, _brickRequest);
-	_brickManager->DiskToPBO(nextBuf);
 
 	// To screen
 	// @REFACTOR Possible remove and rendering directly to ABuffer (#95) ---abock
@@ -384,7 +398,77 @@ void RenderableFlare::readRequestedBricks() {
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 }
 
-  void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data) {
+void RenderableFlare::raycast(int timestep, const std::vector<unsigned int>& atlasMap, const RenderData& data) {
+	_multiresRaycaster->activate();
+	// Bind textures
+	ghoul::opengl::TextureUnit unit1;
+	ghoul::opengl::TextureUnit unit2;
+	ghoul::opengl::TextureUnit unit3;
+	unit1.activate();
+	_backTexture->bind();
+	unit2.activate();
+	_transferFunction->bind();
+	unit3.activate();
+	_atlasManager->textureAtlas()->bind();
+
+	// Set uniforms
+	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
+	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
+	int rootLevel = static_cast<int>(_tsp->numOTLevels()) - 1;
+	int paddedBrickDim = static_cast<int>(_tsp->paddedBrickDim());
+	int numBricksPerAxis = static_cast<int>(_tsp->numBricksPerAxis());
+	int gridType = static_cast<int>(_tsp->header().gridType_);
+
+	const Camera& camera = data.camera;
+	const psc& position = data.position;
+	setPscUniforms(_multiresRaycaster, &camera, position);
+	_multiresRaycaster->setUniform("modelViewProjection", camera.viewProjectionMatrix());
+	_multiresRaycaster->setUniform("modelTransform", glm::mat4(1.0));
+
+	_multiresRaycaster->setUniform("cubeBack", unit1);
+	_multiresRaycaster->setUniform("transferFunction", unit2);
+	_multiresRaycaster->setUniform("textureAtlas", unit3);
+
+	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
+	_multiresRaycaster->setUniform("gridType", gridType);
+	_multiresRaycaster->setUniform("stepSize", 1.0f/128);
+	_multiresRaycaster->setUniform("maxNumBricksPerAxis", _tsp->header().xNumBricks_);
+	_multiresRaycaster->setUniform("paddedBrickDim", paddedBrickDim);
+
+	GLuint size = sizeof(GLint)*atlasMap.size();
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
+
+	// TODO: Should we ignore reducing the buffer size if possible?
+	// if (size > _bricksSSOSize) { ... ?
+
+	if (size != _brickSSOSize) {
+	  // Buffer needs to be resized.
+	  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*atlasMap.size(), NULL, GL_DYNAMIC_READ);
+	  _brickSSOSize = size;
+	}
+
+	GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+	// Upload brick list to GPU
+	memcpy(to, atlasMap.data(), sizeof(GLint)*atlasMap.size());
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	// bind textures
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _brickSSO);
+	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+	// Dispatch
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glBindVertexArray(_boxArray);
+	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
+
+	_multiresRaycaster->deactivate();
+}
+
+void RenderableFlare::launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data) {
 	_raycasterTsp->activate();
 	// Bind textures
 	ghoul::opengl::TextureUnit unit1;
