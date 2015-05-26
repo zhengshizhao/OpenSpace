@@ -32,18 +32,21 @@ layout(location = 1) in vec4 in_color;
 
 out vec4 vs_position;
 out vec4 vs_color;
+out vec4 vs_projected_position;
 
 #include <${SHADERS}/PowerScaling/powerScaling_vs.hglsl>
 
 void main()
 {
 
-	vs_color = in_color;
+    vs_color = in_color;
 
-	vec4 tmp = in_position;
-	vec4 position = pscTransform(tmp, modelTransform);
-	vs_position = tmp;
+    vec4 tmp = in_position;
+    vec4 position = pscTransform(tmp, modelTransform);
+    vs_position = tmp;
 
-	position = modelViewProjection * position;
-	gl_Position =  z_normalization(position);
+    position = modelViewProjection * position;
+    vs_projected_position = position;
+
+    gl_Position =  z_normalization(position);
 }

@@ -77,7 +77,7 @@ private:
 
 	// Internal helper functions
 	void initializeColorCubes();
-	void renderColorCubeTextures(const RenderData& data);
+	void renderColorCubeTextures(const RenderData& data, bool front = false);
 	void selectBricksGpu(const RenderData& data);
 
 	// 

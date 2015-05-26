@@ -25,7 +25,7 @@
 #version __CONTEXT__
 
 // Textures and buffers
-uniform sampler2D cubeBack;
+uniform sampler2D cubeFront;
 uniform sampler3D textureAtlas;
 uniform sampler1D transferFunction;
 layout (rgba32f, binding = 3) writeonly uniform image2D out_image;
@@ -35,9 +35,14 @@ uniform int     gridType              = 0;
 uniform float   stepSize              = 0.002;
 uniform uint    maxNumBricksPerAxis   = 0;
 uniform int     paddedBrickDim        = 0;
+uniform mat4    invViewProjection;
+uniform mat4    invModelTransform;
 
 in vec4 vs_position;
 in vec4 vs_color;
+in vec4 vs_projected_position;
+
+#include <${SHADERS}/PowerScaling/powerScaling_vs.hglsl>
 
 layout( shared, binding=1 ) buffer Bricks
 {
@@ -119,20 +124,28 @@ vec4 raycast(vec3 startPos, vec3 dir, float maxDist) {
 
         float intensity = texture(textureAtlas, sampleCoords);
         vec4 contribution = texture(transferFunction, intensity);
- 
+
         color += (1.0f - color.a)*contribution;
 
         distance +=  stepSize;
-    }   
+    }
     return color;
 }
 
 void main() {
     // Get coordinates
-    const vec2 texSize = textureSize(cubeBack, 0);
+    const vec2 texSize = textureSize(cubeFront, 0);
     const vec2 texCoord = vec2(gl_FragCoord.x / texSize.x, gl_FragCoord.y / texSize.y);
-     vec3 startPos = vs_color.xyz;
-    const vec3 endPos = texture(cubeBack, texCoord).xyz;
+    vec3 endPos = vs_color.xyz;
+
+    vec4 frontFace = texture(cubeFront, texCoord);
+    vec3 startPos = frontFace.xyz;
+
+    if (frontFace.w == 0.0) {
+        vec4 position = invViewProjection * (vs_projected_position / vs_projected_position.z);
+        vec4 pscStartPos = invPscTransform(position, invModelTransform);
+        startPos = psc_to_meter(pscStartPos, scaling).xyz + vec3(0.5);
+    }
 
     // Calculate direction of raycasting
     vec3 dir = endPos - startPos;

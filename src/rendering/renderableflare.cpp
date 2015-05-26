@@ -246,10 +246,10 @@ void RenderableFlare::render(const RenderData& data) {
 		nextBuf = BrickManager::EVEN;
 	}
 
-	// Render color cubes
-	renderColorCubeTextures(data);
-
 	if (false) {
+		// Render color cubes
+		renderColorCubeTextures(data);
+
 		selectBricksGpu(data);
 
 		// PBO to atlas
@@ -263,6 +263,9 @@ void RenderableFlare::render(const RenderData& data) {
 		_brickManager->DiskToPBO(nextBuf);
 
 	} else {
+		// Render color cubes
+		renderColorCubeTextures(data, true);
+
 		_brickSelector->setSpatialTolerance(_spatialTolerance);
 		_brickSelector->setTemporalTolerance(_temporalTolerance);
 		_brickSelector->selectBricks(nextTimestep, _brickIndices);
@@ -286,8 +289,10 @@ void RenderableFlare::render(const RenderData& data) {
 
 	glBindVertexArray(_boxArray);
 	//glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glCullFace(GL_FRONT);
 	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
 	_textureToAbuffer->deactivate();
+	glCullFace(GL_BACK);
 	glDisable(GL_CULL_FACE);
 
 	ghoul::opengl::ProgramObject* pscColorPassthrough = nullptr;
@@ -424,8 +429,11 @@ void RenderableFlare::raycast(int timestep, const std::vector<unsigned int>& atl
 	setPscUniforms(_multiresRaycaster, &camera, position);
 	_multiresRaycaster->setUniform("modelViewProjection", camera.viewProjectionMatrix());
 	_multiresRaycaster->setUniform("modelTransform", glm::mat4(1.0));
+	_multiresRaycaster->setUniform("invModelTransform", glm::inverse(glm::mat4(1.0)));
+	_multiresRaycaster->setUniform("invViewProjection", glm::inverse(camera.viewProjectionMatrix()));
+	_multiresRaycaster->setUniform("inv_camrot", glm::inverse(camera.viewRotationMatrix()));
 
-	_multiresRaycaster->setUniform("cubeBack", unit1);
+	_multiresRaycaster->setUniform("cubeFront", unit1);
 	_multiresRaycaster->setUniform("transferFunction", unit2);
 	_multiresRaycaster->setUniform("textureAtlas", unit3);
 
@@ -461,9 +469,10 @@ void RenderableFlare::raycast(int timestep, const std::vector<unsigned int>& atl
 
 	// Dispatch
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+	glCullFace(GL_FRONT);
 	glBindVertexArray(_boxArray);
 	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
+	glCullFace(GL_BACK);
 
 	_multiresRaycaster->deactivate();
 }
@@ -639,7 +648,7 @@ void RenderableFlare::initializeColorCubes() {
 	_fbo->deactivate();
 }
 
-void RenderableFlare::renderColorCubeTextures(const RenderData& data) {
+void RenderableFlare::renderColorCubeTextures(const RenderData& data, bool front) {
 	GLuint activeFBO = FramebufferObject::getActiveObject(); // Save SGCTs main FBO
 	_fbo->activate();
 	_cubeProgram->activate();
@@ -661,14 +670,17 @@ void RenderableFlare::renderColorCubeTextures(const RenderData& data) {
 		glDrawBuffer(GL_COLOR_ATTACHMENT0);
 		glClearColor(0.0, 0.0, 0.0, 0.0);
 		glClear(GL_COLOR_BUFFER_BIT);
-
 	}
 	// make sure GL_CULL_FACE is enabled (it should be disabled for the abuffer)
 	glEnable(GL_CULL_FACE);
 
 	//	Draw backface
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	glCullFace(GL_FRONT);
+	if (front) {
+		glCullFace(GL_BACK);
+	} else {
+		glCullFace(GL_FRONT);
+	}
 	glBindVertexArray(_boxArray);
 	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
 	_fbo->deactivate();
