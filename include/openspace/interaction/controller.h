@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -25,7 +25,7 @@
 #ifndef __CONTROLLER_H__
 #define __CONTROLLER_H__
 
-#include <openspace/scenegraph/scenegraphnode.h>
+#include <openspace/scene/scenegraphnode.h>
 
 #include <ghoul/glm.h>
 #include <glm/gtx/vector_angle.hpp>
@@ -40,7 +40,7 @@ public:
 	Controller() :
 		_handler(nullptr)
 	{}
-
+    
 	void setHandler(InteractionHandler* handler);
 
 protected:

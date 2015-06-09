@@ -1,30 +1,30 @@
 /*****************************************************************************************
-*                                                                                       *
-* OpenSpace                                                                             *
-*                                                                                       *
-* Copyright (c) 2014                                                                    *
-*                                                                                       *
-* Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
-* software and associated documentation files (the "Software"), to deal in the Software *
-* without restriction, including without limitation the rights to use, copy, modify,    *
-* merge, publish, distribute, sublicense, and/or sell copies of the Software, and to    *
-* permit persons to whom the Software is furnished to do so, subject to the following   *
-* conditions:                                                                           *
-*                                                                                       *
-* The above copyright notice and this permission notice shall be included in all copies *
-* or substantial portions of the Software.                                              *
-*                                                                                       *
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,   *
-* INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A         *
-* PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT    *
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF  *
-* CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  *
-* OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
-****************************************************************************************/
+ *                                                                                       *
+ * OpenSpace                                                                             *
+ *                                                                                       *
+ * Copyright (c) 2014-2015                                                               *
+ *                                                                                       *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
+ * software and associated documentation files (the "Software"), to deal in the Software *
+ * without restriction, including without limitation the rights to use, copy, modify,    *
+ * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to    *
+ * permit persons to whom the Software is furnished to do so, subject to the following   *
+ * conditions:                                                                           *
+ *                                                                                       *
+ * The above copyright notice and this permission notice shall be included in all copies *
+ * or substantial portions of the Software.                                              *
+ *                                                                                       *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,   *
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A         *
+ * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT    *
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF  *
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  *
+ * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
+ ****************************************************************************************/
 
 // open space includes
 #include <openspace/util/powerscaledsphere.h>
-
+#include <openspace/util/spicemanager.h>
 #include <ghoul/logging/logmanager.h>
 
 #define _USE_MATH_DEFINES
@@ -37,7 +37,10 @@ const std::string _loggerCat = "PowerScaledSphere";
 namespace openspace {
 
 PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segments)
-    :  _isize(6 * segments * segments)
+    : _vaoID(0)
+    , _vBufferID(0)
+    , _iBufferID(0)
+    , _isize(6 * segments * segments)
     , _vsize((segments + 1) * (segments + 1))
     , _varray(new Vertex[_vsize])
     , _iarray(new int[_isize])
@@ -49,7 +52,6 @@ PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segmen
     const float fsegments = static_cast<float>(segments);
     const float r = static_cast<float>(radius[0]);
 
-	
     for (int i = 0; i <= segments; i++) {
         // define an extra vertex around the y-axis due to texture mapping
         for (int j = 0; j <= segments; j++) {
@@ -82,7 +84,6 @@ PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segmen
             _varray[nr].normal[1] = normal[1];
             _varray[nr].normal[2] = normal[2];
 
-			//std::cout << _varray[nr].location[0] << " " << _varray[nr].location[1] << " " << _varray[nr].location[2] << " " << _varray[nr].location[3] << std::endl;
             _varray[nr].tex[0] = t1;
             _varray[nr].tex[1] = t2;
             ++nr;
@@ -124,39 +125,183 @@ PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segmen
     }
 }
 
-PowerScaledSphere::~PowerScaledSphere()
+// Alternative Constructor for using accurate triaxial ellipsoid 
+PowerScaledSphere::PowerScaledSphere(properties::Vec4Property &radius, int segments, std::string planetName)
+	: _vaoID(0)
+	, _vBufferID(0)
+	, _iBufferID(0)
+	, _isize(6 * segments * segments)
+	, _vsize((segments + 1) * (segments + 1))
+	, _varray(new Vertex[_vsize])
+	, _iarray(new int[_isize])
 {
+	static_assert(sizeof(Vertex) == 64,
+		"The size of the Vertex needs to be 64 for performance");
+
+	float a, b, c, powerscale;
+	bool accutareRadius = SpiceManager::ref().getPlanetEllipsoid(planetName, a, b, c);
+
+	if (accutareRadius) {
+		PowerScaledCoordinate powerScaledRadii = psc::CreatePowerScaledCoordinate(a, b, c);
+		powerScaledRadii[3] += 3; // SPICE returns radii in km
+		
+		std::swap(powerScaledRadii[1], powerScaledRadii[2]); // c is equivalent to y in our coordinate system
+		radius.set(powerScaledRadii.vec4());
+		a = powerScaledRadii[0];
+		b = powerScaledRadii[1];
+		c = powerScaledRadii[2];
+		powerscale = powerScaledRadii[3];
+	}
+	else {
+		boost::any r = radius.get();
+		glm::vec4 modRadius = boost::any_cast<glm::vec4>(r);
+		a = modRadius[0];
+		b = modRadius[1];
+		c = modRadius[2];
+		powerscale = modRadius[3];
+	}
+
+	int nr = 0;
+	const float fsegments = static_cast<float>(segments);
+
+	for (int i = 0; i <= segments; i++) {
+		// define an extra vertex around the y-axis due to texture mapping
+		for (int j = 0; j <= segments; j++) {
+			const float fi = static_cast<float>(i);
+			const float fj = static_cast<float>(j);
+			// inclination angle (north to south)
+			const float theta = fi * float(M_PI) / fsegments;  // 0 -> PI
+			// azimuth angle (east to west)
+			const float phi = fj * float(M_PI) * 2.0f / fsegments;  // 0 -> 2*PI
+
+			const float x = a * sin(phi) * sin(theta);  //
+			const float y = b * cos(theta);             // up
+			const float z = c * cos(phi) * sin(theta);  //
+
+			_varray[nr].location[0] = x;
+			_varray[nr].location[1] = y;
+			_varray[nr].location[2] = z;
+			_varray[nr].location[3] = powerscale;
+
+			glm::vec3 normal = glm::vec3(x, y, z);
+			if (!(x == 0.f && y == 0.f && z == 0.f))
+				normal = glm::normalize(normal);
+
+			_varray[nr].normal[0] = normal[0];
+			_varray[nr].normal[1] = normal[1];
+			_varray[nr].normal[2] = normal[2];
+
+			const float t1 = fj / fsegments;
+			const float t2 = fi / fsegments;
+
+			_varray[nr].tex[0] = t1;
+			_varray[nr].tex[1] = t2;
+			++nr;
+		}
+	}
+
+	nr = 0;
+	// define indices for all triangles
+	for (int i = 1; i <= segments; ++i) {
+		for (int j = 0; j < segments; ++j) {
+			const int t = segments + 1;
+			_iarray[nr] = t * (i - 1) + j + 0; //1
+			++nr;
+			_iarray[nr] = t * (i + 0) + j + 0; //2 
+			++nr;
+			_iarray[nr] = t * (i + 0) + j + 1; //3
+			++nr;
+
+			_iarray[nr] = t * (i - 1) + j + 0; //4 
+			++nr;
+			_iarray[nr] = t * (i + 0) + j + 1; //5
+			++nr;
+			_iarray[nr] = t * (i - 1) + j + 1; //6
+			++nr;
+		}
+	}
+}
+
+PowerScaledSphere::PowerScaledSphere(const PowerScaledSphere& cpy) 
+    : _vaoID(cpy._vaoID)
+    , _vBufferID(cpy._vBufferID)
+    , _iBufferID(cpy._iBufferID)
+    , _isize(cpy._isize)
+    , _vsize(cpy._vsize)
+    , _varray(new Vertex[_vsize])
+    , _iarray(new int[_isize])
+{
+    // @TODO This needs to be tested ---abock
+
+    std::memcpy(_varray, cpy._varray, _vsize * sizeof(Vertex));
+    std::memcpy(_iarray, cpy._iarray, _isize * sizeof(int));
+}
+
+PowerScaledSphere::~PowerScaledSphere() {
 	if (_varray)
 	    delete[] _varray;
 	if (_iarray)
 	    delete[] _iarray;
 
-	_vbo.deinitialize();
+	_varray = 0;
+	_iarray = 0;
+
+    glDeleteBuffers(1, &_vBufferID);
+    glDeleteBuffers(1, &_iBufferID);
+    glDeleteVertexArrays(1, &_vaoID);
 }
 
-bool PowerScaledSphere::initialize()
-{
+bool PowerScaledSphere::initialize() {
+    // Initialize and upload to graphics card
+    if (_vaoID == 0)
+        glGenVertexArrays(1, &_vaoID);
 
-	std::vector<Vertex> varray(_vsize);
-	std::vector<int> iarray(_isize);
-	for (size_t i = 0; i < _vsize; ++i) {
-		varray.at(i) = _varray[i];
-	}
-	for (size_t i = 0; i < _isize; ++i) {
-		iarray.at(i) = _iarray[i];
-	}
+    if (_vBufferID == 0) {
+        glGenBuffers(1, &_vBufferID);
 
-	_vbo.initialize(varray, iarray);
-	_vbo.vertexAttribPointer(0, 4, GL_FLOAT, sizeof(Vertex), offsetof(Vertex, location));
-	_vbo.vertexAttribPointer(1, 2, GL_FLOAT, sizeof(Vertex), offsetof(Vertex, tex));
-	_vbo.vertexAttribPointer(2, 3, GL_FLOAT, sizeof(Vertex), offsetof(Vertex, normal));
+        if (_vBufferID == 0) {
+            LERROR("Could not create vertex buffer");
+            return false;
+        }
+    }
 
+    if (_iBufferID == 0) {
+        glGenBuffers(1, &_iBufferID);
+
+        if (_iBufferID == 0) {
+            LERROR("Could not create index buffer");
+            return false;
+        }
+    }
+
+    // First VAO setup
+    glBindVertexArray(_vaoID);
+
+    glBindBuffer(GL_ARRAY_BUFFER, _vBufferID);
+    glBufferData(GL_ARRAY_BUFFER, _vsize * sizeof(Vertex), _varray, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                          reinterpret_cast<const GLvoid*>(offsetof(Vertex, location)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                          reinterpret_cast<const GLvoid*>(offsetof(Vertex, tex)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                          reinterpret_cast<const GLvoid*>(offsetof(Vertex, normal)));
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _iBufferID);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, _isize * sizeof(int), _iarray, GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
     return true;
 }
 
-void PowerScaledSphere::render()
-{
-	_vbo.render();
+void PowerScaledSphere::render() {
+    glBindVertexArray(_vaoID);  // select first VAO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _iBufferID);
+    glDrawElements(GL_TRIANGLES, _isize, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }
 
 }  // namespace openspace

@@ -1,26 +1,26 @@
 /*****************************************************************************************
-*                                                                                       *
-* OpenSpace                                                                             *
-*                                                                                       *
-* Copyright (c) 2014                                                                    *
-*                                                                                       *
-* Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
-* software and associated documentation files (the "Software"), to deal in the Software *
-* without restriction, including without limitation the rights to use, copy, modify,    *
-* merge, publish, distribute, sublicense, and/or sell copies of the Software, and to    *
-* permit persons to whom the Software is furnished to do so, subject to the following   *
-* conditions:                                                                           *
-*                                                                                       *
-* The above copyright notice and this permission notice shall be included in all copies *
-* or substantial portions of the Software.                                              *
-*                                                                                       *
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,   *
-* INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A         *
-* PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT    *
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF  *
-* CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  *
-* OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
-****************************************************************************************/
+ *                                                                                       *
+ * OpenSpace                                                                             *
+ *                                                                                       *
+ * Copyright (c) 2014-2015                                                               *
+ *                                                                                       *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
+ * software and associated documentation files (the "Software"), to deal in the Software *
+ * without restriction, including without limitation the rights to use, copy, modify,    *
+ * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to    *
+ * permit persons to whom the Software is furnished to do so, subject to the following   *
+ * conditions:                                                                           *
+ *                                                                                       *
+ * The above copyright notice and this permission notice shall be included in all copies *
+ * or substantial portions of the Software.                                              *
+ *                                                                                       *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,   *
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A         *
+ * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT    *
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF  *
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  *
+ * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
+ ****************************************************************************************/
 
 #include <openspace/properties/propertyowner.h>
 
@@ -50,19 +50,16 @@ PropertyOwner::PropertyOwner()
 {
 }
 
-PropertyOwner::~PropertyOwner()
-{
+PropertyOwner::~PropertyOwner() {
 	_properties.clear();
 	_subOwners.clear();
 }
 
-const std::vector<Property*>& PropertyOwner::properties() const
-{
+const std::vector<Property*>& PropertyOwner::properties() const {
     return _properties;
 }
 
-std::vector<Property*> PropertyOwner::propertiesRecursive() const
-{
+std::vector<Property*> PropertyOwner::propertiesRecursive() const {
 	std::vector<Property*> props = properties();
 
 	for (const PropertyOwner* owner : _subOwners) {
@@ -73,8 +70,7 @@ std::vector<Property*> PropertyOwner::propertiesRecursive() const
 	return std::move(props);
 }
 
-Property* PropertyOwner::property(const std::string& id) const
-{
+Property* PropertyOwner::property(const std::string& id) const {
     assert(std::is_sorted(_properties.begin(), _properties.end(), propertyLess));
 
 	// As the _properties list is sorted, just finding the lower bound is sufficient
@@ -96,7 +92,7 @@ Property* PropertyOwner::property(const std::string& id) const
             const std::string ownerName = id.substr(0, ownerSeparator);
             const std::string propertyName = id.substr(ownerSeparator + 1);
             
-            PropertyOwner* owner = subOwner(ownerName);
+            PropertyOwner* owner = propertySubOwner(ownerName);
             if (owner == nullptr) {
                 return nullptr;
             }
@@ -114,11 +110,11 @@ bool PropertyOwner::hasProperty(const std::string& id) const {
     return property(id) != nullptr;
 }
     
-const std::vector<PropertyOwner*>& PropertyOwner::subOwners() const {
+const std::vector<PropertyOwner*>& PropertyOwner::propertySubOwners() const {
     return _subOwners;
 }
 
-PropertyOwner* PropertyOwner::subOwner(const std::string& name) const {
+PropertyOwner* PropertyOwner::propertySubOwner(const std::string& name) const {
     assert(std::is_sorted(_subOwners.begin(), _subOwners.end(), subOwnerLess));
     
 	// As the _subOwners list is sorted, getting the lower bound is sufficient
@@ -134,17 +130,15 @@ PropertyOwner* PropertyOwner::subOwner(const std::string& name) const {
         return *it;
 }
     
-bool PropertyOwner::hasSubOwner(const std::string& name) const {
-    return subOwner(name) != nullptr;
+bool PropertyOwner::hasPropertySubOwner(const std::string& name) const {
+    return propertySubOwner(name) != nullptr;
 }
 
-void PropertyOwner::setPropertyGroupName(std::string groupID, std::string name)
-{
+void PropertyOwner::setPropertyGroupName(std::string groupID, std::string name) {
     _groupNames[std::move(groupID)] = std::move(name);
 }
     
-const std::string& PropertyOwner::propertyGroupName(const std::string& groupID) const
-{
+const std::string& PropertyOwner::propertyGroupName(const std::string& groupID) const {
     auto it = _groupNames.find(groupID);
     if (it == _groupNames.end())
         return groupID;
@@ -179,7 +173,7 @@ void PropertyOwner::addProperty(Property* prop)
         return;
     } else {
         // Otherwise we still have to look if there is a PropertyOwner with the same name
-		const bool hasOwner = hasSubOwner(prop->identifier());
+		const bool hasOwner = hasPropertySubOwner(prop->identifier());
 		if (hasOwner) {
 			LERROR("Property identifier '" << prop->identifier() << "' already names a"
 				<< "registed PropertyOwner");
@@ -193,8 +187,7 @@ void PropertyOwner::addProperty(Property* prop)
     }
 }
 
-void PropertyOwner::addProperty(Property& prop)
-{
+void PropertyOwner::addProperty(Property& prop) {
     addProperty(&prop);
 }
     
@@ -241,8 +234,7 @@ void PropertyOwner::addPropertySubOwner(openspace::properties::PropertyOwner& ow
     addPropertySubOwner(&owner);
 }
 
-void PropertyOwner::removeProperty(Property* prop)
-{
+void PropertyOwner::removeProperty(Property* prop) {
     assert(prop != nullptr);
 
     // See if we can find the identifier of the property to add in the properties list
@@ -261,8 +253,7 @@ void PropertyOwner::removeProperty(Property* prop)
                                             << "' not found for removal.");
 }
 
-void PropertyOwner::removeProperty(Property& prop)
-{
+void PropertyOwner::removeProperty(Property& prop) {
     removeProperty(&prop);
 }
     
@@ -288,13 +279,11 @@ void PropertyOwner::removePropertySubOwner(openspace::properties::PropertyOwner&
     removePropertySubOwner(&owner);
 }
 
-void PropertyOwner::setName(std::string name)
-{
+void PropertyOwner::setName(std::string name) {
     _name = std::move(name);
 }
 
-const std::string& PropertyOwner::name() const
-{
+const std::string& PropertyOwner::name() const {
     return _name;
 }
 

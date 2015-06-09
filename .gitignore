@@ -28,4 +28,10 @@ latex/
 shaders/ABuffer/constants.hglsl
 *.OpenSpaceGenerated.glsl
 LuaScripting.txt
+Properties.txt
 log.html
+gui/externaltimecontrol/CMakeLists.txt
+gui/externaltimecontrol/main.cpp
+gui/externaltimecontrol/mainwindow.cpp
+gui/externaltimecontrol/mainwindow.h
+include/openspace/version.h

@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -28,6 +28,7 @@
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/logging/logmanager.h>
 
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -44,9 +45,6 @@ ABufferFixed::ABufferFixed(): _data(0), _anchorPointerTexture(0),
 {}
 
 ABufferFixed::~ABufferFixed() {
-	if(_data != 0)
-		delete _data;
-
 	glDeleteTextures(1,&_anchorPointerTexture);
 	glDeleteTextures(1,&_fragmentTexture);
 	// glDeleteTextures(1,&_atomicCounterTexture);
@@ -104,10 +102,9 @@ bool ABufferFixed::reinitializeInternal() {
 	return false;
 }
 
-void ABufferFixed::resetBindings() {
-
-	glBindImageTexture(1, _fragmentTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32UI);
-}
+// void ABufferFixed::resetBindings() {
+//		glBindImageTexture(1, _fragmentTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32UI);
+// }
 
 void ABufferFixed::clear() {
 
@@ -192,6 +189,5 @@ std::vector<ABuffer::fragmentData> ABufferFixed::pixelData() {
 	delete[] fragmentBuffer;
 	return d;
 }
-
 
 } // openspace

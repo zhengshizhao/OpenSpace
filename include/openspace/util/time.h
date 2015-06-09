@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -27,6 +27,7 @@
 
 #include <openspace/scripting/scriptengine.h>
 #include <string>
+#include <mutex>
 
 namespace openspace {
 
@@ -49,6 +50,9 @@ namespace openspace {
  * advanceTime(double) method is called each frame, the <code>tickTime</code> has to be
  * equal to the frame time.
  */
+
+class SyncBuffer;
+
 class Time {
 public:
 	/**
@@ -122,6 +126,24 @@ public:
 	 */
 	double deltaTime() const;
 
+    /**
+     * Sets the pause function, i.e. setting the deltaTime to 0 (<code>pause</code> = 
+     * <code>true</code>) and restoring it when the function is called with a parameter of
+     * <code>false</code>.
+     * \param If <code>true</code>, the simulation time stops; if <code>false</code>, the
+     * simulation time continues at the previous rate
+     */
+    void setPause(bool pause);
+
+    /**
+     * Toggles the pause function, i.e. setting the deltaTime to 0 and restoring it when
+     * the function is called a second time. It returns the pause state (<code>true</code>
+     * if the time is now paused, <code>false</code> otherwise)
+     * \return The new pause state (<code>true</code> if the time is now paused,
+     * <code>false</code> otherwise)
+     */
+    bool togglePause();
+
 	/**
 	 * Advances the simulation time using the deltaTime() and the <code>tickTime</code>.
 	 * The deltaTime() is the number of simulation seconds that pass for each real-time
@@ -134,17 +156,17 @@ public:
 	 */
 	double advanceTime(double tickTime);
 
-	/**
-	* Retreats the simulation time using the deltaTime() and the <code>tickTime</code>.
-	* The deltaTime() is the number of simulation seconds that pass for each real-time
-	* second. <code>tickTime</code> is the number of real-time seconds that passed since
-	* the last call to this method. If this method is called in the render loop, the
-	* <code>tickTime</code> should be equivalent to the frame time.
-	* \param tickTime The number of real-time seconds that passed since the last call
-	* to this method
-	* \return The new time value after retreating the time
-	*/
-	double retreatTime(double tickTime);
+	void serialize(SyncBuffer* syncBuffer);
+
+	void deserialize(SyncBuffer* syncBuffer);
+
+	void postSynchronizationPreDraw();
+
+	void preSynchronization();
+
+	bool timeJumped() const;
+
+	void setTimeJumped(bool jumped);
 
 	/**
 	 * Returns the Lua library that contains all Lua functions available to change the
@@ -166,9 +188,28 @@ private:
     Time& operator=(const Time& rhs) = delete;
 
 	static Time* _instance; ///< The singleton instance
+		
+	//sync variables
+	
+	//local copies 
 	double _time; ///< The time stored as the number of seconds past the J2000 epoch
+	double _dt;
+	bool _timeJumped;
+    bool _timePaused;
+    bool _jockeHasToFixThisLater;
 
-	double _deltaTimePerSecond; ///< The delta time that is used to advance the time
+	//shared copies
+	double _sharedTime;
+	double _sharedDt;
+	bool _sharedTimeJumped;
+
+	//synced copies
+	double _syncedTime;
+	double _syncedDt;
+	bool _syncedTimeJumped;
+	
+	
+	std::mutex _syncMutex;
 };
 
 } // namespace openspace

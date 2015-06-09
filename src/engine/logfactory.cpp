@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -75,11 +75,11 @@ ghoul::logging::Log* LogFactory::createLog(const ghoul::Dictionary& dictionary) 
 
 	if (type == valueHtmlLog) {
 		return new ghoul::logging::HTMLLog(
-			filename, timeStamp, dateStamp, categoryStamp, logLevelStamp);
+			filename, append, timeStamp, dateStamp, categoryStamp, logLevelStamp);
 	}
 	else if (type == valueTextLog) {
 		return new ghoul::logging::TextLog(
-			filename, timeStamp, dateStamp, categoryStamp, logLevelStamp);
+			filename, append, timeStamp, dateStamp, categoryStamp, logLevelStamp);
 	}
 	else {
 		LERROR("Log with type '" << type << "' did not name a valid log");

@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -53,10 +53,14 @@ PowerScaledScalar PowerScaledScalar::CreatePSS(double d1) {
 	char buff[30];
 
 	// find the number with maximum number of digits
-	double ad1 = abs(d1);
+    double ad1 = std::abs(d1);
 
 	// find out how many digits
-	sprintf ( buff, "%.0f", ad1);
+#ifdef _MSC_VER
+    sprintf_s(buff, 30, "%.0f", ad1);
+#else
+    sprintf(buff, "%.0f", ad1);
+#endif
 	size_t digits = strlen(buff)-1;
 
 	// rescale and return

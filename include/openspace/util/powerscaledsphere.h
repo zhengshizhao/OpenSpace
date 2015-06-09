@@ -1,9 +1,8 @@
 /*****************************************************************************************
  *                                                                                       *
- * GHOUL                                                                                 *
- * General Helpful Open Utility Library                                                  *
+ * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2012-2014                                                               *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -30,7 +29,7 @@
 #include <ghoul/opengl/ghoul_gl.h>
 #include <openspace/util/powerscaledcoordinate.h>
 #include <openspace/util/powerscaledscalar.h>
-#include <ghoul/opengl/vertexbufferobject.h>
+#include <openspace/properties/vectorproperty.h>
 
 namespace openspace {
 
@@ -39,13 +38,18 @@ public:
     // initializers
     PowerScaledSphere(const PowerScaledScalar& radius, 
 		int segments = 8);
+	PowerScaledSphere(properties::Vec4Property &radius,
+		int segments, std::string planetName);
+
     ~PowerScaledSphere();
+    PowerScaledSphere(const PowerScaledSphere& cpy);
 
     bool initialize();
 
     void render();
 
-private:
+
+//private:
     typedef struct {
         GLfloat location[4];
         GLfloat tex[2];
@@ -53,12 +57,14 @@ private:
         GLubyte padding[28];  // Pads the struct out to 64 bytes for performance increase
     } Vertex;
 
+	GLuint _vaoID;
+	GLuint _vBufferID;
+	GLuint _iBufferID;
+
     unsigned int _isize;
     unsigned int _vsize;
     Vertex* _varray;
     int* _iarray;
-
-	ghoul::opengl::VertexBufferObject _vbo;
 };
 
 } // namespace openspace

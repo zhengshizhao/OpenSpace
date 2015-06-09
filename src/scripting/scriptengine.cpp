@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -26,138 +26,15 @@
 
 #include <ghoul/logging/logmanager.h>
 #include <ghoul/filesystem/filesystem.h>
+#include <openspace/util/syncbuffer.h>
 
 #include <ghoul/lua/lua_helper.h>
 #include <fstream>
 #include <iomanip>
 
+#include "scriptengine_lua.inl"
+
 namespace openspace {
-
-namespace luascriptfunctions {
-
-	int printInternal(ghoul::logging::LogManager::LogLevel level, lua_State* L) {
-		using ghoul::lua::luaTypeToString;
-		const std::string _loggerCat = "print";
-
-		int nArguments = lua_gettop(L);
-		if (nArguments != 1)
-			return luaL_error(L, "Expected %i arguments, got %i", 1, nArguments);
-
-		const int type = lua_type(L, -1);
-		switch (type) {
-			case LUA_TNONE:
-			case LUA_TLIGHTUSERDATA:
-			case LUA_TTABLE:
-			case LUA_TFUNCTION:
-			case LUA_TUSERDATA:
-			case LUA_TTHREAD:
-				LOG(level, "Function parameter was of type '" <<
-					 luaTypeToString(type) << "'");
-			case LUA_TNIL:
-				break;
-			case LUA_TBOOLEAN:
-				LOG(level, lua_toboolean(L, -1));
-				break;
-			case LUA_TNUMBER:
-				LOG(level, lua_tonumber(L, -1));
-				break;
-			case LUA_TSTRING:
-				LOG(level, lua_tostring(L, -1));
-				break;
-		}
-		return 0;
-	}
-
-	/**
-	 * \ingroup LuaScripts
-	 * printDebug(*):
-	 * Logs the passed value to the installed LogManager with a LogLevel of 'Debug'.
-	 * For Boolean, numbers, and strings, the internal values are printed, for all other
-	 * types, the type is printed instead
-	 */
-	int printDebug(lua_State* L) {
-		return printInternal(ghoul::logging::LogManager::LogLevel::Debug, L);
-	}
-
-	/**
-	 * \ingroup LuaScripts
-	 * printInfo(*):
-	 * Logs the passed value to the installed LogManager with a LogLevel of 'Info'.
-	 * For Boolean, numbers, and strings, the internal values are printed, for all other
-	 * types, the type is printed instead
-	 */
-	int printInfo(lua_State* L) {
-		return printInternal(ghoul::logging::LogManager::LogLevel::Info, L);
-	}
-
-	/**
-	 * \ingroup LuaScripts
-	 * printWarning(*):
-	 * Logs the passed value to the installed LogManager with a LogLevel of 'Warning'.
-	 * For Boolean, numbers, and strings, the internal values are printed, for all other
-	 * types, the type is printed instead
-	 */
-	int printWarning(lua_State* L) {
-		return printInternal(ghoul::logging::LogManager::LogLevel::Warning, L);
-	}
-
-	/**
-	 * \ingroup LuaScripts
-	 * printError(*):
-	 * Logs the passed value to the installed LogManager with a LogLevel of 'Error'.
-	 * For Boolean, numbers, and strings, the internal values are printed, for all other
-	 * types, the type is printed instead
-	 */
-	int printError(lua_State* L) {
-		return printInternal(ghoul::logging::LogManager::LogLevel::Error, L);
-	}
-
-	/**
-	 * \ingroup LuaScripts
-	 * printFatal(*):
-	 * Logs the passed value to the installed LogManager with a LogLevel of 'Fatal'.
-	 * For Boolean, numbers, and strings, the internal values are printed, for all other
-	 * types, the type is printed instead
-	 */
-	int printFatal(lua_State* L) {
-		return printInternal(ghoul::logging::LogManager::LogLevel::Fatal, L);
-	}
-
-	/**
-	 * \ingroup LuaScripts
-	 * absPath(string):
-	 * Passes the argument to FileSystem::absolutePath, which resolves occuring path
-	 * tokens and returns the absolute path.
-	 */
-	int absolutePath(lua_State* L) {
-		int nArguments = lua_gettop(L);
-		if (nArguments != 1)
-			return luaL_error(L, "Expected %d arguments, got %d", 1, nArguments);
-
-		std::string path = luaL_checkstring(L, -1);
-		path = absPath(path);
-		lua_pushstring(L, path.c_str());
-		return 1;
-	}
-
-	/**
-	 * \ingroup LuaScripts
-	 * setPathToken(string, string):
-	 * Registers the path token provided by the first argument to the path in the second
-	 * argument. If the path token already exists, it will be silently overridden.
-	 */
-	int setPathToken(lua_State* L) {
-		int nArguments = lua_gettop(L);
-		if (nArguments != 2)
-			return luaL_error(L, "Expected %i arguments, got %i", 2, nArguments);
-
-		std::string pathToken = luaL_checkstring(L, -1);
-		std::string path = luaL_checkstring(L, -2);
-		FileSys.registerPathToken(pathToken, path, true);
-		return 0;
-	}
-
-} // namespace luascriptfunctions
 
 namespace scripting {
 
@@ -183,7 +60,7 @@ ScriptEngine::ScriptEngine()
 }
 
 ScriptEngine::~ScriptEngine() {
-	deinitialize();
+	//deinitialize();
 }
 
 bool ScriptEngine::initialize() {
@@ -209,8 +86,10 @@ bool ScriptEngine::initialize() {
 }
 
 void ScriptEngine::deinitialize() {
-    lua_close(_state);
-    _state = nullptr;
+    if (_state) {
+        lua_close(_state);
+        _state = nullptr;
+    }
 }
 
 void ScriptEngine::addLibrary(LuaLibrary library) {
@@ -257,8 +136,11 @@ void ScriptEngine::addLibrary(LuaLibrary library) {
 }
 
 bool ScriptEngine::runScript(const std::string& script) {
-    if (script.empty())
-        return false;
+	if (script.empty()){
+		LWARNING("Script was empty");
+		return false;
+	}
+        
     int status = luaL_loadstring(_state, script.c_str());
     if (status != LUA_OK) {
         LERROR("Error loading script: '" << lua_tostring(_state, -1) << "'");
@@ -266,6 +148,7 @@ bool ScriptEngine::runScript(const std::string& script) {
     }
     
     //LDEBUG("Executing script");
+	//LINFO(script);
     if (lua_pcall(_state, 0, LUA_MULTRET, 0)) {
         LERROR("Error executing script: " << lua_tostring(_state, -1));
         return false;
@@ -317,17 +200,16 @@ bool ScriptEngine::hasLibrary(const std::string& name)
 	//return false;
 }
 
-bool ScriptEngine::isLibraryNameAllowed(const std::string& name)
-{
+bool ScriptEngine::isLibraryNameAllowed(lua_State* state, const std::string& name) {
     bool result = false;
-    lua_getglobal(_state, _openspaceLibraryName.c_str());
-    const bool hasOpenSpaceLibrary = lua_istable(_state, -1);
+    lua_getglobal(state, _openspaceLibraryName.c_str());
+    const bool hasOpenSpaceLibrary = lua_istable(state, -1);
     if (!hasOpenSpaceLibrary) {
         LFATAL("OpenSpace library was not created in initialize method");
         return false;
     }
-    lua_getfield(_state, -1, name.c_str());
-    const int type = lua_type(_state, -1);
+    lua_getfield(state, -1, name.c_str());
+    const int type = lua_type(state, -1);
     switch (type) {
         case LUA_TNONE:
         case LUA_TNIL:
@@ -363,7 +245,7 @@ bool ScriptEngine::isLibraryNameAllowed(const std::string& name)
             break;
     }
 
-    lua_pop(_state, 2);
+    lua_pop(state, 2);
     return result;
 }
 
@@ -463,8 +345,8 @@ void ScriptEngine::remapPrintFunction() {
 
 void ScriptEngine::initializeLuaState(lua_State* state) {
     LDEBUG("Create openspace base library");
-    lua_newtable(_state);
-    lua_setglobal(_state, _openspaceLibraryName.c_str());
+    lua_newtable(state);
+    lua_setglobal(state, _openspaceLibraryName.c_str());
 
 	LDEBUG("Add OpenSpace modules");
 	for (const LuaLibrary& lib : _registeredLibraries)
@@ -489,7 +371,7 @@ bool ScriptEngine::registerLuaLibrary(lua_State* state, const LuaLibrary& librar
 		//ghoul::lua::logStack(_state);
     }
     else {
-        const bool allowed = isLibraryNameAllowed(library.name);
+        const bool allowed = isLibraryNameAllowed(state, library.name);
         if (!allowed)
             return false;
         
@@ -507,6 +389,22 @@ bool ScriptEngine::registerLuaLibrary(lua_State* state, const LuaLibrary& librar
 		//_registeredLibraries.push_back(library);
     }
     return true;
+}
+
+std::vector<std::string> ScriptEngine::allLuaFunctions() const {
+    std::vector<std::string> result;
+
+    for (const LuaLibrary& library : _registeredLibraries) {
+        for (const LuaLibrary::Function& function : library.functions) {
+            std::string total = "openspace.";
+            if (!library.name.empty())
+                total += library.name + ".";
+            total += function.name;
+            result.push_back(std::move(total));
+        }
+    }
+
+    return result;
 }
 
 bool ScriptEngine::writeDocumentation(const std::string& filename, const std::string& type) const {
@@ -585,6 +483,56 @@ bool ScriptEngine::writeDocumentation(const std::string& filename, const std::st
 		LERROR("Undefined type '" << type << "' for Lua documentation");
 		return false;
 	}
+}
+
+void ScriptEngine::serialize(SyncBuffer* syncBuffer){
+	syncBuffer->encode(_currentSyncedScript);
+	_currentSyncedScript.clear();
+}
+
+void ScriptEngine::deserialize(SyncBuffer* syncBuffer){
+	syncBuffer->decode(_currentSyncedScript);
+
+	if (!_currentSyncedScript.empty()){
+		_mutex.lock();
+		_receivedScripts.push_back(_currentSyncedScript);
+		_mutex.unlock();
+	}
+}
+
+void ScriptEngine::postSynchronizationPreDraw(){
+	_mutex.lock();
+	while(!_receivedScripts.empty()){
+		runScript(_receivedScripts.back());
+		_receivedScripts.pop_back();
+	}
+	_mutex.unlock();
+}
+
+void ScriptEngine::preSynchronization(){
+	
+	_mutex.lock();
+	
+	if (!_queuedScripts.empty()){
+		_currentSyncedScript = _queuedScripts.back();
+		_queuedScripts.pop_back();
+		
+		//Not really a received script but the master also needs to run the script...
+		_receivedScripts.push_back(_currentSyncedScript);
+	}
+	
+	_mutex.unlock();
+}
+
+void ScriptEngine::queueScript(const std::string &script){
+	if (script.empty())
+		return;
+
+	_mutex.lock();
+
+	_queuedScripts.insert(_queuedScripts.begin(), script);
+
+	_mutex.unlock();
 }
 
 

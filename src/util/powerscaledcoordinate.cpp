@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -74,14 +74,19 @@ PowerScaledCoordinate
     char buff[600];
 
     // find the number with maximum number of digits
-    double ad1 = abs(d1);
-    double ad2 = abs(d2);
-    double ad3 = abs(d3);
+    double ad1 = std::abs(d1);
+    double ad2 = std::abs(d2);
+    double ad3 = std::abs(d3);
     double max = (ad2 > ad1) ? ad2 : (ad3 > ad1) ? ad3 : ad1;
 
     // find out how many digits
     // TODO: profile the next two lines and replace with something more efficient (ab)
+#ifdef _MSC_VER
+    sprintf_s(buff, 600, "%.0f", max);
+    //sprintf(buff, "%.0f", max);
+#else
     sprintf(buff, "%.0f", max);
+#endif
     size_t digits = strlen(buff);
 
 	//digits += 3;
@@ -104,6 +109,18 @@ glm::vec3 PowerScaledCoordinate::vec3() const
 {
     return glm::vec3(_vec[0] * pow(k, _vec[3]), _vec[1] * pow(k, _vec[3]),
                      _vec[2] * pow(k, _vec[3]));
+}
+
+glm::dvec4 PowerScaledCoordinate::dvec4() const
+{
+	//return _vec;
+	return glm::dvec4(_vec);
+}
+
+glm::dvec3 PowerScaledCoordinate::dvec3() const
+{
+	return glm::dvec3(_vec[0] * pow(k, _vec[3]), _vec[1] * pow(k, _vec[3]),
+		_vec[2] * pow(k, _vec[3]));
 }
 
 PowerScaledScalar PowerScaledCoordinate::length() const

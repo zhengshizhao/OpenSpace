@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -27,6 +27,9 @@
 
 #include <openspace/scripting/scriptengine.h>
 
+#include <openspace/properties/vectorproperty.h>
+#include <openspace/properties/stringproperty.h>
+
 namespace ghoul {
 	class SharedMemory;
 }
@@ -36,7 +39,7 @@ namespace openspace {
 // Forward declare to minimize dependencies
 class Camera;
 class SyncBuffer;
-class SceneGraph;
+class Scene;
 class ABuffer;
 class ABufferVisualizer;
 class ScreenLog;
@@ -50,8 +53,8 @@ public:
 	
 	bool initialize();
 
-    void setSceneGraph(SceneGraph* sceneGraph);
-    SceneGraph* sceneGraph();
+    void setSceneGraph(Scene* sceneGraph);
+    Scene* scene();
 
     Camera* camera() const;
     ABuffer* abuffer() const;
@@ -59,7 +62,8 @@ public:
 	// sgct wrapped functions
     bool initializeGL();
     void postSynchronizationPreDraw();
-    void render();
+	void preSynchronization();
+	void render(const glm::mat4 &projectionMatrix, const glm::mat4 &viewMatrix);
     void postDraw();
 
 	void takeScreenshot();
@@ -72,6 +76,13 @@ public:
 
 	void serialize(SyncBuffer* syncBuffer);
 	void deserialize(SyncBuffer* syncBuffer);
+
+	float globalBlackOutFactor();
+	void setGlobalBlackOutFactor(float factor);
+
+    void setSGCTRenderStatistics(bool visible);
+
+    void setDisableRenderingOnMaster(bool enabled);
 	
 	/**
 	 * Returns the Lua library that contains all Lua functions available to affect the
@@ -83,12 +94,26 @@ public:
 	 */
 	static scripting::ScriptEngine::LuaLibrary luaLibrary();
 
+    // This is a temporary method to change the origin of the coordinate system ---abock
+    void changeViewPoint(std::string origin);
+
+	//temporaray fade functionality
+	void startFading(int direction, float fadeDuration);
+
+    // This is temporary until a proper screenspace solution is found ---abock
+    struct {
+        glm::vec2 _position;
+        unsigned int _size;
+        int _node;
+    } _onScreenInformation;
+
 private:
 	void storePerformanceMeasurements();
 
 	Camera* _mainCamera;
-	SceneGraph* _sceneGraph;
+	Scene* _sceneGraph;
 	ABuffer* _abuffer;
+    int _abufferImplementation;
 	ScreenLog* _log;
 
 	bool _showInfo;
@@ -100,8 +125,16 @@ private:
 
 	void generateGlslConfig();
 
+	float _globalBlackOutFactor;
+	float _fadeDuration;
+	float _currentFadeTime;
+	int _fadeDirection;
+    bool _sgctRenderStatisticsVisible;
+
 	bool _visualizeABuffer;
 	ABufferVisualizer* _visualizer;
+
+    bool _disableMasterRendering = false;
 };
 
 } // namespace openspace

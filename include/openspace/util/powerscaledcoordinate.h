@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -60,6 +60,13 @@ public:
 
     // returns the rescaled, "normal" coordinates
     glm::vec3 vec3() const;
+
+	// return the full psc as dvec4()
+	 glm::dvec4 dvec4() const;
+
+	// rescaled return as dvec3
+	glm::dvec3 dvec3() const;
+
     // length of the vector as a pss
     PowerScaledScalar length() const;
     glm::vec3 direction() const;

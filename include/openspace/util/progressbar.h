@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -31,19 +31,21 @@ namespace openspace {
 
 class ProgressBar {
 public:
-	ProgressBar(int end, int width = 70);
-	ProgressBar(int end, int width, std::ostream& stream);
+	ProgressBar(int end, int width = 70, std::ostream& stream = std::cout);
 	~ProgressBar();
 
+    ProgressBar& operator=(const ProgressBar& rhs) = delete;
+
 	void print(int current);
+
 private:
 	int _width;
 	int _previous;
 	int _end;
 	std::ostream& _stream;
 
-}; // class ProgressBar
+};
 
-} // namespace opensapce
+} // namespace openspace
 
-#endif
+#endif // __PROGRESSBAR_H__

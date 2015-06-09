@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -108,15 +108,16 @@ public:
 
     void keyboardCallback(int key, int action);
 	void mouseButtonCallback(int button, int action);
-	void mousePositionCallback(int x, int y);
-	void mouseScrollWheelCallback(int pos);
+	void mousePositionCallback(double x, double y);
+	void mouseScrollWheelCallback(double pos);
 
-//<<<<<<< HEAD
-	//double dt();
-//=======
 	double deltaTime() const;
 
 	void orbitDelta(const glm::quat& rotation);
+
+	void orbit(const float &dx, const float &dy, const float &dz, const float &dist);
+
+	//void distance(const float &d);
 
 	void rotateDelta(const glm::quat& rotation);
 
@@ -128,6 +129,15 @@ public:
 
 	void resetKeyBindings();
 	void bindKey(int key, const std::string& lua);
+
+    void setInteractionSensitivity(float sensitivity);
+    float interactionSensitivity() const;
+
+    void setInvertRoll(bool invert);
+    bool invertRoll() const;
+
+    void setInvertRotation(bool invert);
+    bool invertRotation() const;
 
 	/**
 	* Returns the Lua library that contains all Lua functions available to affect the
@@ -141,13 +151,6 @@ public:
 private:
 	friend class Controller;
 
-//<<<<<<< HEAD
-//	Camera* _camera;
-//	bool _enabled;
-//	SceneGraphNode* _node;
-//	
-//	double _dt;
-//=======
     InteractionHandler(const InteractionHandler&) = delete;
     InteractionHandler& operator=(const InteractionHandler&) = delete;
 	InteractionHandler(InteractionHandler&&) = delete;
@@ -159,24 +162,16 @@ private:
 	double _deltaTime;
 	std::mutex _mutex;
 
-//<<<<<<< HEAD
-//	// used for calling when updating and deallocation
-//	std::vector<ExternalControl*> _controllers;
-//
-//	// for locking and unlocking
-//	std::mutex _cameraGuard;
-
 	bool _validKeyLua;
 	std::multimap<int, std::string > _keyLua;
-	
+
+    float _controllerSensitivity;
+    bool _invertRoll;
+    bool _invertRotation;
+
 	KeyboardController* _keyboardController;
 	MouseController* _mouseController;
 	std::vector<Controller*> _controllers;
-
-
- //   glm::vec3 mapToTrackball(glm::vec2 mousePos);
- //   glm::vec3 mapToCamera(glm::vec3 trackballPos);
- //   void trackballRotate(int x, int y);
 };
 
 } // namespace interaction

@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -22,35 +22,15 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-//<<<<<<< HEAD
-//// open space includes
 #include <openspace/interaction/interactionhandler.h>
 //
 #include <openspace/engine/openspaceengine.h>
-//#include <openspace/interaction/deviceidentifier.h>
-//#include <openspace/interaction/externalcontrol/externalcontrol.h>
-//#include <openspace/interaction/externalcontrol/randomexternalcontrol.h>
-//#include <openspace/interaction/externalcontrol/joystickexternalcontrol.h>
-#include <openspace/query/query.h>
-//#include <openspace/scenegraph/scenegraphnode.h>
-//#include <openspace/util/camera.h>
-//#include <openspace/util/powerscaledcoordinate.h>
-#include <openspace/util/time.h>
-//
-//// ghoul
-#include <ghoul/logging/logmanager.h>
-//
-//// other
-//#include <sgct.h>
-//#include <glm/gtx/vector_angle.hpp>
-//
-//// std includes
-//#include <cassert>
-//#include <algorithm>
-//
-
 #include <openspace/interaction/interactionhandler.h>
+#include <openspace/query/query.h>
+#include <openspace/rendering/renderengine.h>
+#include <openspace/util/time.h>
 
+#include <ghoul/logging/logmanager.h>
 #include <ghoul/misc/highresclock.h>
 
 namespace {
@@ -202,123 +182,9 @@ namespace {
 	}
 }
 
+#include "interactionhandler_lua.inl"
+
 namespace openspace {
-
-namespace luascriptfunctions {
-
-/**
- * \ingroup LuaScripts
- * setOrigin():
- * Set the origin of the camera
- */
-int setOrigin(lua_State* L) {
-	using ghoul::lua::luaTypeToString;
-	const std::string _loggerCat = "LuaInteractionHandler";
-
-	int nArguments = lua_gettop(L);
-	if (nArguments != 1)
-		return luaL_error(L, "Expected %i arguments, got %i", 1, nArguments);
-
-	const int type = lua_type(L, -1);
-	if (type != LUA_TSTRING)
-		return luaL_error(L, "Expected string, got %i", type);
-
-	std::string s = luaL_checkstring(L, -1);
-
-	SceneGraphNode* node = sceneGraphNode(s);
-	if (!node) {
-		LWARNING("Could not find a node in scenegraph called '" << s <<"'");
-		return 0;
-	}
-
-	OsEng.interactionHandler().setFocusNode(node);
-
-	return 0;
-}
-
-/**
-* \ingroup LuaScripts
-* bindKey():
-* Binds a key to Lua command
-*/
-int bindKey(lua_State* L) {
-	using ghoul::lua::luaTypeToString;
-	const std::string _loggerCat = "LuaInteractionHandler";
-
-	int nArguments = lua_gettop(L);
-	if (nArguments != 2)
-		return luaL_error(L, "Expected %i arguments, got %i", 2, nArguments);
-
-
-	std::string key = luaL_checkstring(L, -2);
-	std::string command = luaL_checkstring(L, -1);
-
-	if (command.empty())
-		return luaL_error(L, "Command string is empty");
-
-	int iKey = stringToKey(key);
-
-	if (iKey == SGCT_KEY_UNKNOWN) {
-		LERROR("Could not find key '"<< key <<"'");
-		return 0;
-	}
-
-
-	OsEng.interactionHandler().bindKey(iKey, command);
-
-	return 0;
-}
-
-/**
-* \ingroup LuaScripts
-* clearKeys():
-* Clears all key bindings
-*/
-int clearKeys(lua_State* L) {
-	using ghoul::lua::luaTypeToString;
-	const std::string _loggerCat = "LuaInteractionHandler";
-
-	int nArguments = lua_gettop(L);
-	if (nArguments != 0)
-		return luaL_error(L, "Expected %i arguments, got %i", 0, nArguments);
-
-	OsEng.interactionHandler().resetKeyBindings();
-
-	return 0;
-}
-
-/**
-* \ingroup LuaScripts
-* dt(bool):
-* Get current frame time
-*/
-int dt(lua_State* L) {
-	int nArguments = lua_gettop(L);
-	if (nArguments != 0)
-		return luaL_error(L, "Expected %i arguments, got %i", 0, nArguments);
-
-	lua_pushnumber(L,OsEng.interactionHandler().deltaTime());
-	return 1;
-}
-
-/**
-* \ingroup LuaScripts
-* distance(double, double):
-* Change distance to origin
-*/
-int distance(lua_State* L) {
-	int nArguments = lua_gettop(L);
-	if (nArguments != 2)
-		return luaL_error(L, "Expected %i arguments, got %i", 2, nArguments);
-
-	double d1 = luaL_checknumber(L, -2);
-	double d2 = luaL_checknumber(L, -1);
-	PowerScaledScalar dist(static_cast<float>(d1), static_cast<float>(d2));
-	OsEng.interactionHandler().distanceDelta(dist);
-	return 0;
-}
-
-} // namespace luascriptfunctions
 
 //InteractionHandler::InteractionHandler() {
 //	// initiate pointers
@@ -380,6 +246,11 @@ namespace interaction {
 InteractionHandler::InteractionHandler()
 	: _camera(nullptr)
 	, _focusNode(nullptr)
+    , _deltaTime(0.0)
+    , _validKeyLua(false)
+    , _controllerSensitivity(10.f)
+    , _invertRoll(false)
+    , _invertRotation(false)
 	, _keyboardController(nullptr)
 	, _mouseController(nullptr)
 {
@@ -475,10 +346,37 @@ void InteractionHandler::unlockControls() {
 //=======
 void InteractionHandler::update(double deltaTime) {
 	_deltaTime = deltaTime;
+	_mouseController->update(deltaTime);
 }
 
 void InteractionHandler::setFocusNode(SceneGraphNode* node) {
+	
+	if (_focusNode == node){
+		return;
+	}
+
 	_focusNode = node;
+
+	//orient the camera to the new node
+	psc focusPos = node->worldPosition();
+	psc camToFocus = focusPos - _camera->position();
+	glm::vec3 viewDir = glm::normalize(camToFocus.vec3());
+	glm::vec3 cameraView = glm::normalize(_camera->viewDirection());
+    //set new focus position
+    _camera->setFocusPosition(node->worldPosition());
+    float dot = glm::dot(viewDir, cameraView);
+
+    //static const float Epsilon = 0.001f;
+    if (dot < 1.f && dot > -1.f) {
+    //if (glm::length(viewDir - cameraView) < 0.001) {
+    //if (viewDir != cameraView) {
+	    glm::vec3 rotAxis = glm::normalize(glm::cross(viewDir, cameraView));
+	    float angle = glm::angle(viewDir, cameraView);
+	    glm::quat q = glm::angleAxis(angle, rotAxis);
+
+	    //rotate view to target new focus
+	    _camera->rotate(q);
+    }
 }
 
 const SceneGraphNode* const InteractionHandler::focusNode() const {
@@ -507,16 +405,87 @@ void InteractionHandler::mouseButtonCallback(int button, int action) {
 		_mouseController->button(MouseAction(action), MouseButton(button));
 }
 
-void InteractionHandler::mousePositionCallback(int x, int y) {
+void InteractionHandler::mousePositionCallback(double x, double y) {
 	if (_mouseController)
 		// TODO Remap screen coordinates to [0,1]
-		_mouseController->move(float(x), float(y));
+		_mouseController->move(static_cast<float>(x), static_cast<float>(y));
 }
 
-void InteractionHandler::mouseScrollWheelCallback(int pos) {
+void InteractionHandler::mouseScrollWheelCallback(double pos) {
 	if (_mouseController)
-		_mouseController->scrollWheel(pos);
+		_mouseController->scrollWheel(static_cast<int>(pos));
 }
+
+void InteractionHandler::orbit(const float &dx, const float &dy, const float &dz, const float &dist){
+
+	lockControls();
+	
+	glm::vec3 cameraUp = glm::normalize((glm::inverse(_camera->viewRotationMatrix()) * glm::vec4(_camera->lookUpVector(), 0))).xyz;
+	glm::vec3 cameraRight = glm::cross(_camera->viewDirection(), cameraUp);
+
+	glm::mat4 transform;
+	transform = glm::rotate(dx * 10.f, cameraUp) * transform;
+	transform = glm::rotate(dy * 10.f, cameraRight) * transform;
+	transform = glm::rotate(dz * 10.f, _camera->viewDirection()) * transform;
+
+	
+	//get "old" focus position 
+	psc focus = _camera->focusPosition();
+	
+	//// get camera position 
+	//psc relative = _camera->position();
+
+	// get camera position (UNSYNCHRONIZED)
+	psc relative = _camera->unsynchedPosition();
+
+	//get relative vector
+	psc relative_focus_coordinate = relative - focus;
+	//rotate relative vector
+	relative_focus_coordinate = glm::inverse(transform) * relative_focus_coordinate.vec4();
+	
+	//get new new position of focus node
+	psc origin;
+	if (_focusNode) {
+		origin = _focusNode->worldPosition();
+	}
+
+	//new camera position
+	relative = origin + relative_focus_coordinate; 	
+
+	float bounds = 2.f * (_focusNode ? _focusNode->boundingSphere().lengthf() : 0.f);
+
+	psc target = relative + relative_focus_coordinate * dist;
+	//don't fly into objects
+	if ((target - origin).length() < bounds){
+		target = relative;
+	}
+
+	_camera->setFocusPosition(origin);
+	_camera->setPosition(target);
+	_camera->rotate(glm::quat_cast(transform));
+
+	unlockControls();
+}
+
+//void InteractionHandler::distance(const float &d){
+//
+//	lockControls();
+//
+//	psc relative = _camera->position();
+//	const psc origin = (_focusNode) ? _focusNode->worldPosition() : psc();
+//	psc relative_origin_coordinate = relative - origin;
+//	// addition 100% of bounds (fix later to something node specific?)
+//	float bounds = 2.f * (_focusNode ? _focusNode->boundingSphere().lengthf() : 0.f);
+//
+//	psc target = relative + relative_origin_coordinate * d;// *fmaxf(bounds, (1.f - d));
+//	//don't fly into objects
+//	if ((target - origin).length() < bounds){
+//		target = relative;
+//	}
+//	_camera->setPosition(target);
+//	
+//	unlockControls();
+//}
 
 void InteractionHandler::orbitDelta(const glm::quat& rotation)
 {
@@ -721,11 +690,11 @@ void InteractionHandler::lookAt(const glm::quat& rotation)
 //
 void InteractionHandler::keyboardCallback(int key, int action) {
     // TODO package in script
-    const float speed = 2.75f;
+    const float speed = _controllerSensitivity;
 	const float dt = static_cast<float>(_deltaTime);
 	if (action == SGCT_PRESS || action == SGCT_REPEAT) {
 		
-	    if (key == SGCT_KEY_S) {
+	    /*if (key == SGCT_KEY_S) {
 	        glm::vec3 euler(speed * dt, 0.0, 0.0);
 	        glm::quat rot = glm::quat(euler);
 	        orbitDelta(rot);
@@ -749,44 +718,45 @@ void InteractionHandler::keyboardCallback(int key, int action) {
 			Time::ref().advanceTime(sgct::Engine::instance()->getDt());
 		}
 		if (key == SGCT_KEY_X) {
-			Time::ref().retreatTime(sgct::Engine::instance()->getDt());
-		}
+			Time::ref().advanceTime(-sgct::Engine::instance()->getDt());
+		}*/
 	    if (key == 262) {
-	        glm::vec3 euler(0.0, speed * dt, 0.0);
+	        glm::vec3 euler(0.0, speed * dt*0.4, 0.0);
 	        glm::quat rot = glm::quat(euler);
 	        rotateDelta(rot);
 	    }
 	    if (key == 263) {
-	        glm::vec3 euler(0.0, -speed * dt, 0.0);
+			glm::vec3 euler(0.0, -speed * dt*0.4, 0.0);
 	        glm::quat rot = glm::quat(euler);
 	        rotateDelta(rot);
 	    }
 	    if (key == 264) {
-	        glm::vec3 euler(speed * dt, 0.0, 0.0);
+			glm::vec3 euler(speed * dt*0.4, 0.0, 0.0);
 	        glm::quat rot = glm::quat(euler);
 	        rotateDelta(rot);
 	    }
 	    if (key == 265) {
-	        glm::vec3 euler(-speed * dt, 0.0, 0.0);
+			glm::vec3 euler(-speed * dt*0.4, 0.0, 0.0);
 	        glm::quat rot = glm::quat(euler);
 	        rotateDelta(rot);
 	    }
 		if (key == SGCT_KEY_KP_SUBTRACT) {
-			glm::vec2 s = OsEng.renderEngine().camera()->scaling();
+			glm::vec2 s = OsEng.renderEngine()->camera()->scaling();
 			s[1] -= 0.5f;
-			OsEng.renderEngine().camera()->setScaling(s);
+			OsEng.renderEngine()->camera()->setScaling(s);
 		}
 		if (key == SGCT_KEY_KP_ADD) {
-			glm::vec2 s = OsEng.renderEngine().camera()->scaling();
+			glm::vec2 s = OsEng.renderEngine()->camera()->scaling();
 			s[1] += 0.5f;
-			OsEng.renderEngine().camera()->setScaling(s);
+			OsEng.renderEngine()->camera()->setScaling(s);
 		}
 
 		// iterate over key bindings
 		_validKeyLua = true;
 		auto ret = _keyLua.equal_range(key);
 		for (auto it = ret.first; it != ret.second; ++it) {
-			OsEng.scriptEngine().runScript(it->second);
+			//OsEng.scriptEngine()->runScript(it->second);
+			OsEng.scriptEngine()->queueScript(it->second);
 			if (!_validKeyLua) {
 				break;
 			}
@@ -873,7 +843,44 @@ scripting::ScriptEngine::LuaLibrary InteractionHandler::luaLibrary() {
 				&luascriptfunctions::distance,
 				"number",
 				"Change distance to origin"
-			}
+			},
+            {
+                "setInteractionSensitivity",
+                &luascriptfunctions::setInteractionSensitivity,
+                "number",
+                "Sets the global interaction sensitivity"
+            },
+            {
+                "interactionSensitivity",
+                &luascriptfunctions::interactionSensitivity,
+                "",
+                "Gets the current global interaction sensitivity"
+            },
+            {
+                "setInvertRoll",
+                &luascriptfunctions::setInvertRoll,
+                "bool",
+                "Sets the setting if roll movements are inverted"
+            },
+            {
+                "invertRoll",
+                &luascriptfunctions::invertRoll,
+                "",
+                "Returns the status of roll movement inversion"
+            },
+            {
+                "setInvertRotation",
+                &luascriptfunctions::setInvertRotation,
+                "bool",
+                "Sets the setting if rotation movements are inverted"
+            },
+            {
+                "invertRotation",
+                &luascriptfunctions::invertRotation,
+                "",
+                "Returns the status of rotation movement inversion"
+            }
+            
 		}
 	};
 }
@@ -881,10 +888,35 @@ scripting::ScriptEngine::LuaLibrary InteractionHandler::luaLibrary() {
 //=======
 void InteractionHandler::setRotation(const glm::quat& rotation)
 {
+	_camera->setRotation(rotation);
 }
 
 double InteractionHandler::deltaTime() const {
 	return _deltaTime;
+}
+
+void InteractionHandler::setInteractionSensitivity(float sensitivity) {
+    _controllerSensitivity = sensitivity;
+}
+
+float InteractionHandler::interactionSensitivity() const {
+    return _controllerSensitivity;
+}
+
+void InteractionHandler::setInvertRoll(bool invert) {
+    _invertRoll = invert;
+}
+
+bool InteractionHandler::invertRoll() const {
+    return _invertRoll;
+}
+
+void InteractionHandler::setInvertRotation(bool invert) {
+    _invertRotation = invert;
+}
+
+bool InteractionHandler::invertRotation() const {
+    return _invertRotation;
 }
 
 } // namespace interaction

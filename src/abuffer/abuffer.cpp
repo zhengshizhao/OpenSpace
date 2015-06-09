@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -151,12 +151,12 @@ void ABuffer::resolve() {
 
 	// Decrease stepsize in volumes if right click is pressed
 	// TODO: Let the interactionhandler handle this
-	int val = sgct::Engine::getMouseButton(0, SGCT_MOUSE_BUTTON_RIGHT);
-	float volumeStepFactor = (val) ? 0.2f: 1.0f;
-	if(volumeStepFactor != _volumeStepFactor) {
-		_volumeStepFactor = volumeStepFactor;
-		_resolveShader->setUniform("volumeStepFactor", _volumeStepFactor);
-	}
+	//int val = sgct::Engine::getMouseButton(0, SGCT_MOUSE_BUTTON_RIGHT);
+	//float volumeStepFactor = (val) ? 0.2f: 1.0f;
+	//if(volumeStepFactor != _volumeStepFactor) {
+	//	_volumeStepFactor = volumeStepFactor;
+	//	_resolveShader->setUniform("volumeStepFactor", _volumeStepFactor);
+	//}
 
 	glBindVertexArray(_screenQuad);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -195,6 +195,8 @@ int ABuffer::addSamplerfile(const std::string& filename) {
 }
 
 bool ABuffer::updateShader() {
+    if (_resolveShader == nullptr)
+        return false;
 	bool s = _resolveShader->rebuildFromFile();
 	if (s) {
 		int startAt = 0;
