@@ -43,6 +43,7 @@
 #include <ghoul/logging/logmanager.h>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <cassert>
 
 // other
 #include <sgct.h>
@@ -86,8 +87,13 @@ RenderableMultiresVolume::RenderableMultiresVolume(const ghoul::Dictionary& dict
 	std::string s;
 	dictionary.getValue(keyDataSource, s);
 	s = absPath(s);
-	if (!FileSys.fileExists(s, true))
+
+
+
+	if (!FileSys.fileExists(s, true)) {
+		LERROR("Could not find tsp file.");
 		return;
+	}
 
 	_tsp = new TSP(s);
 	_brickManager = new BrickManager(_tsp);
@@ -199,8 +205,10 @@ bool RenderableMultiresVolume::initialize() {
 
 		initializeColorCubes();
 
-		if (_transferFunction)
+
+		if (_transferFunction) {
 			_transferFunction->uploadTexture();
+		}
 
 		// Allocate space for the brick request list
 		// Use 0 as default value
@@ -239,8 +247,6 @@ bool RenderableMultiresVolume::initialize() {
 		//_brickManager->BuildBrickList(BrickManager::EVEN, _brickRequest);
 		//_brickManager->DiskToPBO(BrickManager::EVEN);
 	}
-	std::cout << "initialized" << std::endl;
-
 	return success;
 }
 
