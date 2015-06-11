@@ -103,13 +103,15 @@ KameleonWrapper::~KameleonWrapper() {
 bool KameleonWrapper::open(const std::string& filename) {
 	close();
 
-	if (!FileSys.fileExists(filename))
+	if (!FileSys.fileExists(filename)) {
+	    LERROR("Could not find " << filename);
 		return false;
+	}
 
 	_kameleon = new ccmc::Kameleon;
 	long status = _kameleon->open(filename);
 	if (status == ccmc::FileReader::OK) {
-        _interpolator = _kameleon->createNewInterpolator();
+		_interpolator = _kameleon->createNewInterpolator();
 
 		getGridVariables(_xCoordVar, _yCoordVar, _zCoordVar);
 
@@ -180,6 +182,7 @@ float* KameleonWrapper::getUniformSampledValues(
 	assert(outDimensions.x > 0 && outDimensions.y > 0 && outDimensions.z > 0);
     LINFO("Loading variable " << var << " from CDF data with a uniform sampling");
 
+	_kameleon->loadVariable(var);
 	unsigned int size = static_cast<unsigned int>(outDimensions.x*outDimensions.y*outDimensions.z);
 	float* data = new float[size];
 	double* doubleData = new double[size];
@@ -193,6 +196,7 @@ float* KameleonWrapper::getUniformSampledValues(
     
     LDEBUG(var << "Min: " << varMin);
     LDEBUG(var << "Max: " << varMax);
+
 
     // HISTOGRAM
     const int bins = 200;
