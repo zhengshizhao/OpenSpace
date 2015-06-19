@@ -22,43 +22,42 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEVOLUME_H__
-#define __RENDERABLEVOLUME_H__
+#ifndef __ABUFFERVOLUME_H__
+#define __ABUFFERVOLUME_H__
 
-// open space includes
-#include <openspace/rendering/renderable.h>
-#include <openspace/abuffer/abuffervolume.h>
+#include <string>
+#include <vector>
 
-// ghoul includes
-#include <ghoul/io/rawvolumereader.h>
-
-// Forward declare to minimize dependencies
 namespace ghoul {
-	namespace filesystem {
-		class File;
-	}
-	namespace opengl {
-		class Texture;
-	}
+    namespace opengl {
+	class Texture;
+	class ProgramObject;
+    }
 }
 
 namespace openspace {
 
-class ABufferVolume;
+    class ABufferVolume {
+    public: 
+	virtual ~ABufferVolume() {};
+	virtual void preResolve(ghoul::opengl::ProgramObject* program) {};
+	/*
+	 * Return a glsl function source, with the signature
+	 * void functionName(vec3 samplePos, vec3 dir, float occludingAlpha, inout float maxStepSize)
+	 */
+	virtual std::string getSampler(const std::string& functionName) { return ""; };
 
-class RenderableVolume: public Renderable, public ABufferVolume {
-public:
-	// constructors & destructor
-	RenderableVolume(const ghoul::Dictionary& dictionary);
-	~RenderableVolume();
+	/*
+	 * Return a glsl function source, with the signature
+	 * float functionName(vec3 samplePos, vec3 dir)
+	 */
+	virtual std::string getStepSizeFunction(const std::string& functionName) { return ""; };
+	virtual std::string getHeader() { return ""; };
+	virtual std::vector<ghoul::opengl::Texture*> getTextures() { return std::vector<ghoul::opengl::Texture*>(); };
+    protected:
+	std::string getGlslName(const std::string &key);
+	int getTextureUnit(ghoul::opengl::Texture* texture);
+    };          // ABufferVolume
+}               // openspace
 
-protected:
-    ghoul::opengl::Texture* loadVolume(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
-    glm::vec3 getVolumeOffset(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
-    ghoul::RawVolumeReader::ReadHints readHints(const ghoul::Dictionary& dictionary);
-    ghoul::opengl::Texture* loadTransferFunction(const std::string& filepath);
-};
-
-} // namespace openspace
-
-#endif
+#endif  // __ABUFFER_H__

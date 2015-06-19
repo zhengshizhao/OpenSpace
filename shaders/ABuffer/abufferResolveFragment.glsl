@@ -41,7 +41,7 @@
 #else
 #define 	MAX_FRAGMENTS 	16 				// The size of the local fragment list
 #endif
-// #define 	VISUALIZE_TRANSFERFUNCTIONS		// 
+
 #define 	USE_JITTERING					//
 // #define 	USE_COLORNORMALIZATION			//
 
@@ -52,7 +52,6 @@
 // #define 	SKIP_VOLUME_3
 
 // constants
-const float stepSize = 	0.01;
 const float samplingRate = 1.0;
 uniform float ALPHA_LIMIT = 0.99;
 
@@ -76,6 +75,7 @@ uniform float ALPHA_LIMIT = 0.99;
 in vec2 texCoord;
 out vec4 out_color;
 
+
 // ================================================================================ 
 // Headers, 
 // volume and transferfunctions uniforms
@@ -91,16 +91,10 @@ ABufferStruct_t fragments[MAX_FRAGMENTS];
 
 #if MAX_VOLUMES > 0
 	vec3 volume_direction[MAX_VOLUMES];
-	float volume_length[MAX_VOLUMES];
 	vec3 volume_position[MAX_VOLUMES];
 	int volumes_in_fragment[MAX_VOLUMES];
+	float volume_scale[MAX_VOLUMES];
 	int volume_count = 0;
-
-	#if ZTYPE == ZDEPTH
-		vec2 volume_zlength[MAX_VOLUMES];
-	#elif ZTYPE == PSCDEPTH
-		float volume_zlength[MAX_VOLUMES];
-	#endif
 #endif
 #include "abufferSort.hglsl"
 
@@ -145,33 +139,13 @@ void blendStep(inout vec4 dst, in vec4 src, in float stepSize) {
     dst.a = dst.a + (1.0 -dst.a) * src.a;
 }
 
-float volumeRaycastingDistance(in int id, in ABufferStruct_t startFrag, in ABufferStruct_t endFrag) {
-#if MAX_VOLUMES > 0
-#if ZTYPE == ZDEPTH
-	const float S1 = volume_zlength[id].x;
-	const float S2 = volume_zlength[id].y;
-	const float L = S1 - S2;
-	// const float z1 = globz(_z_(startFrag));
-	// const float z2 = globz(_z_(endFrag));
-	const float z1 = _z_(startFrag);
-	const float z2 = _z_(endFrag);
-	return ((z1 - S1) / L - (z2 - S1) / L) * volume_length[id];
-#elif ZTYPE == PSCDEPTH
-	const float L = volume_zlength[id];
-	const vec4 p1 = _pos_(startFrag);
-	const vec4 p2 = _pos_(endFrag);
-	const float dist = pscLength(p1, p2);
-	// const float z1 = _z_(startFrag);
-	// const float z2 = _z_(endFrag);
-	return (dist / L) * volume_length[id];
-#endif
-#else
-	return 0.f;
-#endif
+float rand(vec2 co){
+    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
+
 vec4 calculate_final_color(uint frag_count) {
-	// volumeStepSize[volID] = 0.01;
+
 	int currentVolumeBitmask = 0;
 	vec4 final_color = vec4(0);
 
@@ -186,110 +160,60 @@ vec4 calculate_final_color(uint frag_count) {
 		ABufferStruct_t startFrag = fragments[i];
 		ABufferStruct_t endFrag = fragments[i+1];
 		int type = int(_type_(startFrag));
-		
+
 		if(type == 0) {
-			//blendStep(final_color, _col_(startFrag), stepSize);
 			final_color = blend(final_color, _col_(startFrag));
 		} else {
 			currentVolumeBitmask = currentVolumeBitmask ^ (1 << (type-1));
 		}
 
-
 #if MAX_VOLUMES > 0
-		if(currentVolumeBitmask > 0) {
+
+		if (currentVolumeBitmask > 0) {
+
+		    float fragDistance = abs(_z_(endFrag) - _z_(startFrag));
+
+		    float maxStepSizeLocal; //maximum step size in local scale
+		    float maxStepSize; // maxStepSizeLocal converted to global scale
+		    float nextStepSize = 10000000000000000.0; // global next step size, minimum maxStepSize
+		    float stepSize; // global step size, taken from previous nextStepSize
+		    float stepSizeLocal;  // stepSize converted to local scale
+		    float jitterFactor = rand(gl_FragCoord.xy); // should be between 0.5 and 1.0
 
 
-			int volID;
-			float myMaxSteps = 0.0000001;
-			if(volume_count > 1) {
-				for(int v = 0; v < volume_count; ++v) {
-					int vol = volumes_in_fragment[v];
-					float l = volumeRaycastingDistance(vol, startFrag, endFrag);
-					myMaxSteps = max(myMaxSteps, l/volumeStepSizeOriginal[vol]);
-				}
+// #pragma openspace insert SAMPLERCALLS
+#include <${SHADERS_GENERATED}/ABufferStepSizeCalls.hglsl>:notrack
 
-				for(int v = 0; v < volume_count; ++v) {
-					int vol = volumes_in_fragment[v];
-					float l = volumeRaycastingDistance(vol, startFrag, endFrag);
-					float aaa = l/myMaxSteps;
-					volumeStepSize[vol] = aaa;
-					volID = vol;
-				}
-			} else {
-				volID = type -1;
-			}
+			float zPosition = 0.0;
 
-			float l = volumeRaycastingDistance(volID, startFrag, endFrag);
-			int max_iterations = int(l / volumeStepSize[volID]);
+			for(int k = 0; final_color.a < ALPHA_LIMIT && k < LOOP_LIMIT; ++k) {
 
-			// TransferFunction
-			vec4 color = vec4(0);
-			for(int k = 0; k < max_iterations && final_color.a < ALPHA_LIMIT && k < LOOP_LIMIT; ++k) {
+			    stepSize = nextStepSize;
+			    zPosition += stepSize;
+			    nextStepSize = fragDistance - zPosition;
+
+			    if (nextStepSize < fragDistance/10000.0) {
+				break;
+			    }
 
 // #pragma openspace insert SAMPLERCALLS
 #include <${SHADERS_GENERATED}/ABufferSamplerCalls.hglsl>:notrack
 
-
-
-
-
 			}
-			
 		}
 #endif
 
 		
+		if(i == frag_count_1 -1 && _type_(endFrag) == 0) {
+		    final_color = blend(final_color, _col_(endFrag));
+		}
 
-		
-		//blendGeometry(final_color, startFrag);
-		//if(i == maxFrags -1 && _type_(endFrag) == 0)
-		//	blendGeometry(final_color, endFrag);
-	
-		// final_color = blend(final_color, frag_color);
-		 if(i == frag_count_1 -1 && _type_(endFrag) == 0)
-		 // if(i == frag_count_1 -1)
-			final_color = blend(final_color, _col_(endFrag));
 
 	}
-	// final_color = vec4(0);
-	// int id =3;
-	// if(id < frag_count)final_color = blend(final_color, _col_(fragments[id]));
-
-	// if(frag_count > 0)
-	// 	final_color = _col_(fragments[0]);
 
 // ================================================================================
 // Transferfunction visualizer
 // ================================================================================
-#ifdef VISUALIZE_TRANSFERFUNCTIONS
-// #pragma openspace insert TRANSFERFUNC
-#include <${SHADERS_GENERATED}/ABufferTransferFunctionVisualizer.hglsl>:notrack
-#endif
-
-
-
-
-	// if(frag_count == 0) {
-	// 	final_color = vec4(0.5,0.5,0.5,1.0);
-	// } else if(frag_count == 1) {
-	// 	final_color = vec4(1.0,0.0,0.0,1.0);
-	// } else if(frag_count == 2) {
-	// 	final_color = vec4(0.0,1.0,0.0,1.0);
-	// 	// final_color = vec4(volume_direction[0],1.0);
-	// } else if(frag_count == 3) {
-	// 	final_color = vec4(0.0,0.0,1.0,1.0);
-	// 	// final_color = vec4(volume_direction[0],1.0);
-	// } else if(frag_count == 4) {
-	// 	final_color = vec4(1.0,1.0,0.0,1.0);
-	// 	// final_color = vec4(volume_direction[0],1.0);
-	// } else {
-	// 	final_color = vec4(1.0,1.0,1.0,1.0);
-	// }
-
-	// if(frag_count > 12) {
-	// 	final_color = vec4(1.0,0.0,1.0,1.0);
-	// }
-
 
 #ifdef USE_COLORNORMALIZATION
 	final_color.rgb = final_color.rgb * final_color.a;
@@ -314,6 +238,8 @@ void main() {
 // 	The samplers implementations
 // ================================================================================
 //#pragma openspace insert SAMPLERS
+
+#include <${SHADERS_GENERATED}/ABufferStepSizeFunctions.hglsl>:notrack
 #include <${SHADERS_GENERATED}/ABufferSamplers.hglsl>:notrack
 
 

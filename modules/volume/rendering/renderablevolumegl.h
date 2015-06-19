@@ -25,6 +25,7 @@
 #ifndef __RENDERABLEVOLUMEGL_H__
 #define __RENDERABLEVOLUMEGL_H__
 
+#include <vector>
 #include <modules/volume/rendering/renderablevolume.h>
 #include <openspace/util/powerscaledcoordinate.h>
 
@@ -53,6 +54,11 @@ public:
 
 	virtual void render(const RenderData& data) override;
 	virtual void update(const UpdateData& data) override;
+	virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
+	virtual std::string getSampler(const std::string& functionName) override;
+	virtual std::string getStepSizeFunction(const std::string& functionName) override;
+	virtual std::string getHeader() override;
+	virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
 
 private:
 	ghoul::Dictionary _hintsDictionary;

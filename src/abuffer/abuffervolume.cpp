@@ -22,43 +22,23 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEVOLUME_H__
-#define __RENDERABLEVOLUME_H__
-
-// open space includes
-#include <openspace/rendering/renderable.h>
+#include <openspace/engine/openspaceengine.h>
+#include <openspace/rendering/renderengine.h>
 #include <openspace/abuffer/abuffervolume.h>
+#include <openspace/abuffer/abuffer.h>
+#include <sstream>
 
-// ghoul includes
-#include <ghoul/io/rawvolumereader.h>
-
-// Forward declare to minimize dependencies
-namespace ghoul {
-	namespace filesystem {
-		class File;
-	}
-	namespace opengl {
-		class Texture;
-	}
+namespace {
+    const std::string _loggerCat = "ABufferVolume";
 }
 
 namespace openspace {
+    
+    std::string ABufferVolume::getGlslName(const std::string& key) {
+	return OsEng.renderEngine()->abuffer()->getGlslName(this, key);
+    }
 
-class ABufferVolume;
-
-class RenderableVolume: public Renderable, public ABufferVolume {
-public:
-	// constructors & destructor
-	RenderableVolume(const ghoul::Dictionary& dictionary);
-	~RenderableVolume();
-
-protected:
-    ghoul::opengl::Texture* loadVolume(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
-    glm::vec3 getVolumeOffset(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
-    ghoul::RawVolumeReader::ReadHints readHints(const ghoul::Dictionary& dictionary);
-    ghoul::opengl::Texture* loadTransferFunction(const std::string& filepath);
-};
-
-} // namespace openspace
-
-#endif
+    int ABufferVolume::getTextureUnit(ghoul::opengl::Texture* texture) {
+	return OsEng.renderEngine()->abuffer()->getTextureUnit(texture);
+    }
+}

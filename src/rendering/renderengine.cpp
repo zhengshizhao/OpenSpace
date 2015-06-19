@@ -56,6 +56,11 @@
 #ifdef GHOUL_USE_FREEIMAGE
 #include <ghoul/io/texture/texturereaderfreeimage.h>
 #endif // GHOUL_USE_FREEIMAGE
+#ifdef GHOUL_USE_SOIL
+#include <ghoul/io/texture/texturereadersoil.h>
+#endif //GHOUL_USE_SOIL
+
+
 #include <ghoul/io/texture/texturereadercmap.h>
 
 #include <array>
@@ -181,6 +186,9 @@ bool RenderEngine::initialize() {
 #ifdef GHOUL_USE_FREEIMAGE
 	ghoul::io::TextureReader::ref().addReader(new ghoul::io::impl::TextureReaderFreeImage);
 #endif // GHOUL_USE_FREEIMAGE
+#ifdef GHOUL_USE_SOIL
+	ghoul::io::TextureReader::ref().addReader(new ghoul::io::impl::TextureReaderSOIL);
+#endif // GHOUL_USE_SOIL
 
 	ghoul::io::TextureReader::ref().addReader(new ghoul::io::impl::TextureReaderCMAP);
 

@@ -30,6 +30,8 @@
 
 #include <string>
 #include <vector>
+#include <set>
+#include <map>
 
 namespace ghoul {
     namespace filesystem {
@@ -42,6 +44,8 @@ namespace ghoul {
 }
 
 namespace openspace {
+
+    class ABufferVolume;
 
 class ABuffer {
 public:
@@ -61,9 +65,10 @@ public:
 	virtual bool reinitialize();
 	virtual void resetBindings();
 
-	void addVolume(const std::string& tag,ghoul::opengl::Texture* volume);
-	void addTransferFunction(const std::string& tag,ghoul::opengl::Texture* transferFunction);
-	int addSamplerfile(const std::string& filename);
+	int addVolume(ABufferVolume* volume);
+	//void removeVolume(ABufferVolume* volume);
+	std::string getGlslName(ABufferVolume* volume, const std::string& key);
+	int getTextureUnit(ghoul::opengl::Texture* texture);
 
 	void invalidateABuffer();
     
@@ -82,9 +87,11 @@ protected:
 	bool updateShader();
 
 	void openspaceHeaders();
+
+	void openspaceStepSizeCalls();
 	void openspaceSamplerCalls();
+	void openspaceStepSizeFunctions();
 	void openspaceSamplers();
-	void openspaceTransferFunction();
 
 	unsigned int _width, _height, _totalPixels;
 
@@ -99,9 +106,16 @@ private:
 
 	std::vector<std::pair<std::string,ghoul::opengl::Texture*> > _volumes;
 	std::vector<std::pair<std::string,ghoul::opengl::Texture*> > _transferFunctions;
+
+	std::set<ABufferVolume*> _aBufferVolumes;
+	std::map<ABufferVolume*, std::map<std::string, std::string> > _glslDictionary;
+
 	std::vector<ghoul::filesystem::File*> _samplerFiles;
 	std::vector<std::string> _samplers;
-
+	std::string generateGlslName(const std::string& name);
+	std::map<ghoul::opengl::Texture*, int> _textureUnits;
+	int nextGlslNameId = 0;
+	int nextId = 1;
 	float _volumeStepFactor;
 
 };		// ABuffer

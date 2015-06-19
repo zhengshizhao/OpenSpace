@@ -23,8 +23,8 @@
  ****************************************************************************************/
 
 #include <modules/volume/rendering/renderablevolumegl.h>
-
 #include <openspace/abuffer/abuffer.h>
+
 #include <openspace/engine/configurationmanager.h>
 #include <openspace/engine/openspaceengine.h>
 #include <openspace/rendering/renderengine.h>
@@ -37,6 +37,7 @@
 #include <ghoul/opengl/programobject.h>
 #include <ghoul/io/texture/texturereader.h>
 #include <ghoul/opengl/texture.h>
+
 
 #include <algorithm>
 
@@ -82,8 +83,6 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 		return;
 	}
 
-    LDEBUG("Volume Filename: " << _filename);
-
 	dictionary.getValue(KeyHints, _hintsDictionary);
 
     _transferFunction = nullptr;
@@ -108,6 +107,7 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 
 	KameleonWrapper kw(_filename);
 	auto t = kw.getGridUnits();
+
 	if (dictionary.hasKey(KeyBoxScaling)) {
 		glm::vec4 scalingVec4(_boxScaling, _w);
 		success = dictionary.getValue(KeyBoxScaling, scalingVec4);
@@ -157,11 +157,11 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 	
 	dictionary.getValue(KeyVolumeName, _volumeName);
 	dictionary.getValue(KeyTransferFunctionName, _transferFunctionName);
-
     setBoundingSphere(PowerScaledScalar::CreatePSS(glm::length(_boxScaling)*pow(10,_w)));
 }
 
 RenderableVolumeGL::~RenderableVolumeGL() {
+    //OsEng.renderEngine()->abuffer()->removeVolume(this);
 }
 
 bool RenderableVolumeGL::isReady() const {
@@ -177,13 +177,11 @@ bool RenderableVolumeGL::initialize() {
     if(_filename != "") {
         _volume = loadVolume(_filename, _hintsDictionary);
         _volume->uploadTexture();
-        OsEng.renderEngine()->abuffer()->addVolume(_volumeName, _volume);
     }
 
     if(_transferFunctionPath != "") {
         _transferFunction = loadTransferFunction(_transferFunctionPath);
         _transferFunction->uploadTexture();
-        OsEng.renderEngine()->abuffer()->addTransferFunction(_transferFunctionName, _transferFunction);
 
         auto textureCallback = [this](const ghoul::filesystem::File& file) {
             _updateTransferfunction = true;
@@ -192,7 +190,7 @@ bool RenderableVolumeGL::initialize() {
     }
 
     // add the sampler and get the ID
-    _id = OsEng.renderEngine()->abuffer()->addSamplerfile(_samplerFilename);
+    _id = OsEng.renderEngine()->abuffer()->addVolume(this);
 
     OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
 
@@ -285,7 +283,6 @@ void RenderableVolumeGL::render(const RenderData& data) {
                             static_cast<GLsizei>(_transferFunction->width()),0, _transferFunction->format(), 
                             _transferFunction->dataType(), data);
             delete transferFunction;
-            LDEBUG("Updated transferfunction!");
         }
     }
 
@@ -316,6 +313,72 @@ void RenderableVolumeGL::render(const RenderData& data) {
 
     _boxProgram->deactivate();
 }
+
+    void RenderableVolumeGL::preResolve(ghoul::opengl::ProgramObject* program) {
+	std::string transferFunctionName = getGlslName("transferFunction");
+	std::string volumeName = getGlslName("volume");
+	std::string stepSizeName = getGlslName("stepSize");
+
+	int transferFunctionUnit = getTextureUnit(_transferFunction);
+	int volumeUnit = getTextureUnit(_volume);
+
+	program->setUniform(transferFunctionName, transferFunctionUnit);
+	program->setUniform(volumeName, volumeUnit);
+
+	const glm::size3_t dims = _volume->dimensions();
+	float maxDiag = glm::sqrt(static_cast<float>(dims.x*dims.x + dims.y*dims.y + dims.z*dims.z));
+	program->setUniform(stepSizeName, static_cast<float>(glm::sqrt(3.0) / maxDiag));
+    }
+
+
+    std::string RenderableVolumeGL::getSampler(const std::string& functionName) {
+	std::string transferFunctionName = getGlslName("transferFunction");
+	std::string volumeName = getGlslName("volume");
+	std::string stepSizeName = getGlslName("stepSize");
+
+	std::stringstream ss;
+	ss << "vec4 " << functionName << "(vec3 samplePos, vec3 dir, "
+	   << "float occludingAlpha, inout float maxStepSize) {" << std::endl;
+
+	ss << "float intensity = texture(" << volumeName << ", samplePos).x;" << std::endl;
+	ss << "vec4 contribution = texture(" << transferFunctionName << ", intensity);" << std::endl;
+	ss << "maxStepSize = " << stepSizeName << ";" << std::endl;
+	ss << "return contribution;" << std::endl;
+	ss << "}" << std::endl;
+
+	return ss.str();
+    }
+
+
+    std::string RenderableVolumeGL::getStepSizeFunction(const std::string& functionName) {
+	std::string stepSizeName = getGlslName("stepSize");
+
+	std::stringstream ss;
+	ss << "float " << functionName << "(vec3 samplePos, vec3 dir) {" << std::endl
+	   << "return " << stepSizeName << ";" << std::endl
+	   << "}" << std::endl;
+	return ss.str();
+    }
+
+
+    std::string RenderableVolumeGL::getHeader() {
+	std::string transferFunctionName = getGlslName("transferFunction");
+	std::string volumeName = getGlslName("volume");
+	std::string stepSizeName = getGlslName("stepSize");
+
+	std::stringstream ss;
+	ss << "uniform sampler1D " << transferFunctionName << ";" << std::endl;
+	ss << "uniform sampler3D " << volumeName << ";" << std::endl;
+	ss << "uniform float " << stepSizeName << ";" << std::endl;
+
+	return ss.str();
+    }
+
+    std::vector<ghoul::opengl::Texture*> RenderableVolumeGL::getTextures() {
+	std::vector<ghoul::opengl::Texture*> textures{_transferFunction, _volume};
+	return textures;
+    }
+
 
 void RenderableVolumeGL::update(const UpdateData& data) {
 }
