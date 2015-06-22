@@ -65,6 +65,7 @@ public:
 	virtual bool reinitialize();
 	virtual void resetBindings();
 
+	void registerGlslHelpers(std::string helpers);
 	int addVolume(ABufferVolume* volume);
 	//void removeVolume(ABufferVolume* volume);
 	std::string getGlslName(ABufferVolume* volume, const std::string& key);
@@ -86,12 +87,12 @@ protected:
 	void generateShaderSource();
 	bool updateShader();
 
-	void openspaceHeaders();
-
-	void openspaceStepSizeCalls();
-	void openspaceSamplerCalls();
-	void openspaceStepSizeFunctions();
-	void openspaceSamplers();
+	void generateHelpers();
+	void generateHeaders();
+	void generateStepSizeCalls();
+	void generateSamplerCalls();
+	void generateStepSizeFunctions();
+	void generateSamplers();
 
 	unsigned int _width, _height, _totalPixels;
 
@@ -111,6 +112,7 @@ private:
 	std::map<ABufferVolume*, std::map<std::string, std::string> > _glslDictionary;
 
 	std::vector<ghoul::filesystem::File*> _samplerFiles;
+	std::vector<std::string> _glslHelpers;
 	std::vector<std::string> _samplers;
 	std::string generateGlslName(const std::string& name);
 	std::map<ghoul::opengl::Texture*, int> _textureUnits;

@@ -43,7 +43,9 @@
 namespace {
 
 	const std::string generatedSettingsPath      = "${SHADERS_GENERATED}/ABufferSettings.hglsl";
+	const std::string generatedHelpersPath       = "${SHADERS_GENERATED}/ABufferHelpers.hglsl";
 	const std::string generatedHeadersPath       = "${SHADERS_GENERATED}/ABufferHeaders.hglsl";
+
 	const std::string generatedStepSizeCallsPath = "${SHADERS_GENERATED}/ABufferStepSizeCalls.hglsl";
 	const std::string generatedSamplerCallsPath  = "${SHADERS_GENERATED}/ABufferSamplerCalls.hglsl";
 	const std::string generatedStepSizeFunctionsPath  = "${SHADERS_GENERATED}/ABufferStepSizeFunctions.hglsl";
@@ -183,6 +185,10 @@ void ABuffer::resolve() {
 #endif
 }
 
+void ABuffer::registerGlslHelpers(std::string helpers) {
+    _glslHelpers.push_back(helpers);
+}
+
 int ABuffer::addVolume(ABufferVolume* volume) {
     _aBufferVolumes.insert(volume);
     std::map<std::string, std::string> map;
@@ -259,14 +265,24 @@ void ABuffer::generateShaderSource() {
 	}
 
 	LDEBUG("Generating shader includes");
-	openspaceHeaders();
-	openspaceStepSizeCalls();
-	openspaceSamplerCalls();
-	openspaceStepSizeFunctions();
-	openspaceSamplers();
+	generateHelpers();
+	generateHeaders();
+	generateStepSizeCalls();
+	generateSamplerCalls();
+	generateStepSizeFunctions();
+	generateSamplers();
 }
 
-void ABuffer::openspaceHeaders() {
+
+void ABuffer::generateHelpers() {
+    std::ofstream f(absPath(generatedHelpersPath));
+    for (std::string& str : _glslHelpers) {
+	f << str << std::endl;
+    }
+    f.close();
+}
+
+void ABuffer::generateHeaders() {
 
     
 	std::ofstream f(absPath(generatedHeadersPath));
@@ -300,7 +316,7 @@ void ABuffer::openspaceHeaders() {
 
 }
     
-void ABuffer::openspaceStepSizeCalls() {
+void ABuffer::generateStepSizeCalls() {
     std::ofstream f(absPath(generatedStepSizeCallsPath));
     
     int i = 0; 
@@ -319,7 +335,7 @@ void ABuffer::openspaceStepSizeCalls() {
     f.close();
 }
 
-void ABuffer::openspaceSamplerCalls() {
+void ABuffer::generateSamplerCalls() {
     std::ofstream f(absPath(generatedSamplerCallsPath));
     
     int i = 0;
@@ -346,7 +362,7 @@ void ABuffer::openspaceSamplerCalls() {
     f.close();
 }
 
-void ABuffer::openspaceSamplers() {
+void ABuffer::generateSamplers() {
     std::ofstream f(absPath(generatedSamplersPath));
 
     int i = 0;
@@ -359,7 +375,7 @@ void ABuffer::openspaceSamplers() {
     f.close();
 }
 
-void ABuffer::openspaceStepSizeFunctions() {
+void ABuffer::generateStepSizeFunctions() {
     std::ofstream f(absPath(generatedStepSizeFunctionsPath));
     int i = 0;
     for (auto volume : _aBufferVolumes) {

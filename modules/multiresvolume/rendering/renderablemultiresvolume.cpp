@@ -61,6 +61,7 @@ namespace {
 	const std::string keyRaycasterStepsize = "raycaster_stepsize";
 	const std::string keyTSPTraversal = "TSPTraversal";
 	const std::string keyRaycasterTSP = "raycasterTSP";
+	bool registeredGlslHelpers = false;
 }
 
 namespace openspace {
@@ -138,6 +139,11 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
 }
 
 bool RenderableMultiresVolume::initialize() {
+    if (!registeredGlslHelpers) {
+	OsEng.renderEngine()->abuffer()->registerGlslHelpers(RenderableMultiresVolume::getGlslHelpers());
+	registeredGlslHelpers = true;
+    }
+
 	bool success = true;
 
 	if (_tsp) {
@@ -256,6 +262,10 @@ bool RenderableMultiresVolume::deinitialize() {
 
 bool RenderableMultiresVolume::isReady() const {
 	return true;
+}
+
+std::string RenderableMultiresVolume::getGlslHelpers() {
+    return "";
 }
 
 void RenderableMultiresVolume::render(const RenderData& data) {

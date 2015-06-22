@@ -58,6 +58,8 @@ public:
 
 	virtual bool isReady() const;
 
+	static std::string getGlslHelpers();
+
 	void render(const RenderData& data) override;
 	void update(const UpdateData& data) override;
 

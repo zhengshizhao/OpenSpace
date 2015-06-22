@@ -75,6 +75,11 @@ uniform float ALPHA_LIMIT = 0.99;
 in vec2 texCoord;
 out vec4 out_color;
 
+// ================================================================================ 
+// Helpers,
+// Module specific functions required by samplers
+// ================================================================================
+#include <${SHADERS_GENERATED}/ABufferHelpers.hglsl>:notrack
 
 // ================================================================================ 
 // Headers, 
@@ -101,25 +106,6 @@ ABufferStruct_t fragments[MAX_FRAGMENTS];
 // ================================================================================
 // Helper functions functions
 // ================================================================================
-vec3 CartesianToSpherical(vec3 _cartesian) {
-  // Put cartesian in [-1..1] range first
-  vec3 cartesian = vec3(-1.0,-1.0,-1.0) + _cartesian * 2.0f;
-  
-  float r = length(cartesian);
-  float theta, phi;
-
-  if (r == 0.0) {
-    theta = phi = 0.0;
-  } else {
-    theta = acos(cartesian.z/r) / M_PI;
-    phi = (M_PI + atan(cartesian.y, cartesian.x)) / (2.0*M_PI );
-  }
-  r *= M_SQRT1_3;
-  // r = r / sqrt(3.0f);
-  
-  // Sampler ignores w component
-  return vec3(r, theta, phi);
-}
 
 vec4 blend(vec4 src, vec4 dst) {
 	#if 0
