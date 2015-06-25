@@ -54,9 +54,11 @@ namespace openspace {
 	virtual std::string getStepSizeFunction(const std::string& functionName) { return ""; };
 	virtual std::string getHeader() { return ""; };
 	virtual std::vector<ghoul::opengl::Texture*> getTextures() { return std::vector<ghoul::opengl::Texture*>(); };
+    virtual std::vector<int> getBuffers() { return std::vector<int>(); };
     protected:
 	std::string getGlslName(const std::string &key);
 	int getTextureUnit(ghoul::opengl::Texture* texture);
+    int getSsboBinding(int ssboId);
     };          // ABufferVolume
 }               // openspace
 

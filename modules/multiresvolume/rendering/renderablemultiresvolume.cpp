@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -23,707 +23,391 @@
  ****************************************************************************************/
 
 #include <modules/multiresvolume/rendering/renderablemultiresvolume.h>
-#include <openspace/engine/openspaceengine.h>
- 
 #include <openspace/abuffer/abuffer.h>
+
 #include <openspace/engine/configurationmanager.h>
+#include <openspace/engine/openspaceengine.h>
 #include <openspace/rendering/renderengine.h>
+#include <modules/kameleon/include/kameleonwrapper.h>
+#include <openspace/util/constants.h>
+
+#include <ghoul/filesystem/filesystem.h>
+#include <ghoul/filesystem/file.h>
+#include <ghoul/opengl/framebufferobject.h>
+#include <ghoul/opengl/programobject.h>
+#include <ghoul/io/texture/texturereader.h>
+#include <ghoul/opengl/texture.h>
+
 #include <modules/multiresvolume/rendering/tsp.h>
-#include <modules/multiresvolume/rendering/brickmanager.h>
 #include <modules/multiresvolume/rendering/atlasmanager.h>
 #include <modules/multiresvolume/rendering/brickselector.h>
 
-// ghoul includes
-#include <ghoul/opengl/framebufferobject.h>
-#include <ghoul/opengl/programobject.h>
-#include <ghoul/opengl/texture.h>
-#include <ghoul/opengl/textureunit.h>
-#include <ghoul/io/texture/texturereader.h>
-#include <ghoul/filesystem/filesystem.h>
-#include <ghoul/logging/logmanager.h>
-
-#include <glm/gtc/matrix_transform.hpp>
-#include <cassert>
-
-// other
-#include <sgct.h>
-
-using ghoul::opengl::FramebufferObject;
-using ghoul::opengl::Texture;
+#include <algorithm>
+#include <iterator>
 
 namespace {
-	const std::string _loggerCat = "RenderableMultiresVolume";
-	const std::string keyDataSource = "Source";
-	const std::string keyTransferFunction = "TransferFunction";
-	const std::string keyWorksizeX = "local_worksize_x";
-	const std::string keyWorksizeY = "local_worksize_y";
-	const std::string keyTraversalStepsize = "tsp_traveral_stepsize";
-	const std::string keyRaycasterStepsize = "raycaster_stepsize";
-	const std::string keyTSPTraversal = "TSPTraversal";
-	const std::string keyRaycasterTSP = "raycasterTSP";
-	bool registeredGlslHelpers = false;
+    const std::string _loggerCat = "RenderableMultiresVolume";
+    const std::string KeyDataSource = "Source";
+    const std::string KeyHints = "Hints";
+    const std::string KeyTransferFunction = "TransferFunction";
+    const std::string KeySampler = "Sampler";
+    const std::string KeyBoxScaling = "BoxScaling";
+    const std::string KeyVolumeName = "VolumeName";
+    const std::string KeyTransferFunctionName = "TransferFunctionName";
+    const std::string GlslHelpersPath = "${MODULES}/multiresvolume/shaders/helpers_fs.glsl";
+    bool registeredGlslHelpers = false;
 }
 
 namespace openspace {
 
-RenderableMultiresVolume::RenderableMultiresVolume(const ghoul::Dictionary& dictionary)
-	: RenderableVolume(dictionary)
-	, _tsp(nullptr)
-	, _brickManager(nullptr)
-	, _boxArray(0)
-	, _dispatchBuffers()
-	, _tspTraversal(nullptr)
-	, _raycasterTsp(nullptr)
-	, _multiresRaycaster(nullptr)
-	, _cubeProgram(nullptr)
-	, _textureToAbuffer(nullptr)
-	, _fbo(nullptr)
-	, _backTexture(nullptr)
-	, _outputTexture(nullptr)
-	, _transferFunction(nullptr)
-	, _timestep(0)
-	, _spatialTolerance(0.000001)
-	, _temporalTolerance(0.000001)
+RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dictionary)
+    : RenderableVolume(dictionary)
+    , _transferFunctionName("")
+    , _volumeName("")
+    , _transferFunction(nullptr)
+    , _boxArray(0)
+    , _vertexPositionBuffer(0)
+    , _boxProgram(nullptr)
+    , _boxScaling(1.0, 1.0, 1.0)
+    , _w(0.f)
+    , _updateTransferfunction(false)
+    , _id(-1)
+    , _spatialTolerance(0.000001)
+    , _temporalTolerance(0.000001)
+    , _timestep(0)
+    , _atlasMapSize(0)
 {
-	std::string s;
-	dictionary.getValue(keyDataSource, s);
-	s = absPath(s);
+    std::string name;
+    bool success = dictionary.getValue(constants::scenegraphnode::keyName, name);
+    assert(success);
 
+    _filename = "";
+    success = dictionary.getValue(KeyDataSource, _filename);
+    if (!success) {
+        LERROR("Node '" << name << "' did not contain a valid '" <<  KeyDataSource << "'");
+        return;
+    }
+    _filename = absPath(_filename);
+    if (_filename == "") {
+        return;
+    }
 
+    _transferFunction = nullptr;
+    _transferFunctionFile = nullptr;
+    _transferFunctionPath = "";
+    success = dictionary.getValue(KeyTransferFunction, _transferFunctionPath);
+    if (!success) {
+        LERROR("Node '" << name << "' did not contain a valid '" <<
+            KeyTransferFunction << "'");
+        return;
+    }
+    _transferFunctionPath = absPath(_transferFunctionPath);
+    _transferFunctionFile = new ghoul::filesystem::File(_transferFunctionPath, true);
 
-	if (!FileSys.fileExists(s, true)) {
-		LERROR("Could not find tsp file.");
-		return;
-	}
+    _pscOffset = psc(glm::vec4(0.0));
+    _boxScaling = glm::vec3(1.0);
+    if (dictionary.hasKey(KeyBoxScaling)) {
+        glm::vec4 scalingVec4(_boxScaling, _w);
+        success = dictionary.getValue(KeyBoxScaling, scalingVec4);
+        if (success) {
+            _boxScaling = scalingVec4.xyz;
+            _w = scalingVec4.w;
+        }
+        else {
+            success = dictionary.getValue(KeyBoxScaling, _boxScaling);
+            if (!success) {
+                LERROR("Node '" << name << "' did not contain a valid '" <<
+                    KeyBoxScaling << "'");
+                return;
+            }
+        }
+    }
 
-	_tsp = new TSP(s);
-	_brickManager = new BrickManager(_tsp);
-	_atlasManager = new AtlasManager(_tsp);
-	_brickSelector = new BrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
+    setBoundingSphere(PowerScaledScalar::CreatePSS(glm::length(_boxScaling)*pow(10,_w)));
 
-	std::string transferfunctionPath;
-	if (dictionary.getValue(keyTransferFunction, transferfunctionPath)) {
-		transferfunctionPath = absPath(transferfunctionPath);
-		if (transferfunctionPath != "")
-			_transferFunction = loadTransferFunction(transferfunctionPath);
-		if (!_transferFunction)
-			LERROR("Could not load transferfunction");
-	}
-
-	setBoundingSphere(PowerScaledScalar(2.0, 0.0));
+    _tsp = new TSP(_filename);
+    _atlasManager = new AtlasManager(_tsp);
+    _brickSelector = new BrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
 }
 
 RenderableMultiresVolume::~RenderableMultiresVolume() {
-	if (_tsp)
-		delete _tsp;
-	if (_brickManager)
-		delete _brickManager;
-	if (_dispatchBuffers[0])
-		glDeleteBuffers(2, _dispatchBuffers);
-	if (_boxArray)
-		glDeleteVertexArrays(1, &_boxArray);
-	if (_tspTraversal)
-		delete _tspTraversal;
-	if (_raycasterTsp)
-		delete _raycasterTsp;
-	if (_cubeProgram)
-		delete _cubeProgram;
-	if (_textureToAbuffer)
-		delete _textureToAbuffer;
-	if (_fbo)
-		delete _fbo;
-	if (_backTexture)
-		delete _backTexture;
-	if (_transferFunction)
-		delete _transferFunction;
+    //OsEng.renderEngine()->abuffer()->removeVolume(this);
+    if (_tsp)
+        delete _tsp;
+    if (_atlasManager)
+        delete _atlasManager;
+    if (_brickSelector)
+        delete _brickSelector;
 }
 
 bool RenderableMultiresVolume::initialize() {
     if (!registeredGlslHelpers) {
-	OsEng.renderEngine()->abuffer()->registerGlslHelpers(RenderableMultiresVolume::getGlslHelpers());
-	registeredGlslHelpers = true;
+        OsEng.renderEngine()->abuffer()->registerGlslHelpers(RenderableMultiresVolume::getGlslHelpers());
+        registeredGlslHelpers = true;
     }
 
-	bool success = true;
+    bool success = true;
 
-	if (_tsp) {
-		success &= _tsp->load();
-	}
-	if (_brickManager) {
-		success &= _brickManager->readHeader();
-		success &= _brickManager->initialize();
-	}
-	if (_atlasManager) {
-		_atlasManager->initialize();
-	}
-	if (success) {
+    success &= _tsp && _tsp->load();
 
-		_cubeProgram = ghoul::opengl::ProgramObject::Build(
-			"pscColorToTexture", 
-			"${MODULES}/multiresvolume/shaders/pscColorToTexture_vs.glsl", 
-			"${MODULES}/multiresvolume/shaders/pscColorToTexture_fs.glsl");
-		if (!_cubeProgram)
-			LERROR("Could not build _cubeProgram");
+    if (success) {
+        _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
+    }
 
-		_textureToAbuffer = ghoul::opengl::ProgramObject::Build(
-			"pscTextureToABuffer", 
-			"${MODULES}/multiresvolume/shaders/pscTextureToABuffer_vs.glsl", 
-			"${MODULES}/multiresvolume/shaders/pscTextureToABuffer_fs.glsl");
-		if (!_textureToAbuffer)
-			LERROR("Could not build _textureToAbuffer");
+    if(_transferFunctionPath != "") {
+        _transferFunction = loadTransferFunction(_transferFunctionPath);
+        _transferFunction->uploadTexture();
 
-		/*
-		static const struct
-		{
-			GLuint num_groups_x;
-			GLuint num_groups_y;
-			GLuint num_groups_z;
-		} dispatch_params = { 1280 / 16, 720 / 16, 1 };
-		glGenBuffers(2, _dispatchBuffers);
-		*/
-		_tspTraversal = ghoul::opengl::ProgramObject::Build(
-			"tsptraversal", 
-			"${MODULES}/multiresvolume/shaders/passthrough_vs.glsl", 
-			"${MODULES}/multiresvolume/shaders/TSPTraversal_fs.glsl");
-		if (!_tspTraversal)
-			LERROR("Could not build _tspTraversal");
+        auto textureCallback = [this](const ghoul::filesystem::File& file) {
+            _updateTransferfunction = true;
+        };
+        _transferFunctionFile->setCallback(textureCallback);
+    } else {
+        success = false;
+    }
 
-		_tspTraversal->setIgnoreUniformLocationError(true);
+    success &= _atlasManager && _atlasManager->initialize();
 
-		_raycasterTsp = ghoul::opengl::ProgramObject::Build(
-			"raycasterTsp",
-			"${MODULES}/multiresvolume/shaders/passthrough_vs.glsl",
-			"${MODULES}/multiresvolume/shaders/raycasterTSP_fs.glsl");
-		if (!_raycasterTsp)
-			LERROR("Could not build _raycasterTsp");
+    // add the sampler and get the ID
+    _id = OsEng.renderEngine()->abuffer()->addVolume(this);
 
-		_multiresRaycaster = ghoul::opengl::ProgramObject::Build(
-			"multiresRaycaster",
-			"${MODULES}/multiresvolume/shaders/multiresRaycaster_vs.glsl",
-			"${MODULES}/multiresvolume/shaders/multiresRaycaster_fs.glsl");
-		if (!_multiresRaycaster)
-			LERROR("Could not build _multiresRaycaster");
+    OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
 
-		_pscColorPassthrough = ghoul::opengl::ProgramObject::Build(
-			"pscColorPassthrough",
-			"${MODULES}/multiresvolume/shaders/pscColorPassthrough_vs.glsl",
-			"${MODULES}/multiresvolume/shaders/pscColorPassthrough_fs.glsl");
+    // ============================
+    //      GEOMETRY (box)
+    // ============================
+    const GLfloat size = 0.5f;
+    const GLfloat vertex_data[] = {
+        //  x,     y,     z,     s,
+        -size, -size,  size,  _w,
+         size,  size,  size,  _w,
+        -size,  size,  size,  _w,
+        -size, -size,  size,  _w,
+         size, -size,  size,  _w,
+         size,  size,  size,  _w,
 
-		initializeColorCubes();
+        -size, -size, -size,  _w,
+         size,  size, -size,  _w,
+        -size,  size, -size,  _w,
+        -size, -size, -size,  _w,
+         size, -size, -size,  _w,
+         size,  size, -size,  _w,
 
+         size, -size, -size,  _w,
+         size,  size,  size,  _w,
+         size, -size,  size,  _w,
+         size, -size, -size,  _w,
+         size,  size, -size,  _w,
+         size,  size,  size,  _w,
 
-		if (_transferFunction) {
-			_transferFunction->uploadTexture();
-		}
+        -size, -size, -size,  _w,
+        -size,  size,  size,  _w,
+        -size, -size,  size,  _w,
+        -size, -size, -size,  _w,
+        -size,  size, -size,  _w,
+        -size,  size,  size,  _w,
 
-		// Allocate space for the brick request list
-		// Use 0 as default value
-		_brickRequest.resize(_tsp->numTotalNodes(), 0);
-		_brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
-		/*
-		glGenBuffers(1, &_brickRequestBuffer); // generate buffer
-		glBindBuffer(GL_TEXTURE_BUFFER, _brickRequestBuffer);
-		glBufferData(GL_TEXTURE_BUFFER, sizeof(GLint)*_tsp->numTotalNodes(), NULL, GL_DYNAMIC_READ);
+        -size,  size, -size,  _w,
+         size,  size,  size,  _w,
+        -size,  size,  size,  _w,
+        -size,  size, -size,  _w,
+         size,  size, -size,  _w,
+         size,  size,  size,  _w,
 
-		glGenTextures(1, &_brickRequestTexture);
-		glBindTexture(GL_TEXTURE_BUFFER, _brickRequestTexture);
-		glTexBuffer(GL_TEXTURE_BUFFER, GL_R32I, _brickRequestBuffer);
-		glBindTexture(GL_TEXTURE_BUFFER, 0);
+        -size, -size, -size,  _w,
+         size, -size,  size,  _w,
+        -size, -size,  size,  _w,
+        -size, -size, -size,  _w,
+         size, -size, -size,  _w,
+         size, -size,  size,  _w,
+    };
 
-		GLuint* data = (GLuint*)glMapBuffer(GL_TEXTURE_BUFFER, GL_WRITE_ONLY);
-		memset(data, 0x00, _tsp->numTotalNodes() * sizeof(GLint));
-		glUnmapBuffer(GL_TEXTURE_BUFFER);
-		glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    glGenVertexArrays(1, &_boxArray); // generate array
+    glBindVertexArray(_boxArray); // bind array
+    glGenBuffers(1, &_vertexPositionBuffer); // generate buffer
+    glBindBuffer(GL_ARRAY_BUFFER, _vertexPositionBuffer); // bind buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*4, reinterpret_cast<void*>(0));
+    glEnableVertexAttribArray(0);
 
-		*/
-		glGenBuffers(1, &_reqeustedBrickSSO);
-		glGenBuffers(1, &_brickSSO);
-		_brickSSOSize = 0;
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, _reqeustedBrickSSO);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*_tsp->numTotalNodes(), NULL, GL_DYNAMIC_READ);
-		GLint* data = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
-		memset(data, 0x00, _tsp->numTotalNodes() * sizeof(GLint));
-		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    success &= isReady();
 
-		// Prepare the first timestep
-		// TODO: How does this work without correct color cube?
-		//launchTSPTraversal(0);
-		//readRequestedBricks();
-		//_brickManager->BuildBrickList(BrickManager::EVEN, _brickRequest);
-		//_brickManager->DiskToPBO(BrickManager::EVEN);
-	}
-	return success;
+    return success;
 }
 
 bool RenderableMultiresVolume::deinitialize() {
-	return true;
+    if (_tsp)
+        delete _tsp;
+    if (_transferFunctionFile)
+        delete _transferFunctionFile;
+    if (_transferFunction)
+        delete _transferFunction;
+    _tsp = nullptr;
+    _transferFunctionFile = nullptr;
+    _transferFunction = nullptr;
+
+    glDeleteVertexArrays(1, &_boxArray);
+    glDeleteBuffers(1, &_vertexPositionBuffer);
+
+    return true;
 }
 
 bool RenderableMultiresVolume::isReady() const {
-	return true;
+    return true;
 }
 
 std::string RenderableMultiresVolume::getGlslHelpers() {
-    return "";
+    std::ifstream f(absPath(GlslHelpersPath));
+    std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    f.close();
+    return str;
 }
 
 void RenderableMultiresVolume::render(const RenderData& data) {
-	const int numTimesteps = _tsp->header().numTimesteps_;
-	const int currentTimestep = _timestep % numTimesteps;
-	const int nextTimestep = (currentTimestep + 1) % numTimesteps;
+    if(_updateTransferfunction) {
+        _updateTransferfunction = false;
+        ghoul::opengl::Texture* transferFunction = loadTransferFunction(_transferFunctionPath);
+        if(transferFunction) {
+            const void* data = transferFunction->pixelData();
+            glBindBuffer(GL_COPY_READ_BUFFER, *transferFunction);
+            _transferFunction->bind();
+            glTexImage1D(   GL_TEXTURE_1D, 0, _transferFunction->internalFormat(),
+                            static_cast<GLsizei>(_transferFunction->width()),0, _transferFunction->format(),
+                            _transferFunction->dataType(), data);
+            delete transferFunction;
+        }
+    }
 
-	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
-	if (currentTimestep % 2 == 0) {
-		currentBuf = BrickManager::EVEN;
-		nextBuf = BrickManager::ODD;
-	}
-	else {
-		currentBuf = BrickManager::ODD;
-		nextBuf = BrickManager::EVEN;
-	}
+    glm::mat4 transform = glm::mat4(1.0);
+    transform = glm::scale(transform, _boxScaling);
 
-	if (false) {
-		// Render color cubes
-		renderColorCubeTextures(data);
+    // fetch data
+    psc currentPosition = data.position;
+    currentPosition += _pscOffset; // Move box to model barycenter
 
-		selectBricksGpu(data);
+    _boxProgram->activate();
+    _boxProgram->setUniform("volumeType", _id);
+    _boxProgram->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
+    _boxProgram->setUniform("modelTransform", transform);
+    setPscUniforms(_boxProgram, &data.camera, currentPosition);
 
-		// PBO to atlas
-		_brickManager->PBOToAtlas(currentBuf);
+    // make sure GL_CULL_FACE is enabled (it should be)
+    glEnable(GL_CULL_FACE);
 
-		// Dispatch Raycaster for currentTimestep
-		launchRaycaster(currentTimestep, _brickManager->brickList(currentBuf), data);
+    //  Draw backface
+    glCullFace(GL_FRONT);
+    glBindVertexArray(_boxArray);
+    glDrawArrays(GL_TRIANGLES, 0, 6*6);
 
-		// Disk to PBO
-		_brickManager->BuildBrickList(nextBuf, _brickRequest);
-		_brickManager->DiskToPBO(nextBuf);
+    //  Draw frontface (now the normal cull face is is set)
+    glCullFace(GL_BACK);
+    glDrawArrays(GL_TRIANGLES, 0, 6*6);
 
-	} else {
-		// Render color cubes
-		renderColorCubeTextures(data, true);
-
-		_brickSelector->setSpatialTolerance(_spatialTolerance);
-		_brickSelector->setTemporalTolerance(_temporalTolerance);
-		_brickSelector->selectBricks(nextTimestep, _brickIndices);
-
-		_atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
-
-		raycast(currentTimestep, _atlasManager->atlasMap(), data);
-	}
-
-	// To screen
-	// @REFACTOR Possible remove and rendering directly to ABuffer (#95) ---abock
-	OsEng.renderEngine()->abuffer()->resetBindings();
-	_textureToAbuffer->activate();
-
-	setPscUniforms(_textureToAbuffer, &data.camera, data.position);
-	_textureToAbuffer->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-	_textureToAbuffer->setUniform("modelTransform", glm::mat4(1.0));
-
-	// Bind texture
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-	glBindVertexArray(_boxArray);
-	//glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glCullFace(GL_FRONT);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-	_textureToAbuffer->deactivate();
-	glCullFace(GL_BACK);
-	glDisable(GL_CULL_FACE);
-
-	if (_pscColorPassthrough) {
-		_pscColorPassthrough->activate();
-
-
-		setPscUniforms(_pscColorPassthrough, &data.camera, data.position);
-		_pscColorPassthrough->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-		_pscColorPassthrough->setUniform("modelTransform", glm::mat4(1.0));
-
-		glBindVertexArray(_boxArray);
-		glDrawArrays(GL_LINES, 0, 6 * 6);
-		_pscColorPassthrough->deactivate();
-	}
-
-	// TODO: use open space central time to determine timestep.
-	_timestep++;
+    _boxProgram->deactivate();
 }
 
-void RenderableMultiresVolume::selectBricksGpu(const RenderData& data) {
-	const int numTimesteps = _tsp->header().numTimesteps_;
-	const int currentTimestep = _timestep % numTimesteps;
-	const int nextTimestep = (currentTimestep + 1) % numTimesteps;
+void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program) {
+    const int numTimesteps = _tsp->header().numTimesteps_;
+    const int currentTimestep = _timestep % numTimesteps;
 
-	BrickManager::BUFFER_INDEX currentBuf, nextBuf;
-	if (currentTimestep % 2 == 0) {
-		currentBuf = BrickManager::EVEN;
-		nextBuf = BrickManager::ODD;
-	}
-	else {
-		currentBuf = BrickManager::ODD;
-		nextBuf = BrickManager::EVEN;
-	}
+    _brickSelector->setSpatialTolerance(_spatialTolerance);
+    _brickSelector->setTemporalTolerance(_temporalTolerance);
+    _brickSelector->selectBricks(currentTimestep, _brickIndices);
 
+    _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
 
-	// Dispatch TSP traversal
-	// @REFACTOR move into readRequestedBricks function ---abock
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	_tspTraversal->activate();
+    program->setUniform(getGlslName("transferFunction"), getTextureUnit(_transferFunction));
+    program->setUniform(getGlslName("textureAtlas"), getTextureUnit(_atlasManager->textureAtlas()));
+    program->setSsboBinding(getGlslName("atlasMapBlock"), getSsboBinding(_atlasManager->atlasMapBuffer()));
 
-	// Bind textures
-	ghoul::opengl::TextureUnit unit1;
-	unit1.activate();
-	_backTexture->bind();
+    program->setUniform(getGlslName("gridType"), static_cast<int>(_tsp->header().gridType_));
+    program->setUniform(getGlslName("maxNumBricksPerAxis"), static_cast<unsigned int>(_tsp->header().xNumBricks_));
+    program->setUniform(getGlslName("paddedBrickDim"), static_cast<unsigned int>(_tsp->paddedBrickDim()));
 
-	// Set uniforms
-	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
-	int gridType = static_cast<int>(_tsp->header().gridType_);
-
-	_tspTraversal->setUniform("cubeBack", unit1);
-	_tspTraversal->setUniform("gridType", gridType);
-	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
-	_tspTraversal->setUniform("stepSize", 1.0f/128);
-	_tspTraversal->setUniform("numTimesteps", numTimesteps);
-	_tspTraversal->setUniform("numValuesPerNode", _tsp->numValuesPerNode());
-	_tspTraversal->setUniform("numOTNodes", numOTNodes);
-
-	_tspTraversal->setUniform("temporalTolerance", _temporalTolerance);
-	_tspTraversal->setUniform("spatialTolerance", _spatialTolerance);
-	_tspTraversal->setUniform("timestep", nextTimestep);
-	_tspTraversal->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-	_tspTraversal->setUniform("modelTransform", glm::mat4(1.0));
-	setPscUniforms(_tspTraversal, &data.camera, data.position);
-
-	// bind textures
-	glBindVertexArray(_boxArray);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _reqeustedBrickSSO);
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-	// Dispatch
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-
-	_tspTraversal->deactivate();
-	glBindImageTexture(3, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-	readRequestedBricks();
+    _timestep++;
 }
 
+std::string RenderableMultiresVolume::getSampler(const std::string& functionName) {
+    std::stringstream ss;
+
+    ss << "vec4 " << functionName << "(vec3 samplePos, vec3 dir, "
+       << "float occludingAlpha, inout float maxStepSize) {" << std::endl
+       << "    if (" << getGlslName("gridType") << " == 1) {" << std::endl
+       << "        samplePos = multires_cartesianToSpherical(samplePos);" << std::endl
+       << "    }" << std::endl
+       << "    vec3 sampleCoords = " << getGlslName("atlasCoordsFunction") << "(samplePos);" << std::endl
+
+       << "    float intensity = texture(" << getGlslName("textureAtlas") << ", sampleCoords).x;" << std::endl
+       << "    vec4 contribution = texture(" << getGlslName("transferFunction") << ", intensity);" << std::endl
+       << "    maxStepSize = 0.01;" << std::endl
+       << "    return contribution;" << std::endl
+       << "}" << std::endl;
+
+    return ss.str();
+}
+
+std::string RenderableMultiresVolume::getStepSizeFunction(const std::string& functionName) {
+    std::stringstream ss;
+    ss << "float " << functionName << "(vec3 samplePos, vec3 dir) {" << std::endl
+       << "    return 0.01;" << std::endl // TODO: Calculate maximum step size as distance to next voxel
+       << "}" << std::endl;
+
+    return ss.str();
+}
+
+std::string RenderableMultiresVolume::getHeader() {
+    std::stringstream ss;
+    ss << "uniform sampler1D " << getGlslName("transferFunction") << ";" << std::endl
+       << "uniform sampler3D " << getGlslName("textureAtlas") << ";" << std::endl
+       << "uniform int " << getGlslName("gridType") << ";" << std::endl
+       << "uniform uint " << getGlslName("maxNumBricksPerAxis") << ";" << std::endl
+       << "uniform uint " << getGlslName("paddedBrickDim") << ";" << std::endl
+
+       << "layout (shared) buffer " << getGlslName("atlasMapBlock") << " {" << std::endl
+       << "    uint " << getGlslName("atlasMap") << "[];" << std::endl
+       << "};" << std::endl;
+
+    ss << "void " << getGlslName("atlasMapDataFunction") << "(ivec3 brickCoords, inout uint atlasIntCoord, inout uint level) {" << std::endl
+       << "    int linearBrickCoord = multires_intCoord(brickCoords, ivec3(" << getGlslName("maxNumBricksPerAxis") << "));" << std::endl
+       << "    uint mapData = " << getGlslName("atlasMap") << "[linearBrickCoord];" << std::endl
+       << "    level = mapData >> 28;" << std::endl
+       << "    atlasIntCoord = mapData & 0x0FFFFFFF;" << std::endl
+       << "}" << std::endl;
+
+    ss << "vec3 " << getGlslName("atlasCoordsFunction") << "(vec3 position) {" << std::endl
+       << "    uint maxNumBricksPerAxis = " << getGlslName("maxNumBricksPerAxis") << ";" << std::endl
+       << "    uint paddedBrickDim = " << getGlslName("paddedBrickDim") << ";" << std::endl
+
+       << "    ivec3 brickCoords = ivec3(position * maxNumBricksPerAxis);" << std::endl
+       << "    uint atlasIntCoord, level;" << std::endl
+       << "    " << getGlslName("atlasMapDataFunction") << "(brickCoords, atlasIntCoord, level);" << std::endl
+
+       << "    float levelDim = float(maxNumBricksPerAxis) / pow(2.0, level);" << std::endl
+       << "    vec3 inBrickCoords = mod(position*levelDim, 1.0);" << std::endl
+
+       << "    float scale = float(paddedBrickDim) - 2.0;" << std::endl
+       << "    vec3 paddedInBrickCoords = (1.0 + inBrickCoords * scale) / paddedBrickDim;" << std::endl
+
+       << "    ivec3 numBricksInAtlas = textureSize(" << getGlslName("textureAtlas") << ", 0) / int(paddedBrickDim);" << std::endl
+       << "    vec3 atlasOffset = multires_vec3Coords(atlasIntCoord, numBricksInAtlas);" << std::endl
+
+       << "    return (atlasOffset + paddedInBrickCoords) / vec3(numBricksInAtlas);" << std::endl
+       << "}" << std::endl;
+
+    return ss.str();
+}
+
+std::vector<ghoul::opengl::Texture*> RenderableMultiresVolume::getTextures() {
+    std::vector<ghoul::opengl::Texture*> textures{_transferFunction, _atlasManager->textureAtlas()};
+    return textures;
+}
+
+std::vector<int> RenderableMultiresVolume::getBuffers() {
+    std::vector<int> buffers{_atlasManager->atlasMapBuffer()};
+    return buffers;
+}
 
 void RenderableMultiresVolume::update(const UpdateData& data) {
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////
-// MultiresVolume internal functions
-//////////////////////////////////////////////////////////////////////////////////////////
-
-void RenderableMultiresVolume::readRequestedBricks() {
-	memset(_brickRequest.data(), 0, _brickRequest.size()*sizeof(int));
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // Might not work on AMD 
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _reqeustedBrickSSO);
-#if 1
-
-	GLint* d = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_WRITE);
-	memcpy(_brickRequest.data(), d, sizeof(GLint)*_tsp->numTotalNodes());
-
-	// Clear the buffer after fetching brick request.
-	memset(d, 0, _brickRequest.size()*sizeof(int));
-	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-#else
-	glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLint) *_tsp->numTotalNodes(), _brickRequest.data());
-#endif
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-}
-
-void RenderableMultiresVolume::raycast(int timestep, const std::vector<unsigned int>& atlasMap, const RenderData& data) {
-	_multiresRaycaster->activate();
-	// Bind textures
-	ghoul::opengl::TextureUnit unit1;
-	ghoul::opengl::TextureUnit unit2;
-	ghoul::opengl::TextureUnit unit3;
-	unit1.activate();
-	_backTexture->bind();
-	unit2.activate();
-	_transferFunction->bind();
-	unit3.activate();
-	_atlasManager->textureAtlas()->bind();
-
-	// Set uniforms
-	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
-	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
-	int rootLevel = static_cast<int>(_tsp->numOTLevels()) - 1;
-	int paddedBrickDim = static_cast<int>(_tsp->paddedBrickDim());
-	int numBricksPerAxis = static_cast<int>(_tsp->numBricksPerAxis());
-	int gridType = static_cast<int>(_tsp->header().gridType_);
-
-	const Camera& camera = data.camera;
-	const psc& position = data.position;
-	setPscUniforms(_multiresRaycaster, &camera, position);
-	_multiresRaycaster->setUniform("modelViewProjection", camera.viewProjectionMatrix());
-	_multiresRaycaster->setUniform("modelTransform", glm::mat4(1.0));
-	_multiresRaycaster->setUniform("invModelTransform", glm::inverse(glm::mat4(1.0)));
-	_multiresRaycaster->setUniform("invViewProjection", glm::inverse(camera.viewProjectionMatrix()));
-	_multiresRaycaster->setUniform("inv_camrot", glm::inverse(camera.viewRotationMatrix()));
-
-	_multiresRaycaster->setUniform("cubeFront", unit1);
-	_multiresRaycaster->setUniform("transferFunction", unit2);
-	_multiresRaycaster->setUniform("textureAtlas", unit3);
-
-	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
-	_multiresRaycaster->setUniform("gridType", gridType);
-	_multiresRaycaster->setUniform("stepSize", 1.0f/128);
-	_multiresRaycaster->setUniform("maxNumBricksPerAxis", _tsp->header().xNumBricks_);
-	_multiresRaycaster->setUniform("paddedBrickDim", paddedBrickDim);
-
-	GLuint size = sizeof(GLint)*atlasMap.size();
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
-
-	// TODO: Should we ignore reducing the buffer size if possible?
-	// if (size > _bricksSSOSize) { ... ?
-
-	if (size != _brickSSOSize) {
-	  // Buffer needs to be resized.
-	  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*atlasMap.size(), NULL, GL_DYNAMIC_READ);
-	  _brickSSOSize = size;
-	}
-
-	GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
-	// Upload brick list to GPU
-	memcpy(to, atlasMap.data(), sizeof(GLint)*atlasMap.size());
-	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	// bind textures
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _brickSSO);
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-	// Dispatch
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_FRONT);
-	glBindVertexArray(_boxArray);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-	glCullFace(GL_BACK);
-
-	_multiresRaycaster->deactivate();
-}
-
-void RenderableMultiresVolume::launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data) {
-	_raycasterTsp->activate();
-	// Bind textures
-	ghoul::opengl::TextureUnit unit1;
-	ghoul::opengl::TextureUnit unit2;
-	ghoul::opengl::TextureUnit unit3;
-	unit1.activate();
-	_backTexture->bind();
-	unit2.activate();
-	_transferFunction->bind();
-	unit3.activate();
-	_brickManager->textureAtlas()->bind();
-
-	// Set uniforms
-	int timesteps = static_cast<int>(_tsp->header().numTimesteps_);
-	int numOTNodes = static_cast<int>(_tsp->numOTNodes());
-	int rootLevel = static_cast<int>(_tsp->numOTLevels()) - 1;
-	int paddedBrickDim = static_cast<int>(_tsp->paddedBrickDim());
-	int numBricksPerAxis = static_cast<int>(_tsp->numBricksPerAxis());
-	int gridType = static_cast<int>(_tsp->header().gridType_);
-
-	const Camera& camera = data.camera;
-	const psc& position = data.position;
-	setPscUniforms(_raycasterTsp, &camera, position);
-	_raycasterTsp->setUniform("modelViewProjection", camera.viewProjectionMatrix());
-	_raycasterTsp->setUniform("modelTransform", glm::mat4(1.0));
-
-	_raycasterTsp->setUniform("cubeBack", unit1);
-	_raycasterTsp->setUniform("transferFunction", unit2);
-	_raycasterTsp->setUniform("textureAtlas", unit3);
-
-	_raycasterTsp->setUniform("gridType", gridType);
-	// TODO: Use stepSize parameter from mod-file instead of hard coded value.
-	_raycasterTsp->setUniform("stepSize", 1.0f/128);
-	_raycasterTsp->setUniform("numTimesteps", timesteps);
-	_raycasterTsp->setUniform("numOTNodes", numOTNodes);
-	_raycasterTsp->setUniform("temporalTolerance", _temporalTolerance);
-	_raycasterTsp->setUniform("spatialTolerance", _spatialTolerance);
-	_raycasterTsp->setUniform("timestep", timestep);
-	_raycasterTsp->setUniform("rootLevel", rootLevel);
-	_raycasterTsp->setUniform("paddedBrickDim", paddedBrickDim);
-	_raycasterTsp->setUniform("numBoxesPerAxis", numBricksPerAxis);
-
-	GLuint size = sizeof(GLint)*brickList.size();
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, _brickSSO);
-
-	// TODO: Should we ignore reducing the buffer size if possible?
-	// if (size > _bricksSSOSize) { ... ?
-
-	if (size != _brickSSOSize) {
-	  // Buffer needs to be resized.
-	  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*brickList.size(), NULL, GL_DYNAMIC_READ);
-	  _brickSSOSize = size;
-	}
-
-	GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
-	// Upload brick list to GPU
-	memcpy(to, brickList.data(), sizeof(GLint)*brickList.size());
-	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-	// bind textures
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _tsp->ssbo());
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _brickSSO);
-	glBindImageTexture(3, *_outputTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	//glBindImageTexture(4, *_brickManager->textureAtlas(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-
-	// Dispatch
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glBindVertexArray(_boxArray);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-
-	_raycasterTsp->deactivate();
-}
-
-void RenderableMultiresVolume::PBOToAtlas(size_t buffer){
-}
-
-void RenderableMultiresVolume::buildBrickList(size_t buffer, const Bricks& bricks){
-}
-
-void RenderableMultiresVolume::diskToPBO(size_t buffer){
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-// Internal helper functions
-//////////////////////////////////////////////////////////////////////////////////////////
-void RenderableMultiresVolume::initializeColorCubes() {
-	// ============================
-	//	GEOMETRY (box)
-	// ============================
-	const GLfloat size = 0.5f;
-	const GLfloat _w = 0.0f;
-	const GLfloat vertex_data[] = {
-		//  x,	   y,	  z,	 s,
-		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
-		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
-		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
-		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
-		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
-		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
-
-		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
-		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
-		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
-		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
-		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
-		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
-
-		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
-		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
-		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
-		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
-		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
-		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
-
-		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
-		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
-		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
-		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
-		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
-		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
-
-		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
-		-size, size, size, _w, 0.0, 1.0, 1.0, 1.0,
-		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
-		-size, size, -size, _w, 0.0, 1.0, 0.0, 1.0,
-		size, size, size, _w, 1.0, 1.0, 1.0, 1.0,
-		size, size, -size, _w, 1.0, 1.0, 0.0, 1.0,
-
-		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
-		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
-		-size, -size, size, _w, 0.0, 0.0, 1.0, 1.0,
-		-size, -size, -size, _w, 0.0, 0.0, 0.0, 1.0,
-		size, -size, -size, _w, 1.0, 0.0, 0.0, 1.0,
-		size, -size, size, _w, 1.0, 0.0, 1.0, 1.0,
-	};
-
-	GLuint vertexPositionBuffer;
-	glGenVertexArrays(1, &_boxArray); // generate array
-	glBindVertexArray(_boxArray); // bind array
-	glGenBuffers(1, &vertexPositionBuffer); // generate buffer
-	glBindBuffer(GL_ARRAY_BUFFER, vertexPositionBuffer); // bind buffer
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 8, reinterpret_cast<void*>(0));
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 8, reinterpret_cast<void*>(sizeof(GLfloat) * 4));
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-
-	_fbo = new FramebufferObject();
-	_fbo->activate();
-	int x1, xSize, y1, ySize;
-	sgct::Engine::instance()->getActiveWindowPtr()->getCurrentViewportPixelCoords(x1, y1, xSize, ySize);
-	size_t x = static_cast<size_t>(xSize);
-	size_t y = static_cast<size_t>(ySize);
-
-	const ghoul::opengl::Texture::Format format = ghoul::opengl::Texture::Format::RGBA;
-	GLint internalFormat = GL_RGBA;
-	GLenum dataType = GL_FLOAT;
-
-	_backTexture = new Texture(glm::size3_t(x, y, 1));
-	_outputTexture = new Texture(glm::size3_t(x, y, 1), format, GL_RGBA32F, dataType);
-	_backTexture->uploadTexture();
-	_outputTexture->uploadTexture();
-	_fbo->attachTexture(_backTexture, GL_COLOR_ATTACHMENT0);
-	_fbo->deactivate();
-}
-
-void RenderableMultiresVolume::renderColorCubeTextures(const RenderData& data, bool front) {
-	GLuint activeFBO = FramebufferObject::getActiveObject(); // Save SGCTs main FBO
-	_fbo->activate();
-	_cubeProgram->activate();
-
-	const Camera& camera = data.camera;
-	const psc& position = data.position;
-	setPscUniforms(_cubeProgram, &camera, position);
-	_cubeProgram->setUniform("modelViewProjection", camera.viewProjectionMatrix());
-	_cubeProgram->setUniform("modelTransform", glm::mat4(1.0));
-
-	sgct_core::Frustum::FrustumMode mode = sgct::Engine::instance()->
-		getActiveWindowPtr()->
-		getCurrentViewport()->
-		getEye();
-
-	// If stereo is activated we don't want to clear the 
-	if (mode == sgct_core::Frustum::FrustumMode::Mono ||
-		mode == sgct_core::Frustum::FrustumMode::StereoLeftEye) {
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
-	// make sure GL_CULL_FACE is enabled (it should be disabled for the abuffer)
-	glEnable(GL_CULL_FACE);
-
-	//	Draw backface
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	if (front) {
-		glCullFace(GL_BACK);
-	} else {
-		glCullFace(GL_FRONT);
-	}
-	glBindVertexArray(_boxArray);
-	glDrawArrays(GL_TRIANGLES, 0, 6 * 6);
-	_fbo->deactivate();
-	glCullFace(GL_BACK);
-
-	// rebind the previous FBO
-	glBindFramebuffer(GL_FRAMEBUFFER, activeFBO);
 
 }
 

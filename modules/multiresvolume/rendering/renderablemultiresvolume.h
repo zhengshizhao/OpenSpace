@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -25,97 +25,82 @@
 #ifndef __RENDERABLEMULTIRESVOLUME_H__
 #define __RENDERABLEMULTIRESVOLUME_H__
 
-// open space includes
+#include <vector>
 #include <modules/volume/rendering/renderablevolume.h>
-#include <openspace/util/updatestructures.h>
+#include <openspace/util/powerscaledcoordinate.h>
 
-// ghoul includes
-#include <ghoul/opengl/ghoul_gl.h>
-
+// Forward declare to minimize dependencies
 namespace ghoul {
-	namespace opengl {
-		class Texture;
-		class ProgramObject;
-		class FramebufferObject;
-	}
+    namespace filesystem {
+        class File;
+    }
+    namespace opengl {
+        class ProgramObject;
+        class Texture;
+    }
 }
 
 namespace openspace {
 // Forward declare
 class TSP;
-class BrickManager;
 class AtlasManager;
 class BrickSelector;
 
-
-class RenderableMultiresVolume : public RenderableVolume {
+class RenderableMultiresVolume: public RenderableVolume {
 public:
-	RenderableMultiresVolume(const ghoul::Dictionary& dictionary);
-	~RenderableMultiresVolume();
+    RenderableMultiresVolume(const ghoul::Dictionary& dictionary);
+    ~RenderableMultiresVolume();
 
-	bool initialize();
-	bool deinitialize();
+    bool initialize() override;
+    bool deinitialize() override;
 
-	virtual bool isReady() const;
+    bool isReady() const override;
 
-	static std::string getGlslHelpers();
+    std::string getGlslHelpers();
 
-	void render(const RenderData& data) override;
-	void update(const UpdateData& data) override;
+    virtual void render(const RenderData& data) override;
+    virtual void update(const UpdateData& data) override;
+    virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
+    virtual std::string getSampler(const std::string& functionName) override;
+    virtual std::string getStepSizeFunction(const std::string& functionName) override;
+    virtual std::string getHeader() override;
+    virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
+    virtual std::vector<int> getBuffers() override;
 
 private:
+    int _timestep;
+    std::string _filename;
 
-	// Types
-	typedef std::vector<int> Bricks;
+    std::string _transferFunctionName;
+    std::string _volumeName;
 
-	// MultiresVolume internal functions
-	void readRequestedBricks();
-	void launchRaycaster(int timestep, const std::vector<int>& brickList, const RenderData& data);
-	void raycast(int timestep, const std::vector<unsigned int>&atlasMap, const RenderData& data);
-	void PBOToAtlas(size_t buffer);
-	void buildBrickList(size_t buffer, const Bricks& bricks);
-	void diskToPBO(size_t buffer);
+    std::string _transferFunctionPath;
 
-	// Internal helper functions
-	void initializeColorCubes();
-	void renderColorCubeTextures(const RenderData& data, bool front = false);
-	void selectBricksGpu(const RenderData& data);
+    ghoul::filesystem::File* _transferFunctionFile;
 
-	// 
-	TSP* _tsp;
-	BrickManager* _brickManager;
-	AtlasManager* _atlasManager;
-	BrickSelector* _brickSelector;
+    ghoul::opengl::Texture* _transferFunction;
 
-	float _spatialTolerance;
-	float _temporalTolerance;
+    GLuint _boxArray;
+    GLuint _vertexPositionBuffer;
+    ghoul::opengl::ProgramObject* _boxProgram;
+    glm::vec3 _boxScaling;
+    psc _pscOffset;
+    float _w;
 
-	GLuint _boxArray;
-	GLuint _dispatchBuffers[2];
-	//GLuint _brickRequestBuffer, _brickRequestTexture;
-	GLuint _reqeustedBrickSSO;
-	GLuint _brickSSO;
-	GLuint _brickSSOSize;
-	ghoul::opengl::ProgramObject* _tspTraversal;
-	ghoul::opengl::ProgramObject* _raycasterTsp;
-	ghoul::opengl::ProgramObject* _multiresRaycaster;
-	ghoul::opengl::ProgramObject* _pscColorPassthrough;
+    bool _updateTransferfunction;
+    int _id;
 
-	ghoul::opengl::ProgramObject* _cubeProgram;
-	ghoul::opengl::ProgramObject* _textureToAbuffer;
+    float _spatialTolerance;
+    float _temporalTolerance;
 
-	ghoul::opengl::FramebufferObject* _fbo;
-	ghoul::opengl::Texture* _backTexture;
-	ghoul::opengl::Texture* _outputTexture;
-	ghoul::opengl::Texture* _transferFunction;
+    TSP* _tsp;
+    std::vector<int> _brickIndices;
+    int _atlasMapSize;
 
-	// TSP data members
-	Bricks _brickRequest;
-	std::vector<int> _brickIndices;
-
-	// Animation
-	unsigned int _timestep;
+    AtlasManager* _atlasManager;
+    BrickSelector* _brickSelector;
 };
 
 } // namespace openspace
+
 #endif // __RENDERABLEMULTIRESVOLUME_H__

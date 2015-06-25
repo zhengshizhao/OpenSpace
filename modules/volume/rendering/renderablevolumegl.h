@@ -69,7 +69,6 @@ private:
 	std::string _volumeName;
 
     std::string _transferFunctionPath;
-	std::string _samplerFilename;
     
     ghoul::filesystem::File* _transferFunctionFile;
 

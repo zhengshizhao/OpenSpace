@@ -96,14 +96,6 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 	}
 	_transferFunctionPath = absPath(_transferFunctionPath);
 	_transferFunctionFile = new ghoul::filesystem::File(_transferFunctionPath, true);
-    
-	_samplerFilename = "";
-	success = dictionary.getValue(KeySampler, _samplerFilename);
-	if (!success) {
-		LERROR("Node '" << name << "' did not contain a valid '" << KeySampler << "'");
-		return;
-	}
-    _samplerFilename = absPath(_samplerFilename);
 
 	KameleonWrapper kw(_filename);
 	auto t = kw.getGridUnits();

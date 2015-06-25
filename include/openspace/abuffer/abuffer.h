@@ -70,6 +70,7 @@ public:
 	//void removeVolume(ABufferVolume* volume);
 	std::string getGlslName(ABufferVolume* volume, const std::string& key);
 	int getTextureUnit(ghoul::opengl::Texture* texture);
+	int getSsboBinding(int ssboId);
 
 	void invalidateABuffer();
     
@@ -116,6 +117,7 @@ private:
 	std::vector<std::string> _samplers;
 	std::string generateGlslName(const std::string& name);
 	std::map<ghoul::opengl::Texture*, int> _textureUnits;
+	std::map<int, int> _bufferBindings;
 	int nextGlslNameId = 0;
 	int nextId = 1;
 	float _volumeStepFactor;

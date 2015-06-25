@@ -42,15 +42,8 @@ set(SOURCE_FILES
 )
 source_group("Source Files" FILES ${SOURCE_FILES})
 
-set(SHADER_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/multiresRaycaster_fs.glsl
-    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/multiresRaycaster_vs.glsl
-    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/passthrough_vs.glsl
-)
-source_group("Shader Files" FILES ${SHADER_FILES})
-
 create_new_module(
     "MultiresVolume"
     multiresvolume_module
-    ${HEADER_FILES} ${SOURCE_FILES} ${SHADER_FILES}
+    ${HEADER_FILES} ${SOURCE_FILES}
 )

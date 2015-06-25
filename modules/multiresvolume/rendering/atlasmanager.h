@@ -51,8 +51,9 @@ public:
     void updateAtlas(BUFFER_INDEX bufferIndex, std::vector<int>& brickIndices);
     void addToAtlas(int firstBrickIndex, int lastBrickIndex, float* mappedBuffer);
     void removeFromAtlas(int brickIndex);
-    void initialize();
+    bool initialize();
     std::vector<unsigned int> atlasMap();
+    unsigned int atlasMapBuffer();
 
     void pboToAtlas(BUFFER_INDEX bufferIndex);
     ghoul::opengl::Texture* textureAtlas();
@@ -60,6 +61,7 @@ private:
     const unsigned int NOT_USED = UINT_MAX;
     TSP* _tsp;
     unsigned int _pboHandle[2];
+    unsigned int _atlasMapBuffer;
 
     std::vector<unsigned int> _atlasMap;
     std::map<unsigned int, unsigned int> _brickMap;
@@ -78,6 +80,7 @@ private:
                  _volumeSize,
                  _paddedBrickDim,
                  _nBricksInAtlas,
+                 _nBricksInMap,
                  _atlasDim;
 
     void fillVolume(float* in, float* out, unsigned int linearAtlasCoords);

@@ -22,7 +22,7 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#include <openspace/rendering/flare/atlasmanager.h>
+#include <modules/multiresvolume/rendering/atlasmanager.h>
 
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/logging/logmanager.h>
@@ -31,6 +31,7 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <cstring>
 
 namespace {
     const std::string _loggerCat = "AtlasManager";
@@ -38,16 +39,11 @@ namespace {
 
 namespace openspace {
 
-AtlasManager::AtlasManager(TSP* tsp) 
-    : _tsp(tsp)
-{
-}
+AtlasManager::AtlasManager(TSP* tsp) : _tsp(tsp) {}
 
-AtlasManager::~AtlasManager() {
+AtlasManager::~AtlasManager() {}
 
-}
-
-void AtlasManager::initialize() {
+bool AtlasManager::initialize() {
     TSP::Header header = _tsp->header();
 
     _nBricksPerDim = header.xNumBricks_;
@@ -55,12 +51,13 @@ void AtlasManager::initialize() {
     _nOtNodes = _tsp->numOTNodes();
     _nOtLevels = log(_nOtLeaves)/log(8) + 1;
     _paddedBrickDim = _tsp->paddedBrickDim();
-    _nBricksInAtlas = _nBricksPerDim * _nBricksPerDim * _nBricksPerDim;
+    _nBricksInMap = _nBricksPerDim * _nBricksPerDim * _nBricksPerDim;
     _atlasDim = _nBricksPerDim * _paddedBrickDim;
     _nBrickVals = _paddedBrickDim*_paddedBrickDim*_paddedBrickDim;
     _brickSize = _nBrickVals * sizeof(float);
     _volumeSize = _brickSize * _nOtLeaves;
     _atlasMap = std::vector<unsigned int>(_nOtLeaves, NOT_USED);
+    _nBricksInAtlas = _nBricksInMap;
 
     _freeAtlasCoords = std::vector<unsigned int>(_nBricksInAtlas, 0);
 
@@ -76,10 +73,21 @@ void AtlasManager::initialize() {
     _textureAtlas->uploadTexture();
 
     glGenBuffers(2, _pboHandle);
+
+    glGenBuffers(1, &_atlasMapBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _atlasMapBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*_nBricksInMap, NULL, GL_DYNAMIC_READ);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    return true;
 }
 
 std::vector<unsigned int> AtlasManager::atlasMap() {
     return _atlasMap;
+}
+
+unsigned int AtlasManager::atlasMapBuffer() {
+    return _atlasMapBuffer;
 }
 
 void AtlasManager::updateAtlas(BUFFER_INDEX bufferIndex, std::vector<int>& brickIndices) {
@@ -130,6 +138,13 @@ void AtlasManager::updateAtlas(BUFFER_INDEX bufferIndex, std::vector<int>& brick
     std::swap(_prevRequiredBricks, _requiredBricks);
 
     pboToAtlas(bufferIndex);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _atlasMapBuffer);
+    GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+    memcpy(to, _atlasMap.data(), sizeof(GLint)*_atlasMap.size());
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
 }
 
 void AtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, float* mappedBuffer) {
