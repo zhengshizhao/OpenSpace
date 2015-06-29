@@ -69,13 +69,8 @@ ABuffer::ABuffer()
 }
 
 ABuffer::~ABuffer() {
-
     if(_resolveShader)
         delete _resolveShader;
-
-    for(auto file: _samplerFiles) {
-        delete file;
-    }
 }
 
 bool ABuffer::initializeABuffer() {
@@ -96,13 +91,14 @@ bool ABuffer::initializeABuffer() {
         return false;
     _resolveShader->setProgramObjectCallback(shaderCallback);
 
-#ifndef __APPLE__
+    // Remove explicit callback and use programobject isDirty instead ---abock
+
     // ============================
     //         GEOMETRY (quad)
     // ============================
     const GLfloat size = 1.0f;
-    const GLfloat vertex_data[] = { // square of two triangles (sigh)
-        //      x      y     z     w     s     t
+    const GLfloat vertex_data[] = {
+        //	  x      y     s     t
         -size, -size, 0.0f, 1.0f,
         size,    size, 0.0f, 1.0f, 
         -size,  size, 0.0f, 1.0f, 
@@ -110,6 +106,7 @@ bool ABuffer::initializeABuffer() {
         size, -size, 0.0f, 1.0f, 
         size,    size, 0.0f, 1.0f,
     };
+
     GLuint vertexPositionBuffer;
     glGenVertexArrays(1, &_screenQuad); // generate array
     glBindVertexArray(_screenQuad); // bind array
@@ -118,12 +115,10 @@ bool ABuffer::initializeABuffer() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*4, reinterpret_cast<void*>(0));
     glEnableVertexAttribArray(0);
-#endif
     return true;
 }
 
 bool ABuffer::reinitialize() {
-
     // set the total resolution for all viewports
     updateDimensions();
     return reinitializeInternal();
@@ -147,9 +142,7 @@ int ABuffer::getSsboBinding(int ssboId) {
     return _bufferBindings[ssboId];
 }
 
-void ABuffer::resolve() {
-#ifndef __APPLE__
-    
+void ABuffer::resolve(float blackoutFactor) {
     if( ! _validShader) {
         generateShaderSource();
         updateShader();
@@ -160,6 +153,7 @@ void ABuffer::resolve() {
        return;
     
     _resolveShader->activate();
+    _resolveShader->setUniform("blackoutFactor", blackoutFactor);
     
     int nUsedUnits = 0;
     int nUsedBindings = 0;
@@ -205,8 +199,6 @@ void ABuffer::resolve() {
     glDrawArrays(GL_TRIANGLES, 0, 6);
     
     _resolveShader->deactivate();
-
-#endif
 }
 
 void ABuffer::registerGlslHelpers(std::string helpers) {
@@ -219,7 +211,7 @@ int ABuffer::addVolume(ABufferVolume* volume) {
     _glslDictionary.insert(std::pair<ABufferVolume*, std::map<std::string, std::string> >(volume, map));
     return nextId++;
 }
-    
+
     /*    void ABuffer::removeVolume(ABufferVolume* volume) {
     _aBufferVolumes.erase(volume);
     _glslDictionary.erase(volume);
@@ -254,19 +246,6 @@ bool ABuffer::updateShader() {
 }
 
 void ABuffer::generateShaderSource() {
-
-    for(int i = 0; i < _samplerFiles.size(); ++i) {
-        std::string line, source = "";
-        std::ifstream samplerFile(_samplerFiles.at(i)->path());
-        if(samplerFile.is_open()) {
-            while(std::getline(samplerFile, line)) {
-                source += line + "\n";
-            }
-        }
-        samplerFile.close();
-        _samplers.at(i) = source;
-    }
-
     LDEBUG("Generating shader includes");
     generateHelpers();
     generateHeaders();
@@ -348,7 +327,7 @@ void ABuffer::generateSamplerCalls() {
           << "  vec3 jitteredPosition = volume_position[" << i << "] + volume_direction[" << i << "]*jitteredStepSizeLocal;" << std::endl
           << "  volume_position[" << i << "] += volume_direction[" << i << "]*stepSizeLocal;" << std::endl
           << "  vec4 contribution = sampleVolume_" << i << "(jitteredPosition, volume_direction[" << i << "], final_color.a, maxStepSizeLocal);" << std::endl
-          << "  blendStep(final_color, contribution, jitteredStepSizeLocal + previousJitterDistance_" << i << ");" << std::endl
+          << "  blendStep(final_color, contribution, 10 * (jitteredStepSizeLocal + previousJitterDistance_" << i << "));" << std::endl
           << "  previousJitterDistance_" << i << " = stepSizeLocal - jitteredStepSizeLocal;" << std::endl
           << "  maxStepSize"  << " = maxStepSizeLocal/volume_scale[" << i << "];" << std::endl
           << "  nextStepSize = min(nextStepSize, maxStepSize);" << std::endl

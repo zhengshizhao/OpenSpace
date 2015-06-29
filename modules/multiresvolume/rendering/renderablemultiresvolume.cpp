@@ -131,7 +131,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
 }
 
 RenderableMultiresVolume::~RenderableMultiresVolume() {
-    //OsEng.renderEngine()->abuffer()->removeVolume(this);
+    //OsEng.renderEngine()->aBuffer()->removeVolume(this);
     if (_tsp)
         delete _tsp;
     if (_atlasManager)
@@ -142,7 +142,7 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
 
 bool RenderableMultiresVolume::initialize() {
     if (!registeredGlslHelpers) {
-        OsEng.renderEngine()->abuffer()->registerGlslHelpers(RenderableMultiresVolume::getGlslHelpers());
+        OsEng.renderEngine()->aBuffer()->registerGlslHelpers(RenderableMultiresVolume::getGlslHelpers());
         registeredGlslHelpers = true;
     }
 
@@ -169,7 +169,7 @@ bool RenderableMultiresVolume::initialize() {
     success &= _atlasManager && _atlasManager->initialize();
 
     // add the sampler and get the ID
-    _id = OsEng.renderEngine()->abuffer()->addVolume(this);
+    _id = OsEng.renderEngine()->aBuffer()->addVolume(this);
 
     OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
 

@@ -101,8 +101,7 @@ std::string LabelParser::decode(std::string line){
 	for (auto key : _fileTranslation){
 		std::size_t value = line.find(key.first);
 		if (value != std::string::npos){
-			std::string toTranslate = line.substr(value);
-			return _fileTranslation[toTranslate]->getTranslation()[0]; //lbls always 1:1 -> single value return.
+			return _fileTranslation[key.first]->getTranslation()[0]; //lbls always 1:1 -> single value return.
 		}
 	}
 	return "";
@@ -119,7 +118,7 @@ std::string LabelParser::encode(std::string line) {
 	return "";
 }
 
-void LabelParser::create(){
+bool LabelParser::create() {
 	auto imageComparer = [](const Image &a, const Image &b)->bool{
 		return a.startTime < b.startTime;
 	};
@@ -133,7 +132,7 @@ void LabelParser::create(){
 	ghoul::filesystem::Directory sequenceDir(_fileName, true);
     if (!FileSys.directoryExists(sequenceDir)) {
         LERROR("Could not load Label Directory '" << sequenceDir.path() << "'");
-        return;
+        return false;
     }
 	std::vector<std::string> sequencePaths = sequenceDir.read(true, false); // check inputs 
 	for (auto path : sequencePaths){
@@ -256,6 +255,7 @@ void LabelParser::create(){
 	////print all
 	for (auto target : _subsetMap){
 		_instrumentTimes.push_back(std::make_pair(lblName, _subsetMap[target.first]._range));
+
 	//	std::string min, max;
 	//	SpiceManager::ref().getDateFromET(target.second._range._min, min);
 	//	SpiceManager::ref().getDateFromET(target.second._range._max, max);
@@ -282,6 +282,7 @@ void LabelParser::create(){
 
     sendPlaybookInformation(PlaybookIdentifierName);
 
+    return true;
 }
 
 void LabelParser::createImage(Image& image, double startTime, double stopTime, std::vector<std::string> instr, std::string targ, std::string pot) {

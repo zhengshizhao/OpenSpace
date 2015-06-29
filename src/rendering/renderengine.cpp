@@ -48,6 +48,8 @@
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/misc/sharedmemory.h>
 #include <openspace/engine/configurationmanager.h>
+#include <ghoul/systemcapabilities/systemcapabilities.h>
+#include <ghoul/systemcapabilities/openglcapabilitiescomponent.h>
 
 #include <ghoul/io/texture/texturereader.h>
 #ifdef GHOUL_USE_DEVIL
@@ -84,13 +86,6 @@ namespace {
 
     const std::string KeyRenderingMethod = "RenderingMethod";
     const std::string DefaultRenderingMethod = "ABufferSingleLinked";
-
-    const std::map<std::string, int> RenderingMethods = {
-        { "ABufferFrameBuffer", ABUFFER_FRAMEBUFFER},
-        { "ABufferSingleLinked", ABUFFER_SINGLE_LINKED },
-        { "ABufferFixed", ABUFFER_FIXED },
-        { "ABufferDynamic", ABUFFER_DYNAMIC }
-    };
 }
 
 namespace openspace {
@@ -102,7 +97,7 @@ RenderEngine::RenderEngine()
 	: _mainCamera(nullptr)
 	, _sceneGraph(nullptr)
 	, _abuffer(nullptr)
-    , _abufferImplementation(-1)
+    , _abufferImplementation(ABufferImplementation::Invalid)
 	, _log(nullptr)
 	, _showInfo(true)
 	, _showScreenLog(true)
@@ -141,35 +136,43 @@ RenderEngine::~RenderEngine() {
 
 bool RenderEngine::initialize() {
     std::string renderingMethod = DefaultRenderingMethod;
+    
+    // If the user specified a rendering method that he would like to use, use that
     if (OsEng.configurationManager()->hasKeyAndValue<std::string>(KeyRenderingMethod))
         renderingMethod = OsEng.configurationManager()->value<std::string>(KeyRenderingMethod);
+    else {
+        using Version = ghoul::systemcapabilities::OpenGLCapabilitiesComponent::Version;
 
-    auto it = RenderingMethods.find(renderingMethod);
-    if (it == RenderingMethods.end()) {
+        // The default rendering method has a requirement of OpenGL 4.3, so if we are
+        // below that, we will fall back to frame buffer operation
+        if (OpenGLCap.openGLVersion() < Version(4,3)) {
+            LINFO("Falling back to framebuffer implementation due to OpenGL limitations");
+            renderingMethod = "ABufferFrameBuffer";
+        }
+    }
+
+    _abufferImplementation = aBufferFromString(renderingMethod);
+    switch (_abufferImplementation) {
+    case ABufferImplementation::FrameBuffer:
+        LINFO("Creating ABufferFramebuffer implementation");
+        _abuffer = new ABufferFramebuffer;
+        break;
+    case ABufferImplementation::SingleLinked:
+        LINFO("Creating ABufferSingleLinked implementation");
+        _abuffer = new ABufferSingleLinked();
+        break;
+    case ABufferImplementation::Fixed:
+        LINFO("Creating ABufferFixed implementation");
+        _abuffer = new ABufferFixed();
+        break;
+    case ABufferImplementation::Dynamic:
+        LINFO("Creating ABufferDynamic implementation");
+        _abuffer = new ABufferDynamic();
+        break;
+    case ABufferImplementation::Invalid:
         LFATAL("Rendering method '" << renderingMethod << "' not among the available "
             << "rendering methods");
         return false;
-    }
-    else {
-        _abufferImplementation = it->second;
-        switch (_abufferImplementation) {
-        case ABUFFER_FRAMEBUFFER:
-            LINFO("Creating ABufferFramebuffer implementation");
-            _abuffer = new ABufferFramebuffer;
-            break;
-        case ABUFFER_SINGLE_LINKED:
-            LINFO("Creating ABufferSingleLinked implementation");
-            _abuffer = new ABufferSingleLinked();
-            break;
-        case ABUFFER_FIXED:
-            LINFO("Creating ABufferFixed implementation");
-            _abuffer = new ABufferFixed();
-            break;
-        case ABUFFER_DYNAMIC:
-            LINFO("Creating ABufferDynamic implementation");
-            _abuffer = new ABufferDynamic();
-            break;
-        }
     }
 
 	generateGlslConfig();
@@ -274,14 +277,17 @@ bool RenderEngine::initializeGL() {
 		_mainCamera->setMaxFov(maxFov);
 	}
 
+    LINFO("Initializing ABuffer");
 	_abuffer->initialize();
 
+    LINFO("Initializing Log");
 	_log = new ScreenLog();
 	ghoul::logging::LogManager::ref().addLog(_log);
 
+    LINFO("Initializing Visualizer");
 	_visualizer = new ABufferVisualizer();
 
-	// successful init
+    LINFO("Finished initializing GL");
 	return true;
 }
 
@@ -324,7 +330,8 @@ void RenderEngine::postSynchronizationPreDraw() {
 	}
 
 	// converts the quaternion used to rotation matrices
-	_mainCamera->compileViewRotationMatrix();
+    if (_mainCamera)
+        _mainCamera->compileViewRotationMatrix();
 
 	// update and evaluate the scene starting from the root node
 	_sceneGraph->update({
@@ -353,18 +360,20 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 		_abuffer->clear();
 
 	// SGCT resets certain settings
-#ifndef __APPLE__
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_BLEND);
-#else
-	glEnable(GL_DEPTH_TEST);
-//			glDisable(GL_CULL_FACE);
-    glEnable(GL_CULL_FACE);
-//			glDisable(GL_BLEND);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-#endif
+    
+    if (_abufferImplementation == ABufferImplementation::FrameBuffer) {
+        glEnable(GL_DEPTH_TEST);
+        //			glDisable(GL_CULL_FACE);
+        glEnable(GL_CULL_FACE);
+        //			glDisable(GL_BLEND);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+    else {
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+        glDisable(GL_BLEND);
+    }
 	// setup the camera for the current frame
 
 	_mainCamera->setViewMatrix(
@@ -388,7 +397,7 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            _abuffer->resolve();
+            _abuffer->resolve(_globalBlackOutFactor);
             glDisable(GL_BLEND);
         }
         else {
@@ -682,8 +691,12 @@ Camera* RenderEngine::camera() const {
 	return _mainCamera;
 }
 
-ABuffer* RenderEngine::abuffer() const {
+ABuffer* RenderEngine::aBuffer() const {
 	return _abuffer;
+}
+
+RenderEngine::ABufferImplementation RenderEngine::aBufferImplementation() const {
+    return _abufferImplementation;
 }
 
 float RenderEngine::globalBlackOutFactor() {
@@ -719,7 +732,7 @@ void RenderEngine::generateGlslConfig() {
 		<< "#define ABUFFER_SINGLE_LINKED     " << ABUFFER_SINGLE_LINKED << "\n"
 		<< "#define ABUFFER_FIXED             " << ABUFFER_FIXED << "\n"
 		<< "#define ABUFFER_DYNAMIC           " << ABUFFER_DYNAMIC << "\n"
-		<< "#define ABUFFER_IMPLEMENTATION    " << _abufferImplementation << "\n";
+		<< "#define ABUFFER_IMPLEMENTATION    " << int(_abufferImplementation) << "\n";
 	// System specific
 #ifdef WIN32
 	os << "#define WIN32\n";
@@ -1235,6 +1248,20 @@ void RenderEngine::setSGCTRenderStatistics(bool visible) {
 
 void RenderEngine::setDisableRenderingOnMaster(bool enabled) {
     _disableMasterRendering = enabled;
+}
+
+RenderEngine::ABufferImplementation RenderEngine::aBufferFromString(const std::string& impl) {
+    const std::map<std::string, RenderEngine::ABufferImplementation> RenderingMethods = {
+        { "ABufferFrameBuffer", ABufferImplementation::FrameBuffer },
+        { "ABufferSingleLinked", ABufferImplementation::SingleLinked },
+        { "ABufferFixed", ABufferImplementation::Fixed },
+        { "ABufferDynamic", ABufferImplementation::Dynamic }
+    };
+
+    if (RenderingMethods.find(impl) != RenderingMethods.end())
+        return RenderingMethods.at(impl);
+    else
+        return ABufferImplementation::Invalid;
 }
 
 }// namespace openspace

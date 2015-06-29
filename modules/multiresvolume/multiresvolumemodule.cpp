@@ -33,12 +33,10 @@
 
 namespace openspace {
 
-MultiresVolumeModule::MultiresVolumeModule() {
-    setName("MultiresVolume");
-}
+MultiresVolumeModule::MultiresVolumeModule() : OpenSpaceModule("MultiresVolume") {}
 
-bool MultiresVolumeModule::initialize() {
-    bool success = OpenSpaceModule::initialize();
+bool MultiresVolumeModule::create() {
+    bool success = OpenSpaceModule::create();
     if (!success)
         return false;
 

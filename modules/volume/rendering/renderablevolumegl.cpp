@@ -153,7 +153,7 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 }
 
 RenderableVolumeGL::~RenderableVolumeGL() {
-    //OsEng.renderEngine()->abuffer()->removeVolume(this);
+    //OsEng.renderEngine()->aBuffer()->removeVolume(this);
 }
 
 bool RenderableVolumeGL::isReady() const {
@@ -181,8 +181,8 @@ bool RenderableVolumeGL::initialize() {
         _transferFunctionFile->setCallback(textureCallback);
     }
 
-    // add the sampler and get the ID
-    _id = OsEng.renderEngine()->abuffer()->addVolume(this);
+    // add the volume and get the ID
+    _id = OsEng.renderEngine()->aBuffer()->addVolume(this);
 
     OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
 

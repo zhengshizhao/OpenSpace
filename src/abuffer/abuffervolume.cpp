@@ -35,14 +35,14 @@ namespace {
 namespace openspace {
     
     std::string ABufferVolume::getGlslName(const std::string& key) {
-       return OsEng.renderEngine()->abuffer()->getGlslName(this, key);
+       return OsEng.renderEngine()->aBuffer()->getGlslName(this, key);
     }
 
     int ABufferVolume::getTextureUnit(ghoul::opengl::Texture* texture) {
-       return OsEng.renderEngine()->abuffer()->getTextureUnit(texture);
+       return OsEng.renderEngine()->aBuffer()->getTextureUnit(texture);
     }
 
     int ABufferVolume::getSsboBinding(int ssboId) {
-       return OsEng.renderEngine()->abuffer()->getSsboBinding(ssboId);
+       return OsEng.renderEngine()->aBuffer()->getSsboBinding(ssboId);
     }
 }

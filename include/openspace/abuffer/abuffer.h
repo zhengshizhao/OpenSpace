@@ -49,7 +49,6 @@ namespace openspace {
 
 class ABuffer {
 public:
-
 	struct fragmentData {
 		GLfloat _position[3];
 		GLfloat _color[4];
@@ -60,7 +59,7 @@ public:
 
 	ABuffer();
 	virtual ~ABuffer();
-	virtual void resolve();
+	virtual void resolve(float blackoutFactor);
     virtual bool initialize() = 0;
 	virtual bool reinitialize();
 	virtual void resetBindings();
@@ -83,7 +82,7 @@ public:
 protected:
 	virtual bool reinitializeInternal() = 0;
 
-	bool initializeABuffer();
+	virtual bool initializeABuffer();
 
 	void generateShaderSource();
 	bool updateShader();
@@ -96,8 +95,6 @@ protected:
 	void generateSamplers();
 
 	unsigned int _width, _height, _totalPixels;
-
-private:
 
 	void updateDimensions();
 
@@ -112,9 +109,7 @@ private:
 	std::set<ABufferVolume*> _aBufferVolumes;
 	std::map<ABufferVolume*, std::map<std::string, std::string> > _glslDictionary;
 
-	std::vector<ghoul::filesystem::File*> _samplerFiles;
 	std::vector<std::string> _glslHelpers;
-	std::vector<std::string> _samplers;
 	std::string generateGlslName(const std::string& name);
 	std::map<ghoul::opengl::Texture*, int> _textureUnits;
 	std::map<int, int> _bufferBindings;

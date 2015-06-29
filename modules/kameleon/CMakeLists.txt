@@ -48,9 +48,11 @@ create_new_module(
     endif ()
     mark_as_advanced(BUILD_SHARED_LIBS) # Change to set instead of option
     option(KAMELEON_USE_HDF5 "Kameleon use HDF5" OFF)
+    
     set(KAMELEON_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
     set(KAMELEON_INCLUDES ${KAMELEON_ROOT_DIR}/include)
     set(BOOST_ROOT "${OPENSPACE_EXT_DIR}/ghoul/ext/boost")
+
     target_include_directories(${kameleon_module} SYSTEM PUBLIC ${KAMELEON_INCLUDES})
     target_link_libraries(${kameleon_module} ccmc)
     if (TARGET ccmc)
