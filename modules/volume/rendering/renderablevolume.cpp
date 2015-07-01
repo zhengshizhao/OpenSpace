@@ -23,11 +23,14 @@
  ****************************************************************************************/
 
 // open space includes
+#include <openspace/engine/configurationmanager.h>
 #include <modules/volume/rendering/renderablevolume.h>
 #include <openspace/engine/openspaceengine.h>
+#include <openspace/rendering/renderengine.h>
 #include <modules/kameleon/include/kameleonwrapper.h>
 #include <openspace/util/constants.h>
 #include <openspace/util/progressbar.h>
+#include <openspace/abuffer/abuffer.h>
 
 // ghoul includes
 #include <ghoul/io/texture/texturereader.h>
@@ -65,18 +68,213 @@ namespace {
         ss >> templateNumber;
         if( ! f)
             return templateNumber;
-        
+
         return f(templateNumber);
-            
+
     }
 }
 
 namespace openspace {
 
-RenderableVolume::RenderableVolume(const ghoul::Dictionary& dictionary) : Renderable(dictionary) {
+RenderableVolume::RenderableVolume(const ghoul::Dictionary& dictionary) : Renderable(dictionary)
+    , _w(0.f)
+    , _boxArray(0)
+    , _vertexPositionBuffer(0)
+    , _boxProgram(nullptr)
+    , _boxScaling(1.0, 1.0, 1.0) {}
+
+RenderableVolume::~RenderableVolume() {}
+
+bool RenderableVolume::initialize() {
+    OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
+
+    // ============================
+    //      GEOMETRY (box)
+    // ============================
+    const GLfloat size = 0.5f;
+    const GLfloat vertex_data[] = {
+        //  x,     y,     z,     s,
+        -size, -size,  size,  _w,
+         size,  size,  size,  _w,
+        -size,  size,  size,  _w,
+        -size, -size,  size,  _w,
+         size, -size,  size,  _w,
+         size,  size,  size,  _w,
+
+        -size, -size, -size,  _w,
+         size,  size, -size,  _w,
+        -size,  size, -size,  _w,
+        -size, -size, -size,  _w,
+         size, -size, -size,  _w,
+         size,  size, -size,  _w,
+
+         size, -size, -size,  _w,
+         size,  size,  size,  _w,
+         size, -size,  size,  _w,
+         size, -size, -size,  _w,
+         size,  size, -size,  _w,
+         size,  size,  size,  _w,
+
+        -size, -size, -size,  _w,
+        -size,  size,  size,  _w,
+        -size, -size,  size,  _w,
+        -size, -size, -size,  _w,
+        -size,  size, -size,  _w,
+        -size,  size,  size,  _w,
+
+        -size,  size, -size,  _w,
+         size,  size,  size,  _w,
+        -size,  size,  size,  _w,
+        -size,  size, -size,  _w,
+         size,  size, -size,  _w,
+         size,  size,  size,  _w,
+
+        -size, -size, -size,  _w,
+         size, -size,  size,  _w,
+        -size, -size,  size,  _w,
+        -size, -size, -size,  _w,
+         size, -size, -size,  _w,
+         size, -size,  size,  _w,
+    };
+
+    glGenVertexArrays(1, &_boxArray); // generate array
+    glBindVertexArray(_boxArray); // bind array
+    glGenBuffers(1, &_vertexPositionBuffer); // generate buffer
+    glBindBuffer(GL_ARRAY_BUFFER, _vertexPositionBuffer); // bind buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*4, reinterpret_cast<void*>(0));
+    glEnableVertexAttribArray(0);
+
+    glGenVertexArrays(1, &_intersectionArray); // generate array
+    glBindVertexArray(_intersectionArray); // bind array
+    glGenBuffers(1, &_intersectionVertexPositionBuffer); // generate buffer
+    glBindBuffer(GL_ARRAY_BUFFER, _intersectionVertexPositionBuffer); // bind buffer
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*4, reinterpret_cast<void*>(0));
+    glEnableVertexAttribArray(0);
+
+    // add the volume and get the ID
+    _id = OsEng.renderEngine()->aBuffer()->addVolume(this);
+
+    return true;
 }
 
-RenderableVolume::~RenderableVolume() {
+bool RenderableVolume::deinitialize() {
+    glDeleteVertexArrays(1, &_boxArray);
+    glGenBuffers(1, &_vertexPositionBuffer);
+
+    glDeleteVertexArrays(1, &_intersectionArray);
+    glGenBuffers(1, &_intersectionVertexPositionBuffer);
+
+    return true;
+}
+
+void RenderableVolume::render(const RenderData& data) {
+    glm::mat4 transform = glm::mat4(1.0);
+    transform = glm::scale(transform, _boxScaling);
+
+    // fetch data
+    psc currentPosition = data.position;
+    currentPosition += _pscOffset; // Move box to model barycenter
+
+    _boxProgram->activate();
+    _boxProgram->setUniform("volumeType", _id);
+    _boxProgram->setUniform("viewProjection", data.camera.viewProjectionMatrix());
+    _boxProgram->setUniform("modelTransform", transform);
+    setPscUniforms(_boxProgram, &data.camera, currentPosition);
+
+    glDisable(GL_CULL_FACE);
+    glBindVertexArray(_boxArray);
+    glDrawArrays(GL_TRIANGLES, 0, 6*6);
+    glEnable(GL_CULL_FACE);
+
+    renderIntersection(data);
+
+    _boxProgram->deactivate();
+}
+
+glm::vec4 RenderableVolume::perspectiveToModelSpace(const RenderData& data, glm::vec4 vector) {
+    glm::mat4 modelTransform = glm::mat4(1.0);
+    modelTransform = glm::scale(modelTransform, _boxScaling);
+
+    glm::mat4 invViewProjectionMatrix = glm::inverse(data.camera.viewProjectionMatrix());
+    vector = invViewProjectionMatrix * vector;
+
+    psc pscVector(vector.xyz());
+
+    glm::mat3 invCamRot = glm::mat3(glm::inverse(data.camera.viewRotationMatrix()));
+    vector = pscVector.vec4();
+    // vector is a psc
+    vector = glm::vec4(invCamRot * vector.xyz(), vector.w);
+
+    pscVector = psc(vector);
+    pscVector += data.camera.position();
+
+    psc currentPosition = data.position;
+    currentPosition += _pscOffset; // Move box to model barycenter
+    pscVector -= currentPosition;
+
+    vector = pscVector.vec4();
+    glm::mat3 invModelTransform = glm::mat3(glm::inverse(modelTransform));
+    vector = glm::vec4(invModelTransform * vector.xyz(), vector.w);
+
+    return vector;
+}
+
+void RenderableVolume::renderIntersection(const RenderData& data) {
+
+    float size = 1.0;
+    float nearZ = 1.0001;
+
+    glm::vec4 tl = perspectiveToModelSpace(data, glm::vec4(-size, size, 1.0, nearZ));
+    glm::vec4 bl = perspectiveToModelSpace(data, glm::vec4(-size, -size, 1.0, nearZ));
+    glm::vec4 tr = perspectiveToModelSpace(data, glm::vec4(size, size, 1.0, nearZ));
+    glm::vec4 br = perspectiveToModelSpace(data, glm::vec4(size, -size, 1.0, nearZ));
+
+    const GLfloat corner_vertex_data[] = {
+        //  x,     y,     z,     s,
+        tl.x, tl.y, tl.z, tl.w,
+        bl.x, bl.y, bl.z, bl.w,
+        br.x, br.y, br.z, br.w,
+
+        br.x, br.y, br.z, br.w,
+        tr.x, tr.y, tr.z, tr.w,
+        tl.x, tl.y, tl.z, tl.w,
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, _intersectionVertexPositionBuffer); // bind buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(corner_vertex_data), corner_vertex_data, GL_STATIC_DRAW);
+
+    glBindVertexArray(_intersectionArray);
+    glDisable(GL_CULL_FACE);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glEnable(GL_CULL_FACE);
+/*
+    psc nearPlaneNormalStart = perspectiveToModelSpace(data, psc(0.0, 0.0, -1.0, 0.0));
+    psc nearPlaneNormalEnd = perspectiveToModelSpace(data, psc(0.0, 0.0, 0.0, 0.0));
+
+    glm::vec3 nearPlaneNormal = (nearPlaneNormalEnd - nearPlaneNormalStart).vec3();
+
+    bool in[8];
+    int dirSum = 0;
+    for (int i = 0; i < 8; i++) {
+        glm::vec3 corner(i % 2, (i / 2) % 2, i / 4) - 0.5;
+        inFront[i] = glm::dot(nearPlaneNormal, corner) > 0;
+        dirSum += inFront[i];
+    }
+    bool invserseDirection = dirSum > 4;
+    int intersectionCase = invserseDirection ? 8 - dirSum : dirSum; // 0-4
+
+    if (intersectionCase == 0) return;
+
+    GLfloat intersection_vertex_data[18];
+
+    glBindBuffer(GL_ARRAY_BUFFER, _intersectionVertexPositionBuffer); // bind buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(intersection_vertex_data), intersection_vertex_data, GL_STATIC_DRAW);
+
+    glBindVertexArray(_intersectionArray);
+    glCullFace(GL_BACK);
+    glDrawArrays(GL_TRIANGLES, 1, nVertices);
+*/
 }
 
 ghoul::opengl::Texture* RenderableVolume::loadVolume(

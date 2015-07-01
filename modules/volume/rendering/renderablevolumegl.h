@@ -31,59 +31,50 @@
 
 // Forward declare to minimize dependencies
 namespace ghoul {
-	namespace filesystem {
-		class File;
-	}
-	namespace opengl {
-		class ProgramObject;
-		class Texture;
-	}
+    namespace filesystem {
+        class File;
+    }
+    namespace opengl {
+        class ProgramObject;
+        class Texture;
+    }
 }
 
 namespace openspace {
 
 class RenderableVolumeGL: public RenderableVolume {
 public:
-	RenderableVolumeGL(const ghoul::Dictionary& dictionary);
-	~RenderableVolumeGL();
+    RenderableVolumeGL(const ghoul::Dictionary& dictionary);
+    ~RenderableVolumeGL();
     
-	bool initialize() override;
+    bool initialize() override;
     bool deinitialize() override;
 
-	bool isReady() const override;
+    bool isReady() const override;
 
-	virtual void render(const RenderData& data) override;
-	virtual void update(const UpdateData& data) override;
-	virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
-	virtual std::string getSampler(const std::string& functionName) override;
-	virtual std::string getStepSizeFunction(const std::string& functionName) override;
-	virtual std::string getHeader() override;
-	virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
+    virtual void update(const UpdateData& data) override;
+    virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
+    virtual std::string getSampler(const std::string& functionName) override;
+    virtual std::string getStepSizeFunction(const std::string& functionName) override;
+    virtual std::string getHeader() override;
+    virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
 
 private:
-	ghoul::Dictionary _hintsDictionary;
+    ghoul::Dictionary _hintsDictionary;
 
     std::string _filename;
 
     std::string _transferFunctionName;
-	std::string _volumeName;
+    std::string _volumeName;
 
     std::string _transferFunctionPath;
     
     ghoul::filesystem::File* _transferFunctionFile;
 
-	ghoul::opengl::Texture* _volume;
-	ghoul::opengl::Texture* _transferFunction;
-
-	GLuint _boxArray; 
-	GLuint _vertexPositionBuffer;
-	ghoul::opengl::ProgramObject* _boxProgram;
-	glm::vec3 _boxScaling;
-	psc _pscOffset;
-	float _w;
+    ghoul::opengl::Texture* _volume;
+    ghoul::opengl::Texture* _transferFunction;
     
     bool _updateTransferfunction;
-    int _id;
 };
 
 } // namespace openspace

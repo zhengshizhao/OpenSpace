@@ -23,13 +23,13 @@
  ****************************************************************************************/
 
 #include <modules/multiresvolume/rendering/renderablemultiresvolume.h>
-#include <openspace/abuffer/abuffer.h>
 
 #include <openspace/engine/configurationmanager.h>
 #include <openspace/engine/openspaceengine.h>
-#include <openspace/rendering/renderengine.h>
 #include <modules/kameleon/include/kameleonwrapper.h>
 #include <openspace/util/constants.h>
+#include <openspace/abuffer/abuffer.h>
+#include <openspace/rendering/renderengine.h>
 
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/filesystem/file.h>
@@ -65,13 +65,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     , _transferFunctionName("")
     , _volumeName("")
     , _transferFunction(nullptr)
-    , _boxArray(0)
-    , _vertexPositionBuffer(0)
-    , _boxProgram(nullptr)
-    , _boxScaling(1.0, 1.0, 1.0)
-    , _w(0.f)
     , _updateTransferfunction(false)
-    , _id(-1)
     , _spatialTolerance(0.000001)
     , _temporalTolerance(0.000001)
     , _timestep(0)
@@ -141,12 +135,12 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
 }
 
 bool RenderableMultiresVolume::initialize() {
+    bool success = RenderableVolume::initialize();
+
     if (!registeredGlslHelpers) {
         OsEng.renderEngine()->aBuffer()->registerGlslHelpers(RenderableMultiresVolume::getGlslHelpers());
         registeredGlslHelpers = true;
     }
-
-    bool success = true;
 
     success &= _tsp && _tsp->load();
 
@@ -168,68 +162,6 @@ bool RenderableMultiresVolume::initialize() {
 
     success &= _atlasManager && _atlasManager->initialize();
 
-    // add the sampler and get the ID
-    _id = OsEng.renderEngine()->aBuffer()->addVolume(this);
-
-    OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
-
-    // ============================
-    //      GEOMETRY (box)
-    // ============================
-    const GLfloat size = 0.5f;
-    const GLfloat vertex_data[] = {
-        //  x,     y,     z,     s,
-        -size, -size,  size,  _w,
-         size,  size,  size,  _w,
-        -size,  size,  size,  _w,
-        -size, -size,  size,  _w,
-         size, -size,  size,  _w,
-         size,  size,  size,  _w,
-
-        -size, -size, -size,  _w,
-         size,  size, -size,  _w,
-        -size,  size, -size,  _w,
-        -size, -size, -size,  _w,
-         size, -size, -size,  _w,
-         size,  size, -size,  _w,
-
-         size, -size, -size,  _w,
-         size,  size,  size,  _w,
-         size, -size,  size,  _w,
-         size, -size, -size,  _w,
-         size,  size, -size,  _w,
-         size,  size,  size,  _w,
-
-        -size, -size, -size,  _w,
-        -size,  size,  size,  _w,
-        -size, -size,  size,  _w,
-        -size, -size, -size,  _w,
-        -size,  size, -size,  _w,
-        -size,  size,  size,  _w,
-
-        -size,  size, -size,  _w,
-         size,  size,  size,  _w,
-        -size,  size,  size,  _w,
-        -size,  size, -size,  _w,
-         size,  size, -size,  _w,
-         size,  size,  size,  _w,
-
-        -size, -size, -size,  _w,
-         size, -size,  size,  _w,
-        -size, -size,  size,  _w,
-        -size, -size, -size,  _w,
-         size, -size, -size,  _w,
-         size, -size,  size,  _w,
-    };
-
-    glGenVertexArrays(1, &_boxArray); // generate array
-    glBindVertexArray(_boxArray); // bind array
-    glGenBuffers(1, &_vertexPositionBuffer); // generate buffer
-    glBindBuffer(GL_ARRAY_BUFFER, _vertexPositionBuffer); // bind buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*4, reinterpret_cast<void*>(0));
-    glEnableVertexAttribArray(0);
-
     success &= isReady();
 
     return success;
@@ -246,10 +178,7 @@ bool RenderableMultiresVolume::deinitialize() {
     _transferFunctionFile = nullptr;
     _transferFunction = nullptr;
 
-    glDeleteVertexArrays(1, &_boxArray);
-    glDeleteBuffers(1, &_vertexPositionBuffer);
-
-    return true;
+    return RenderableVolume::deinitialize();;
 }
 
 bool RenderableMultiresVolume::isReady() const {
@@ -263,7 +192,7 @@ std::string RenderableMultiresVolume::getGlslHelpers() {
     return str;
 }
 
-void RenderableMultiresVolume::render(const RenderData& data) {
+void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program) {
     if(_updateTransferfunction) {
         _updateTransferfunction = false;
         ghoul::opengl::Texture* transferFunction = loadTransferFunction(_transferFunctionPath);
@@ -278,35 +207,6 @@ void RenderableMultiresVolume::render(const RenderData& data) {
         }
     }
 
-    glm::mat4 transform = glm::mat4(1.0);
-    transform = glm::scale(transform, _boxScaling);
-
-    // fetch data
-    psc currentPosition = data.position;
-    currentPosition += _pscOffset; // Move box to model barycenter
-
-    _boxProgram->activate();
-    _boxProgram->setUniform("volumeType", _id);
-    _boxProgram->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-    _boxProgram->setUniform("modelTransform", transform);
-    setPscUniforms(_boxProgram, &data.camera, currentPosition);
-
-    // make sure GL_CULL_FACE is enabled (it should be)
-    glEnable(GL_CULL_FACE);
-
-    //  Draw backface
-    glCullFace(GL_FRONT);
-    glBindVertexArray(_boxArray);
-    glDrawArrays(GL_TRIANGLES, 0, 6*6);
-
-    //  Draw frontface (now the normal cull face is is set)
-    glCullFace(GL_BACK);
-    glDrawArrays(GL_TRIANGLES, 0, 6*6);
-
-    _boxProgram->deactivate();
-}
-
-void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program) {
     const int numTimesteps = _tsp->header().numTimesteps_;
     const int currentTimestep = _timestep % numTimesteps;
 

@@ -58,7 +58,6 @@ public:
 
     std::string getGlslHelpers();
 
-    virtual void render(const RenderData& data) override;
     virtual void update(const UpdateData& data) override;
     virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
     virtual std::string getSampler(const std::string& functionName) override;
@@ -80,15 +79,7 @@ private:
 
     ghoul::opengl::Texture* _transferFunction;
 
-    GLuint _boxArray;
-    GLuint _vertexPositionBuffer;
-    ghoul::opengl::ProgramObject* _boxProgram;
-    glm::vec3 _boxScaling;
-    psc _pscOffset;
-    float _w;
-
     bool _updateTransferfunction;
-    int _id;
 
     float _spatialTolerance;
     float _temporalTolerance;

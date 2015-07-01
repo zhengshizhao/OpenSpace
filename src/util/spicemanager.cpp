@@ -52,8 +52,9 @@ SpiceManager::SpiceManager()
 }
 
 SpiceManager::~SpiceManager() {
-    for (const KernelInformation& i : _manager->_loadedKernels)
+    for (const KernelInformation& i : this->_loadedKernels) {
         unload_c(i.path.c_str());
+    }
 
     // Set values back to default
     erract_c("SET", 0, const_cast<char*>("DEFAULT"));

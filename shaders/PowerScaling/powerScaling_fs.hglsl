@@ -58,6 +58,10 @@ float pscDepth(vec4 position) {
 		depth = position.w+log(abs(position.z));
 	}
 	depth = (position.w+log(abs(position.z)))/pow(k, position.w);
+
+	return depth;
+	// TODO: Fix the code below. It seems to get the near plane wrong and flip everything!! ERMAHGERD!
+
 	// depth = (position.w+log(abs(position.z)))/pow(k, position.w);
 
 	// DEBUG

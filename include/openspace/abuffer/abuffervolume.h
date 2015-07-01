@@ -37,8 +37,9 @@ namespace ghoul {
 
 namespace openspace {
 
-    class ABufferVolume {
-    public: 
+class ABufferVolume {
+public:
+    ABufferVolume() : _id(-1) {};
 	virtual ~ABufferVolume() {};
 	virtual void preResolve(ghoul::opengl::ProgramObject* program) {};
 	/*
@@ -55,11 +56,14 @@ namespace openspace {
 	virtual std::string getHeader() { return ""; };
 	virtual std::vector<ghoul::opengl::Texture*> getTextures() { return std::vector<ghoul::opengl::Texture*>(); };
     virtual std::vector<int> getBuffers() { return std::vector<int>(); };
-    protected:
+protected:
 	std::string getGlslName(const std::string &key);
 	int getTextureUnit(ghoul::opengl::Texture* texture);
     int getSsboBinding(int ssboId);
-    };          // ABufferVolume
+
+    int _id;
+};          // ABufferVolume
+
 }               // openspace
 
 #endif  // __ABUFFER_H__

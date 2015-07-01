@@ -23,13 +23,12 @@
  ****************************************************************************************/
 
 #include <modules/volume/rendering/renderablevolumegl.h>
-#include <openspace/abuffer/abuffer.h>
 
-#include <openspace/engine/configurationmanager.h>
 #include <openspace/engine/openspaceengine.h>
-#include <openspace/rendering/renderengine.h>
 #include <modules/kameleon/include/kameleonwrapper.h>
 #include <openspace/util/constants.h>
+#include <openspace/abuffer/abuffer.h>
+#include <openspace/rendering/renderengine.h>
 
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/filesystem/file.h>
@@ -37,7 +36,6 @@
 #include <ghoul/opengl/programobject.h>
 #include <ghoul/io/texture/texturereader.h>
 #include <ghoul/opengl/texture.h>
-
 
 #include <algorithm>
 
@@ -60,13 +58,7 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 	, _volumeName("")
 	, _volume(nullptr)
 	, _transferFunction(nullptr)
-    , _boxArray(0)
-    , _vertexPositionBuffer(0)
-	, _boxProgram(nullptr)
-	, _boxScaling(1.0, 1.0, 1.0)
-	, _w(0.f)
 	, _updateTransferfunction(false)
-	, _id(-1)
 {
 	std::string name;
 	bool success = dictionary.getValue(constants::scenegraphnode::keyName, name);
@@ -165,6 +157,8 @@ bool RenderableVolumeGL::isReady() const {
 }
 
 bool RenderableVolumeGL::initialize() {
+    bool success = RenderableVolume::initialize();
+
 	// @TODO fix volume and transferfunction names --jonasstrandstedt
     if(_filename != "") {
         _volume = loadVolume(_filename, _hintsDictionary);
@@ -180,70 +174,10 @@ bool RenderableVolumeGL::initialize() {
         };
         _transferFunctionFile->setCallback(textureCallback);
     }
-
-    // add the volume and get the ID
-    _id = OsEng.renderEngine()->aBuffer()->addVolume(this);
-
-    OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
-
-    // ============================
-    //      GEOMETRY (box)
-    // ============================
-    const GLfloat size = 0.5f;
-    const GLfloat vertex_data[] = {
-        //  x,     y,     z,     s,
-        -size, -size,  size,  _w,
-         size,  size,  size,  _w,
-        -size,  size,  size,  _w,
-        -size, -size,  size,  _w,
-         size, -size,  size,  _w,
-         size,  size,  size,  _w,
-
-        -size, -size, -size,  _w,
-         size,  size, -size,  _w,
-        -size,  size, -size,  _w,
-        -size, -size, -size,  _w,
-         size, -size, -size,  _w,
-         size,  size, -size,  _w,
-
-         size, -size, -size,  _w,
-         size,  size,  size,  _w,
-         size, -size,  size,  _w,
-         size, -size, -size,  _w,
-         size,  size, -size,  _w,
-         size,  size,  size,  _w,
-
-        -size, -size, -size,  _w,
-        -size,  size,  size,  _w,
-        -size, -size,  size,  _w,
-        -size, -size, -size,  _w,
-        -size,  size, -size,  _w,
-        -size,  size,  size,  _w,
-
-        -size,  size, -size,  _w,
-         size,  size,  size,  _w,
-        -size,  size,  size,  _w,
-        -size,  size, -size,  _w,
-         size,  size, -size,  _w,
-         size,  size,  size,  _w,
-
-        -size, -size, -size,  _w,
-         size, -size,  size,  _w,
-        -size, -size,  size,  _w,
-        -size, -size, -size,  _w,
-         size, -size, -size,  _w,
-         size, -size,  size,  _w,
-    };
-
-    glGenVertexArrays(1, &_boxArray); // generate array
-    glBindVertexArray(_boxArray); // bind array
-	glGenBuffers(1, &_vertexPositionBuffer); // generate buffer
-	glBindBuffer(GL_ARRAY_BUFFER, _vertexPositionBuffer); // bind buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_data), vertex_data, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*4, reinterpret_cast<void*>(0));
-    glEnableVertexAttribArray(0);
     
-    return isReady();
+    success &= isReady();
+
+    return success;
 }
 
 bool RenderableVolumeGL::deinitialize() {
@@ -256,14 +190,12 @@ bool RenderableVolumeGL::deinitialize() {
 	_volume = nullptr;
 	_transferFunctionFile = nullptr;
 	_transferFunction = nullptr;
-
-	glDeleteVertexArrays(1, &_boxArray);
-	glGenBuffers(1, &_vertexPositionBuffer);
     
-	return true;
+    return RenderableVolume::deinitialize();
 }
 
-void RenderableVolumeGL::render(const RenderData& data) {
+void RenderableVolumeGL::preResolve(ghoul::opengl::ProgramObject* program) {
+
     if(_updateTransferfunction) {
         _updateTransferfunction = false;
         ghoul::opengl::Texture* transferFunction = loadTransferFunction(_transferFunctionPath);
@@ -277,36 +209,6 @@ void RenderableVolumeGL::render(const RenderData& data) {
             delete transferFunction;
         }
     }
-
-    glm::mat4 transform = glm::mat4(1.0);
-    transform = glm::scale(transform, _boxScaling);
-
-    // fetch data
-    psc currentPosition         = data.position;
-	currentPosition += _pscOffset; // Move box to model barycenter
-
-    _boxProgram->activate();
-	_boxProgram->setUniform("volumeType", _id);
-	_boxProgram->setUniform("modelViewProjection", data.camera.viewProjectionMatrix());
-	_boxProgram->setUniform("modelTransform", transform);
-	setPscUniforms(_boxProgram, &data.camera, currentPosition);
-
-    // make sure GL_CULL_FACE is enabled (it should be)
-    glEnable(GL_CULL_FACE);
-
-    //  Draw backface
-    glCullFace(GL_FRONT);
-    glBindVertexArray(_boxArray);
-    glDrawArrays(GL_TRIANGLES, 0, 6*6);
-
-    //  Draw frontface (now the normal cull face is is set)
-    glCullFace(GL_BACK);
-    glDrawArrays(GL_TRIANGLES, 0, 6*6);
-
-    _boxProgram->deactivate();
-}
-
-    void RenderableVolumeGL::preResolve(ghoul::opengl::ProgramObject* program) {
 	std::string transferFunctionName = getGlslName("transferFunction");
 	std::string volumeName = getGlslName("volume");
 	std::string stepSizeName = getGlslName("stepSize");
@@ -320,10 +222,10 @@ void RenderableVolumeGL::render(const RenderData& data) {
 	const glm::size3_t dims = _volume->dimensions();
 	float maxDiag = glm::sqrt(static_cast<float>(dims.x*dims.x + dims.y*dims.y + dims.z*dims.z));
 	program->setUniform(stepSizeName, static_cast<float>(glm::sqrt(3.0) / maxDiag));
-    }
+}
 
 
-    std::string RenderableVolumeGL::getSampler(const std::string& functionName) {
+std::string RenderableVolumeGL::getSampler(const std::string& functionName) {
 	std::string transferFunctionName = getGlslName("transferFunction");
 	std::string volumeName = getGlslName("volume");
 	std::string stepSizeName = getGlslName("stepSize");
@@ -339,10 +241,10 @@ void RenderableVolumeGL::render(const RenderData& data) {
 	ss << "}" << std::endl;
 
 	return ss.str();
-    }
+}
 
 
-    std::string RenderableVolumeGL::getStepSizeFunction(const std::string& functionName) {
+std::string RenderableVolumeGL::getStepSizeFunction(const std::string& functionName) {
 	std::string stepSizeName = getGlslName("stepSize");
 
 	std::stringstream ss;
@@ -350,10 +252,10 @@ void RenderableVolumeGL::render(const RenderData& data) {
 	   << "return " << stepSizeName << ";" << std::endl
 	   << "}" << std::endl;
 	return ss.str();
-    }
+}
 
 
-    std::string RenderableVolumeGL::getHeader() {
+std::string RenderableVolumeGL::getHeader() {
 	std::string transferFunctionName = getGlslName("transferFunction");
 	std::string volumeName = getGlslName("volume");
 	std::string stepSizeName = getGlslName("stepSize");
@@ -364,12 +266,12 @@ void RenderableVolumeGL::render(const RenderData& data) {
 	ss << "uniform float " << stepSizeName << ";" << std::endl;
 
 	return ss.str();
-    }
+}
 
-    std::vector<ghoul::opengl::Texture*> RenderableVolumeGL::getTextures() {
+std::vector<ghoul::opengl::Texture*> RenderableVolumeGL::getTextures() {
 	std::vector<ghoul::opengl::Texture*> textures{_transferFunction, _volume};
 	return textures;
-    }
+}
 
 
 void RenderableVolumeGL::update(const UpdateData& data) {

@@ -26,7 +26,7 @@
 
 layout(location = 0) in vec4 vertPosition;
 
-uniform mat4 modelViewProjection;
+uniform mat4 viewProjection;
 uniform mat4 modelTransform;
 
 out vec3 vPosition;
@@ -36,22 +36,11 @@ out float s;
 #include "PowerScaling/powerScaling_vs.hglsl"
 
 void main() {
-
-	//vs_st = in_st;
-	//vs_stp = in_position.xyz;
-
 	vPosition = vertPosition.xyz;
 	worldPosition = vertPosition;
-
-	// this is wrong for the normal. The normal transform is the transposed inverse of the model transform
-	//vs_normal = normalize(modelTransform * vec4(in_normal,0));
 	
 	vec4 position = pscTransform(worldPosition, modelTransform);
 
 	// project the position to view space
-	gl_Position =  z_normalization(modelViewProjection * position);
-
-	// vPosition = vertPosition.xyz;
-	// worldPosition = (modelTransform *vec4(vPosition, 1.0)).xyz;
-	// gl_Position = modelViewProjection  *vec4(worldPosition, 1.0);
+	gl_Position =  z_normalization(viewProjection * position);
 }
