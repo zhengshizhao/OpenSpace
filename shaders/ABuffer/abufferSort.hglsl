@@ -90,31 +90,30 @@ void sort_fragments_list(uint frag_count) {
 #if MAX_VOLUMES > 0
 	int ii, jj;
 	for(ii = 0; ii < MAX_VOLUMES; ++ii) {
-		int volumeFrags = 0;
-
-		vec3 endColor;
+		bool start = true;
+		vec3 startColor;
+		float startZ;
 		float endZ;
-		for(jj = int(frag_count) - 1; jj >= 0; --jj) {
+		for(jj = 0; jj < frag_count; ++jj) {
 			int type = int(_type_(fragments[jj])) - 1;
 			if(type == ii) {
-				if(volumeFrags == 0) {
-					endColor = _col_(fragments[jj]).rgb;
-					endZ = _z_(fragments[jj]);
-				} else if (volumeFrags == 1) {
+				if(start) {
+					startColor = _col_(fragments[jj]).rgb;
+					startZ = _z_(fragments[jj]);
+					start = false;
+				} else {
 					volumes_in_fragment[volume_count++] = ii;
-					vec3 startColor = _col_(fragments[jj]).rgb;
-					vec3 dir = endColor - startColor;
+					vec3 dir = _col_(fragments[jj]).rgb - startColor;
 					volume_position[ii] = startColor;
 					volume_direction[ii] = normalize(dir);
 
-					float startZ = _z_(fragments[jj]);
+					vec3 endColor = _col_(fragments[jj]).rgb;
+					float endZ = _z_(fragments[jj]);
 
-					volume_scale[ii] = length(endColor - startColor) / abs(endZ - startZ);
-				} else {
-					_col_(fragments[jj], vec4(0.0));
-					_type_(fragments[jj], 0);
+					volume_scale[ii] = length(startColor - endColor) / abs(startZ - endZ);
+
+					break;
 				}
-				volumeFrags++;
 			}
 		}
 	}

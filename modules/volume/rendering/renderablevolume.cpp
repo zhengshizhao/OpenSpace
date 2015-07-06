@@ -221,60 +221,91 @@ glm::vec4 RenderableVolume::perspectiveToModelSpace(const RenderData& data, glm:
 }
 
 void RenderableVolume::renderIntersection(const RenderData& data) {
+    // Draw only intersecting polygon
+    int errorI = 0;
 
-    float size = 1.0;
-    float nearZ = 1.0001;
+    const int cornersInLines[24] = {
+        0,1,
+        1,5,
+        5,4,
+        4,0,
 
-    glm::vec4 tl = perspectiveToModelSpace(data, glm::vec4(-size, size, 1.0, nearZ));
-    glm::vec4 bl = perspectiveToModelSpace(data, glm::vec4(-size, -size, 1.0, nearZ));
-    glm::vec4 tr = perspectiveToModelSpace(data, glm::vec4(size, size, 1.0, nearZ));
-    glm::vec4 br = perspectiveToModelSpace(data, glm::vec4(size, -size, 1.0, nearZ));
+        2,3,
+        3,7,
+        7,6,
+        6,2,
 
-    const GLfloat corner_vertex_data[] = {
-        //  x,     y,     z,     s,
-        tl.x, tl.y, tl.z, tl.w,
-        bl.x, bl.y, bl.z, bl.w,
-        br.x, br.y, br.z, br.w,
-
-        br.x, br.y, br.z, br.w,
-        tr.x, tr.y, tr.z, tr.w,
-        tl.x, tl.y, tl.z, tl.w,
+        0,2,
+        1,3,
+        5,7,
+        4,6
     };
 
+    float nearW = 1.000001;
+    psc nearPlaneNormalStart = perspectiveToModelSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW));
+    psc nearPlaneNormalEnd = perspectiveToModelSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW + 1.0));
+
+    glm::vec3 nearPlaneNormal = glm::normalize((nearPlaneNormalEnd - nearPlaneNormalStart).vec3());
+    float nearPlaneDistance = glm::dot(nearPlaneNormalStart.vec3(), nearPlaneNormal);
+
+    glm::vec3 intersections[12];
+    int nIntersections = 0;
+
+    for (int i = 0; i < 12; i++) {
+        int iCorner0 = cornersInLines[i * 2];
+        int iCorner1 = cornersInLines[i * 2 + 1];
+
+        glm::vec3 corner0 = glm::vec3(iCorner0 % 2, (iCorner0 / 2) % 2, iCorner0 / 4) - glm::vec3(0.5);
+        glm::vec3 corner1 = glm::vec3(iCorner1 % 2, (iCorner1 / 2) % 2, iCorner1 / 4) - glm::vec3(0.5);
+
+        glm::vec3 line = corner1 - corner0;
+
+        float t = (nearPlaneDistance - glm::dot(corner0, nearPlaneNormal)) / glm::dot(line, nearPlaneNormal);
+        if (t >= 0.0 && t <= 1.0) {
+            intersections[nIntersections++] = corner0 + t * line;
+        }
+    }
+
+    if (nIntersections <3) return; // Gotta love intersections
+
+    std::vector< std::pair<int, float> > angles(nIntersections-1);
+
+    glm::vec3 vector1 = glm::normalize(intersections[1] - intersections[0]);
+    angles[0] = std::pair<int, float>(1, 0.0);
+
+    for (int i = 2; i < nIntersections; i++) {
+        glm::vec3 vectorI = glm::normalize(intersections[i] - intersections[0]);
+        float sinA = glm::dot(glm::cross(vector1, vectorI), nearPlaneNormal);
+        float cosA = glm::dot(vector1, vectorI);
+        angles[i-1] = std::pair<int, float>(i, glm::sign(sinA) * (1.0 - cosA));
+    }
+
+    std::sort(angles.begin(), angles.end(),
+        [](const std::pair<int, float>& a, const std::pair<int, float>& b) -> bool {
+            return a.second > b.second;
+        }
+    );
+
+    std::vector<float> vertices;
+    vertices.push_back(intersections[0].x);
+    vertices.push_back(intersections[0].y);
+    vertices.push_back(intersections[0].z);
+    vertices.push_back(0.0);
+    for (int i = 0; i < nIntersections - 1; i++) {
+        int j = angles[i].first;
+        vertices.push_back(intersections[j].x);
+        vertices.push_back(intersections[j].y);
+        vertices.push_back(intersections[j].z);
+        vertices.push_back(0.0);
+    }
+
     glBindBuffer(GL_ARRAY_BUFFER, _intersectionVertexPositionBuffer); // bind buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(corner_vertex_data), corner_vertex_data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4 * nIntersections, vertices.data(), GL_STATIC_DRAW);
 
     glBindVertexArray(_intersectionArray);
     glDisable(GL_CULL_FACE);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, nIntersections);
     glEnable(GL_CULL_FACE);
-/*
-    psc nearPlaneNormalStart = perspectiveToModelSpace(data, psc(0.0, 0.0, -1.0, 0.0));
-    psc nearPlaneNormalEnd = perspectiveToModelSpace(data, psc(0.0, 0.0, 0.0, 0.0));
-
-    glm::vec3 nearPlaneNormal = (nearPlaneNormalEnd - nearPlaneNormalStart).vec3();
-
-    bool in[8];
-    int dirSum = 0;
-    for (int i = 0; i < 8; i++) {
-        glm::vec3 corner(i % 2, (i / 2) % 2, i / 4) - 0.5;
-        inFront[i] = glm::dot(nearPlaneNormal, corner) > 0;
-        dirSum += inFront[i];
-    }
-    bool invserseDirection = dirSum > 4;
-    int intersectionCase = invserseDirection ? 8 - dirSum : dirSum; // 0-4
-
-    if (intersectionCase == 0) return;
-
-    GLfloat intersection_vertex_data[18];
-
-    glBindBuffer(GL_ARRAY_BUFFER, _intersectionVertexPositionBuffer); // bind buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(intersection_vertex_data), intersection_vertex_data, GL_STATIC_DRAW);
-
-    glBindVertexArray(_intersectionArray);
-    glCullFace(GL_BACK);
-    glDrawArrays(GL_TRIANGLES, 1, nVertices);
-*/
 }
 
 ghoul::opengl::Texture* RenderableVolume::loadVolume(
