@@ -53,7 +53,6 @@ namespace {
     const std::string KeySampler = "Sampler";
     const std::string KeyBoxScaling = "BoxScaling";
     const std::string KeyVolumeName = "VolumeName";
-    const std::string KeyTransferFunctionName = "TransferFunctionName";
     const std::string GlslHelpersPath = "${MODULES}/multiresvolume/shaders/helpers_fs.glsl";
     bool registeredGlslHelpers = false;
 }
@@ -62,10 +61,8 @@ namespace openspace {
 
 RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dictionary)
     : RenderableVolume(dictionary)
-    , _transferFunctionName("")
     , _volumeName("")
     , _transferFunction(nullptr)
-    , _updateTransferfunction(false)
     , _spatialTolerance(0.000001)
     , _temporalTolerance(0.000001)
     , _timestep(0)
@@ -87,7 +84,6 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     }
 
     _transferFunction = nullptr;
-    _transferFunctionFile = nullptr;
     _transferFunctionPath = "";
     success = dictionary.getValue(KeyTransferFunction, _transferFunctionPath);
     if (!success) {
@@ -96,7 +92,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
         return;
     }
     _transferFunctionPath = absPath(_transferFunctionPath);
-    _transferFunctionFile = new ghoul::filesystem::File(_transferFunctionPath, true);
+    _transferFunction = new TransferFunction(_transferFunctionPath);
 
     _pscOffset = psc(glm::vec4(0.0));
     _boxScaling = glm::vec3(1.0);
@@ -132,6 +128,9 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
         delete _atlasManager;
     if (_brickSelector)
         delete _brickSelector;
+    if (_transferFunction) {
+	delete _transferFunction;
+    }
 }
 
 bool RenderableMultiresVolume::initialize() {
@@ -148,18 +147,6 @@ bool RenderableMultiresVolume::initialize() {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
     }
 
-    if(_transferFunctionPath != "") {
-        _transferFunction = loadTransferFunction(_transferFunctionPath);
-        _transferFunction->uploadTexture();
-
-        auto textureCallback = [this](const ghoul::filesystem::File& file) {
-            _updateTransferfunction = true;
-        };
-        _transferFunctionFile->setCallback(textureCallback);
-    } else {
-        success = false;
-    }
-
     success &= _atlasManager && _atlasManager->initialize();
 
     success &= isReady();
@@ -170,15 +157,12 @@ bool RenderableMultiresVolume::initialize() {
 bool RenderableMultiresVolume::deinitialize() {
     if (_tsp)
         delete _tsp;
-    if (_transferFunctionFile)
-        delete _transferFunctionFile;
     if (_transferFunction)
         delete _transferFunction;
     _tsp = nullptr;
-    _transferFunctionFile = nullptr;
     _transferFunction = nullptr;
 
-    return RenderableVolume::deinitialize();;
+    return RenderableVolume::deinitialize();
 }
 
 bool RenderableMultiresVolume::isReady() const {
@@ -193,20 +177,6 @@ std::string RenderableMultiresVolume::getGlslHelpers() {
 }
 
 void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program) {
-    if(_updateTransferfunction) {
-        _updateTransferfunction = false;
-        ghoul::opengl::Texture* transferFunction = loadTransferFunction(_transferFunctionPath);
-        if(transferFunction) {
-            const void* data = transferFunction->pixelData();
-            glBindBuffer(GL_COPY_READ_BUFFER, *transferFunction);
-            _transferFunction->bind();
-            glTexImage1D(   GL_TEXTURE_1D, 0, _transferFunction->internalFormat(),
-                            static_cast<GLsizei>(_transferFunction->width()),0, _transferFunction->format(),
-                            _transferFunction->dataType(), data);
-            delete transferFunction;
-        }
-    }
-
     const int numTimesteps = _tsp->header().numTimesteps_;
     const int currentTimestep = _timestep % numTimesteps;
 
@@ -216,7 +186,7 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
 
     _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
 
-    program->setUniform(getGlslName("transferFunction"), getTextureUnit(_transferFunction));
+    program->setUniform(getGlslName("transferFunction"), getTextureUnit(_transferFunction->getTexture()));
     program->setUniform(getGlslName("textureAtlas"), getTextureUnit(_atlasManager->textureAtlas()));
     program->setSsboBinding(getGlslName("atlasMapBlock"), getSsboBinding(_atlasManager->atlasMapBuffer()));
 
@@ -298,7 +268,7 @@ std::string RenderableMultiresVolume::getHeader() {
 }
 
 std::vector<ghoul::opengl::Texture*> RenderableMultiresVolume::getTextures() {
-    std::vector<ghoul::opengl::Texture*> textures{_transferFunction, _atlasManager->textureAtlas()};
+    std::vector<ghoul::opengl::Texture*> textures{_transferFunction->getTexture(), _atlasManager->textureAtlas()};
     return textures;
 }
 

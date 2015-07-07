@@ -47,24 +47,21 @@ namespace {
     const std::string KeySampler = "Sampler";
     const std::string KeyBoxScaling = "BoxScaling";
     const std::string KeyVolumeName = "VolumeName";
-    const std::string KeyTransferFunctionName = "TransferFunctionName";
 }
 
 namespace openspace {
 
 RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 	: RenderableVolume(dictionary)
-	, _transferFunctionName("")
 	, _volumeName("")
 	, _volume(nullptr)
 	, _transferFunction(nullptr)
-	, _updateTransferfunction(false)
 {
 	std::string name;
 	bool success = dictionary.getValue(constants::scenegraphnode::keyName, name);
 	assert(success);
     
-    _filename = "";
+	_filename = "";
 	success = dictionary.getValue(KeyVolume, _filename);
 	if (!success) {
 		LERROR("Node '" << name << "' did not contain a valid '" <<  KeyVolume << "'");
@@ -77,17 +74,17 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 
 	dictionary.getValue(KeyHints, _hintsDictionary);
 
-    _transferFunction = nullptr;
-    _transferFunctionFile = nullptr;
-    _transferFunctionPath = "";
+	_transferFunction = nullptr;
+	_transferFunctionPath = "";
+
 	success = dictionary.getValue(KeyTransferFunction, _transferFunctionPath);
 	if (!success) {
-		LERROR("Node '" << name << "' did not contain a valid '" <<
-			KeyTransferFunction << "'");
+		LERROR("Node '" << name << "' did not contain a valid '" << KeyTransferFunction << "'");
 		return;
 	}
+
 	_transferFunctionPath = absPath(_transferFunctionPath);
-	_transferFunctionFile = new ghoul::filesystem::File(_transferFunctionPath, true);
+	_transferFunction = new TransferFunction(_transferFunctionPath);
 
 	KameleonWrapper kw(_filename);
 	auto t = kw.getGridUnits();
@@ -140,12 +137,17 @@ RenderableVolumeGL::RenderableVolumeGL(const ghoul::Dictionary& dictionary)
 	}
 	
 	dictionary.getValue(KeyVolumeName, _volumeName);
-	dictionary.getValue(KeyTransferFunctionName, _transferFunctionName);
     setBoundingSphere(PowerScaledScalar::CreatePSS(glm::length(_boxScaling)*pow(10,_w)));
 }
 
 RenderableVolumeGL::~RenderableVolumeGL() {
     //OsEng.renderEngine()->aBuffer()->removeVolume(this);
+    if (_volume)
+	delete _volume;
+    if (_transferFunction)
+	delete _transferFunction;
+    _volume = nullptr;
+    _transferFunction = nullptr;
 }
 
 bool RenderableVolumeGL::isReady() const {
@@ -164,16 +166,6 @@ bool RenderableVolumeGL::initialize() {
         _volume = loadVolume(_filename, _hintsDictionary);
         _volume->uploadTexture();
     }
-
-    if(_transferFunctionPath != "") {
-        _transferFunction = loadTransferFunction(_transferFunctionPath);
-        _transferFunction->uploadTexture();
-
-        auto textureCallback = [this](const ghoul::filesystem::File& file) {
-            _updateTransferfunction = true;
-        };
-        _transferFunctionFile->setCallback(textureCallback);
-    }
     
     success &= isReady();
 
@@ -183,37 +175,20 @@ bool RenderableVolumeGL::initialize() {
 bool RenderableVolumeGL::deinitialize() {
 	if (_volume)
 		delete _volume;
-	if (_transferFunctionFile)
-		delete _transferFunctionFile;
 	if (_transferFunction)
 		delete _transferFunction;
 	_volume = nullptr;
-	_transferFunctionFile = nullptr;
 	_transferFunction = nullptr;
     
     return RenderableVolume::deinitialize();
 }
 
 void RenderableVolumeGL::preResolve(ghoul::opengl::ProgramObject* program) {
-
-    if(_updateTransferfunction) {
-        _updateTransferfunction = false;
-        ghoul::opengl::Texture* transferFunction = loadTransferFunction(_transferFunctionPath);
-        if(transferFunction) {
-            const void* data = transferFunction->pixelData();
-            glBindBuffer(GL_COPY_READ_BUFFER, *transferFunction);
-            _transferFunction->bind();
-            glTexImage1D(   GL_TEXTURE_1D, 0, _transferFunction->internalFormat(), 
-                            static_cast<GLsizei>(_transferFunction->width()),0, _transferFunction->format(), 
-                            _transferFunction->dataType(), data);
-            delete transferFunction;
-        }
-    }
 	std::string transferFunctionName = getGlslName("transferFunction");
 	std::string volumeName = getGlslName("volume");
 	std::string stepSizeName = getGlslName("stepSize");
 
-	int transferFunctionUnit = getTextureUnit(_transferFunction);
+	int transferFunctionUnit = getTextureUnit(_transferFunction->getTexture());
 	int volumeUnit = getTextureUnit(_volume);
 
 	program->setUniform(transferFunctionName, transferFunctionUnit);
@@ -269,7 +244,7 @@ std::string RenderableVolumeGL::getHeader() {
 }
 
 std::vector<ghoul::opengl::Texture*> RenderableVolumeGL::getTextures() {
-	std::vector<ghoul::opengl::Texture*> textures{_transferFunction, _volume};
+	std::vector<ghoul::opengl::Texture*> textures{_transferFunction->getTexture(), _volume};
 	return textures;
 }
 
