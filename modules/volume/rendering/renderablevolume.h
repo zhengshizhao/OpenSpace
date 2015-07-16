@@ -74,7 +74,7 @@ protected:
 
 private:
     void renderIntersection(const RenderData& data);
-    glm::vec4 perspectiveToModelSpace(const RenderData& data, glm::vec4 vector);
+    glm::vec3 perspectiveToCubeSpace(const RenderData& data, glm::vec4 vector);
 };
 
 } // namespace openspace

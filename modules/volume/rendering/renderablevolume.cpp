@@ -192,14 +192,12 @@ void RenderableVolume::render(const RenderData& data) {
     _boxProgram->deactivate();
 }
 
-glm::vec4 RenderableVolume::perspectiveToModelSpace(const RenderData& data, glm::vec4 vector) {
-    glm::mat4 modelTransform = glm::mat4(1.0);
-    modelTransform = glm::scale(modelTransform, _boxScaling);
-
+glm::vec3 RenderableVolume::perspectiveToCubeSpace(const RenderData& data, glm::vec4 vector) {
     glm::mat4 invViewProjectionMatrix = glm::inverse(data.camera.viewProjectionMatrix());
     vector = invViewProjectionMatrix * vector;
 
-    psc pscVector(vector.xyz());
+    glm::vec2 cameraScaling = data.camera.scaling();
+    psc pscVector(glm::vec4(vector.xyz() / cameraScaling.x, -cameraScaling.y));
 
     glm::mat3 invCamRot = glm::mat3(glm::inverse(data.camera.viewRotationMatrix()));
     vector = pscVector.vec4();
@@ -214,10 +212,16 @@ glm::vec4 RenderableVolume::perspectiveToModelSpace(const RenderData& data, glm:
     pscVector -= currentPosition;
 
     vector = pscVector.vec4();
+
+    glm::mat4 modelTransform = glm::mat4(1.0);
+    modelTransform = glm::scale(modelTransform, _boxScaling);
     glm::mat3 invModelTransform = glm::mat3(glm::inverse(modelTransform));
     vector = glm::vec4(invModelTransform * vector.xyz(), vector.w);
+    vector.w -= _w;
 
-    return vector;
+    pscVector = psc(vector);
+
+    return pscVector.vec3();
 }
 
 void RenderableVolume::renderIntersection(const RenderData& data) {
@@ -241,12 +245,13 @@ void RenderableVolume::renderIntersection(const RenderData& data) {
         4,6
     };
 
-    float nearW = 1.000001;
-    psc nearPlaneNormalStart = perspectiveToModelSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW));
-    psc nearPlaneNormalEnd = perspectiveToModelSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW + 1.0));
+    // Get powerscaled coordinates of normal ends
+    float nearW = 1.0001;
+    glm::vec3 nearPlaneNormalStart = perspectiveToCubeSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW));
+    glm::vec3 nearPlaneNormalEnd = perspectiveToCubeSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW + 1.0));
 
-    glm::vec3 nearPlaneNormal = glm::normalize((nearPlaneNormalEnd - nearPlaneNormalStart).vec3());
-    float nearPlaneDistance = glm::dot(nearPlaneNormalStart.vec3(), nearPlaneNormal);
+    glm::vec3 nearPlaneNormal = glm::normalize(nearPlaneNormalEnd - nearPlaneNormalStart);
+    float nearPlaneDistance = glm::dot(nearPlaneNormalStart, nearPlaneNormal);
 
     glm::vec3 intersections[12];
     int nIntersections = 0;
@@ -290,13 +295,13 @@ void RenderableVolume::renderIntersection(const RenderData& data) {
     vertices.push_back(intersections[0].x);
     vertices.push_back(intersections[0].y);
     vertices.push_back(intersections[0].z);
-    vertices.push_back(0.0);
+    vertices.push_back(_w);
     for (int i = 0; i < nIntersections - 1; i++) {
         int j = angles[i].first;
         vertices.push_back(intersections[j].x);
         vertices.push_back(intersections[j].y);
         vertices.push_back(intersections[j].z);
-        vertices.push_back(0.0);
+        vertices.push_back(_w);
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, _intersectionVertexPositionBuffer); // bind buffer
