@@ -106,7 +106,7 @@ protected:
 	std::vector<std::pair<std::string,ghoul::opengl::Texture*> > _volumes;
 	std::vector<std::pair<std::string,ghoul::opengl::Texture*> > _transferFunctions;
 
-	std::set<ABufferVolume*> _aBufferVolumes;
+	std::map<int, ABufferVolume*> _aBufferVolumes;
 	std::map<ABufferVolume*, std::map<std::string, std::string> > _glslDictionary;
 
 	std::vector<std::string> _glslHelpers;

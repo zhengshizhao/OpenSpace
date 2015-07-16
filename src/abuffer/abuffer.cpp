@@ -162,7 +162,8 @@ void ABuffer::resolve(float blackoutFactor) {
     _textureUnits.clear();
     _bufferBindings.clear();
     
-    for (ABufferVolume* volume : _aBufferVolumes) {
+    for (auto volumePair : _aBufferVolumes) {
+        ABufferVolume* volume = volumePair.second;
         // Distribute texure units to the required textures.
         std::vector<ghoul::opengl::Texture*> textures = volume->getTextures();
         for (ghoul::opengl::Texture* t : textures) {
@@ -206,10 +207,11 @@ void ABuffer::registerGlslHelpers(std::string helpers) {
 }
 
 int ABuffer::addVolume(ABufferVolume* volume) {
-    _aBufferVolumes.insert(volume);
+    int volumeId = nextId++;
+    _aBufferVolumes.insert(std::pair<int, ABufferVolume*>(volumeId - 1, volume));
     std::map<std::string, std::string> map;
     _glslDictionary.insert(std::pair<ABufferVolume*, std::map<std::string, std::string> >(volume, map));
-    return nextId++;
+    return volumeId;
 }
 
     /*    void ABuffer::removeVolume(ABufferVolume* volume) {
@@ -269,15 +271,14 @@ void ABuffer::generateHeaders() {
     std::ofstream f(absPath(generatedHeadersPath));
     f << "#define MAX_VOLUMES " << std::to_string(_aBufferVolumes.size()) << "\n";
 
-    for (auto volume : _aBufferVolumes) {
-        f << volume->getHeader();
+    for (auto volumePair : _aBufferVolumes) {
+        f << volumePair.second->getHeader();
     }
 
-    int i = 0;
-    for (auto volume : _aBufferVolumes) {
-        f << "vec4 sampleVolume_" << i << "(vec3 samplePos, vec3 dir, float occludingAlpha, inout float maxStepSize);" << std::endl;
-        f << "float getStepSize_" << i << "(vec3 samplePos, vec3 dir);" << std::endl;
-        i++;
+    for (auto volumePair : _aBufferVolumes) {
+        int id = volumePair.second->getId();
+        f << "vec4 sampleVolume_" << id << "(vec3 samplePos, vec3 dir, float occludingAlpha, inout float maxStepSize);" << std::endl;
+        f << "float getStepSize_" << id << "(vec3 samplePos, vec3 dir);" << std::endl;
     }
 
     if (_aBufferVolumes.size() < 1) {
@@ -290,26 +291,22 @@ void ABuffer::generateHeaders() {
     
     f.close();
 
-    if (_aBufferVolumes.size() == 0) {
-        assert(false);
-    }
-
 }
     
 void ABuffer::generateStepSizeCalls() {
     std::ofstream f(absPath(generatedStepSizeCallsPath));
     
-    int i = 0; 
-    for (auto volume : _aBufferVolumes) {
-        f << "#ifndef SKIP_VOLUME_" << i << "\n"
-          << "if((currentVolumeBitmask & (1 << " << i << ")) == " << std::to_string(1 << i) << ") {" << std::endl
-          << "  maxStepSizeLocal = getStepSize_" << i << "(volume_position[" << i << "], volume_direction[" << i << "]);" << std::endl
-          << "  maxStepSize"  << " = maxStepSizeLocal/volume_scale[" << i << "];" << std::endl
+    for (auto volumePair : _aBufferVolumes) {
+        int index = volumePair.first;
+        int id = volumePair.second->getId();
+        f << "#ifndef SKIP_VOLUME_" << id << "\n"
+          << "if((currentVolumeBitmask & " << (1 << index) << ") == " << (1 << index) << ") {" << std::endl
+          << "  maxStepSizeLocal = getStepSize_" << id << "(volume_position[" << index << "], volume_direction[" << index << "]);" << std::endl
+          << "  maxStepSize"  << " = maxStepSizeLocal/volume_scale[" << index << "];" << std::endl
           << "  nextStepSize = min(nextStepSize, maxStepSize);" << std::endl
           << "}" << std::endl
-          << "float previousJitterDistance_" << i << " = 0.0;" << std::endl
+          << "float previousJitterDistance_" << id << " = 0.0;" << std::endl
           << "#endif" << std::endl;
-        i++;
     }
     f.close();
 }
@@ -317,24 +314,23 @@ void ABuffer::generateStepSizeCalls() {
 void ABuffer::generateSamplerCalls() {
     std::ofstream f(absPath(generatedSamplerCallsPath));
     
-    int i = 0;
-    for (auto volume : _aBufferVolumes) {
-    
-        f << "#ifndef SKIP_VOLUME_" << i << "\n"
-          << "if((currentVolumeBitmask & (1 << " << i << ")) == " << std::to_string(1 << i) << ") {" << std::endl
-          << "  stepSizeLocal = stepSize*volume_scale[" << i << "];" << std::endl
+    for (auto volumePair : _aBufferVolumes) {
+        int index = volumePair.first;
+        int id = volumePair.second->getId();
+        f << "#ifndef SKIP_VOLUME_" << id << "\n"
+          << "if((currentVolumeBitmask & " << (1 << index) << ") == " << (1 << index) << ") {" << std::endl
+          << "  stepSizeLocal = stepSize*volume_scale[" << index << "];" << std::endl
           << "  float jitteredStepSizeLocal = stepSizeLocal*jitterFactor;" << std::endl
-          << "  vec3 jitteredPosition = volume_position[" << i << "] + volume_direction[" << i << "]*jitteredStepSizeLocal;" << std::endl
-          << "  volume_position[" << i << "] += volume_direction[" << i << "]*stepSizeLocal;" << std::endl
-          << "  vec4 contribution = sampleVolume_" << i << "(jitteredPosition, volume_direction[" << i << "], final_color.a, maxStepSizeLocal);" << std::endl
-          << "  blendStep(final_color, contribution, 10 * (jitteredStepSizeLocal + previousJitterDistance_" << i << "));" << std::endl
-          << "  previousJitterDistance_" << i << " = stepSizeLocal - jitteredStepSizeLocal;" << std::endl
-          << "  maxStepSize"  << " = maxStepSizeLocal/volume_scale[" << i << "];" << std::endl
+          << "  vec3 jitteredPosition = volume_position[" << index << "] + volume_direction[" << index << "]*jitteredStepSizeLocal;" << std::endl
+          << "  volume_position[" << index << "] += volume_direction[" << index << "]*stepSizeLocal;" << std::endl
+          << "  vec4 contribution = sampleVolume_" << id << "(jitteredPosition, volume_direction[" << index << "], final_color.a, maxStepSizeLocal);" << std::endl
+          << "  blendStep(final_color, contribution, 10*(jitteredStepSizeLocal + previousJitterDistance_" << id << "));" << std::endl
+          << "  previousJitterDistance_" << id << " = stepSizeLocal - jitteredStepSizeLocal;" << std::endl
+          << "  maxStepSize"  << " = maxStepSizeLocal/volume_scale[" << index << "];" << std::endl
           << "  nextStepSize = min(nextStepSize, maxStepSize);" << std::endl
           << "}" << std::endl
             
           << "#endif\n";
-        i++;
     }
     
     f.close();
@@ -343,10 +339,10 @@ void ABuffer::generateSamplerCalls() {
 void ABuffer::generateSamplers() {
     std::ofstream f(absPath(generatedSamplersPath));
 
-    int i = 0;
-    for (auto volume : _aBufferVolumes) {
+    for (auto volumePair : _aBufferVolumes) {
         std::stringstream functionName;
-        functionName << "sampleVolume_" << i++;
+        ABufferVolume* volume = volumePair.second;
+        functionName << "sampleVolume_" << volume->getId();
         f << volume->getSampler(functionName.str());
     }
     
@@ -355,10 +351,10 @@ void ABuffer::generateSamplers() {
 
 void ABuffer::generateStepSizeFunctions() {
     std::ofstream f(absPath(generatedStepSizeFunctionsPath));
-    int i = 0;
-    for (auto volume : _aBufferVolumes) {
+    for (auto volumePair : _aBufferVolumes) {
         std::stringstream functionName;
-        functionName << "getStepSize_" << i++;
+        ABufferVolume* volume = volumePair.second;
+        functionName << "getStepSize_" << volume->getId();
         f << volume->getStepSizeFunction(functionName.str());
     }
     

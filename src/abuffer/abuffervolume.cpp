@@ -45,4 +45,8 @@ namespace openspace {
     int ABufferVolume::getSsboBinding(int ssboId) {
        return OsEng.renderEngine()->aBuffer()->getSsboBinding(ssboId);
     }
+
+    int ABufferVolume::getId() {
+      return _id;
+    }
 }

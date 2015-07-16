@@ -56,6 +56,7 @@ public:
 	virtual std::string getHeader() { return ""; };
 	virtual std::vector<ghoul::opengl::Texture*> getTextures() { return std::vector<ghoul::opengl::Texture*>(); };
     virtual std::vector<int> getBuffers() { return std::vector<int>(); };
+    int getId();
 protected:
 	std::string getGlslName(const std::string &key);
 	int getTextureUnit(ghoul::opengl::Texture* texture);
