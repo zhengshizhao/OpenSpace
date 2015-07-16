@@ -27,7 +27,9 @@
 
 #include <vector>
 #include <modules/volume/rendering/renderablevolume.h>
+#include <modules/volume/rendering/transferfunction.h>
 #include <openspace/util/powerscaledcoordinate.h>
+
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -75,11 +77,7 @@ private:
 
     std::string _transferFunctionPath;
 
-    ghoul::filesystem::File* _transferFunctionFile;
-
-    ghoul::opengl::Texture* _transferFunction;
-
-    bool _updateTransferfunction;
+    TransferFunction* _transferFunction;
 
     float _spatialTolerance;
     float _temporalTolerance;

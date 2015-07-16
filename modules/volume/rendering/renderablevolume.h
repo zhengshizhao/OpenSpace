@@ -54,13 +54,13 @@ public:
 
     virtual bool initialize() override;
     virtual bool deinitialize() override;
+    virtual void update(const UpdateData& data) override;
     virtual void render(const RenderData& data) override;
 
 protected:
     ghoul::opengl::Texture* loadVolume(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
     glm::vec3 getVolumeOffset(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
     ghoul::RawVolumeReader::ReadHints readHints(const ghoul::Dictionary& dictionary);
-    ghoul::opengl::Texture* loadTransferFunction(const std::string& filepath);
 
     float _w;
 
@@ -72,6 +72,8 @@ protected:
     glm::vec3 _boxScaling;
     psc _pscOffset;
 
+    glm::mat4 _modelTransform;
+    std::string _modelName;
 private:
     void renderIntersection(const RenderData& data);
     glm::vec3 perspectiveToCubeSpace(const RenderData& data, glm::vec4 vector);

@@ -22,13 +22,11 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEVOLUMEGL_H__
-#define __RENDERABLEVOLUMEGL_H__
+#ifndef __TRANSFERFUNCTION_H__
+#define __TRANSFERFUNCTION_H__
 
-#include <vector>
-#include <modules/volume/rendering/renderablevolume.h>
-#include <openspace/util/powerscaledcoordinate.h>
-#include <modules/volume/rendering/transferfunction.h>
+#include <string>
+#include <glm/glm.hpp>
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -36,41 +34,38 @@ namespace ghoul {
         class File;
     }
     namespace opengl {
-        class ProgramObject;
         class Texture;
     }
 }
 
 namespace openspace {
 
-class RenderableVolumeGL: public RenderableVolume {
-public:
-    RenderableVolumeGL(const ghoul::Dictionary& dictionary);
-    ~RenderableVolumeGL();
-    
-    bool initialize() override;
-    bool deinitialize() override;
 
-    bool isReady() const override;
+    class TransferFunction {
+    public:
+        TransferFunction(const std::string& filepath);
+        ~TransferFunction();
+	void setPath(const std::string& filepath);
+	ghoul::opengl::Texture* getTexture();
+    private:
+	void setTextureFromTxt();
+	void setTextureFromImage();
+	void uploadTexture();
 
-    virtual void update(const UpdateData& data) override;
-    virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
-    virtual std::string getSampler(const std::string& functionName) override;
-    virtual std::string getStepSizeFunction(const std::string& functionName) override;
-    virtual std::string getHeader() override;
-    virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
+	std::string _filepath;
+	ghoul::filesystem::File* _file = nullptr;
+	ghoul::opengl::Texture* _texture = nullptr;
+	bool _needsUpdate = false;
+    };
 
-private:
-    ghoul::Dictionary _hintsDictionary;
-
-    std::string _filename;
-    std::string _volumeName;
-    ghoul::opengl::Texture* _volume;
-
-    std::string _transferFunctionPath;
-    TransferFunction* _transferFunction;
-};
-
+    struct MappingKey {
+        float position{0.0f};
+        glm::vec4 color{0.0f,0.0f,0.0f,0.0f};
+        MappingKey(float p, const glm::vec4& c): position(p), color(c) {};
+        MappingKey(float p): position(p), color(glm::vec4(0.0f)) {};
+        bool operator<(const MappingKey& rhs) {return position < rhs.position;};
+    };
 } // namespace openspace
 
 #endif
+
