@@ -45,6 +45,9 @@
 #include <algorithm>
 #include <iterator>
 
+
+
+
 namespace {
     const std::string _loggerCat = "RenderableMultiresVolume";
     const std::string KeyDataSource = "Source";
@@ -52,6 +55,7 @@ namespace {
     const std::string KeyTransferFunction = "TransferFunction";
     const std::string KeySampler = "Sampler";
     const std::string KeyBoxScaling = "BoxScaling";
+    const std::string KeyModelName = "ModelName";
     const std::string KeyVolumeName = "VolumeName";
     const std::string GlslHelpersPath = "${MODULES}/multiresvolume/shaders/helpers_fs.glsl";
     bool registeredGlslHelpers = false;
@@ -96,6 +100,11 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
 
     _pscOffset = psc(glm::vec4(0.0));
     _boxScaling = glm::vec3(1.0);
+
+    if (dictionary.hasKey(KeyModelName)) {
+	success = dictionary.getValue(KeyModelName, _modelName);
+    }
+
     if (dictionary.hasKey(KeyBoxScaling)) {
         glm::vec4 scalingVec4(_boxScaling, _w);
         success = dictionary.getValue(KeyBoxScaling, scalingVec4);
@@ -278,7 +287,7 @@ std::vector<int> RenderableMultiresVolume::getBuffers() {
 }
 
 void RenderableMultiresVolume::update(const UpdateData& data) {
-
+    RenderableVolume::update(data);
 }
 
 } // namespace openspace

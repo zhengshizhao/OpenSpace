@@ -250,6 +250,7 @@ std::vector<ghoul::opengl::Texture*> RenderableVolumeGL::getTextures() {
 
 
 void RenderableVolumeGL::update(const UpdateData& data) {
+    RenderableVolume::update(data);
 }
 
 } // namespace openspace

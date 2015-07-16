@@ -54,6 +54,7 @@ public:
 
     virtual bool initialize() override;
     virtual bool deinitialize() override;
+    virtual void update(const UpdateData& data) override;
     virtual void render(const RenderData& data) override;
 
 protected:
@@ -71,6 +72,8 @@ protected:
     glm::vec3 _boxScaling;
     psc _pscOffset;
 
+    glm::mat4 _modelTransform;
+    std::string _modelName;
 private:
     void renderIntersection(const RenderData& data);
     glm::vec4 perspectiveToModelSpace(const RenderData& data, glm::vec4 vector);

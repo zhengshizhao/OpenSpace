@@ -30,12 +30,16 @@
 #include <modules/kameleon/include/kameleonwrapper.h>
 #include <openspace/util/constants.h>
 #include <openspace/util/progressbar.h>
+#include <openspace/util/spicemanager.h>
 #include <openspace/abuffer/abuffer.h>
 
 // ghoul includes
 #include <ghoul/io/texture/texturereader.h>
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/filesystem/cachemanager.h>
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 
 #include <iostream>
 #include <iomanip>
@@ -82,6 +86,7 @@ RenderableVolume::RenderableVolume(const ghoul::Dictionary& dictionary) : Render
     , _vertexPositionBuffer(0)
     , _boxProgram(nullptr)
     , _boxScaling(1.0, 1.0, 1.0) {}
+
 
 RenderableVolume::~RenderableVolume() {}
 
@@ -167,6 +172,28 @@ bool RenderableVolume::deinitialize() {
 
     return true;
 }
+
+    void RenderableVolume::update(const UpdateData& data){
+	/*if (_modelName == "ENLIL") {
+
+	    psc earthPosition;
+	    glm::dmat3 sunRotation;
+	    double lt = 0;
+
+	    openspace::SpiceManager::ref().getTargetPosition("EARTH", "SUN", "IAU_SUN", "NONE", data.time, earthPosition, lt);
+	    openspace::SpiceManager::ref().getPositionTransformMatrix("GALACTIC", "IAU_SUN", data.time, sunRotation);
+
+	    glm::mat4 rot;
+
+	    glm::vec3 earthPos = glm::normalize(earthPosition.vec4().xyz());
+
+	    glm::dvec3 sunNorthPole = sunRotation*glm::dvec3(0.0, 0.0, 1.0);
+	    glm::dvec3 sunEarth = sunRotation*glm::dvec3(earthPosition.vec3());
+
+		//std::cout << glm::dot(glm::normalize(sunNorthPole), glm::normalize(sunEarth)) << std::endl;
+	}*/
+}
+
 
 void RenderableVolume::render(const RenderData& data) {
     glm::mat4 transform = glm::mat4(1.0);

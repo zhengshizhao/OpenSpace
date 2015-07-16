@@ -292,13 +292,12 @@ bool TSP::calculateSpatialError() {
 		_file.read(reinterpret_cast<char*>(&buffer[0]),
 			static_cast<size_t>(numBrickVals)*sizeof(float));
 
-		float average = 0.f;
+		double average = 0.0;
 		for (auto it = buffer.begin(); it != buffer.end(); ++it) {
 			average += *it;
 		}
 
-		//INFO("averages[" << brick << "]");
-		averages[brick] = average / static_cast<float>(numBrickVals);
+		averages[brick] = average / static_cast<double>(numBrickVals);
 	}
 
 	// Spatial SNR stats
@@ -458,9 +457,7 @@ bool TSP::calculateTemporalError() {
 		// 0.0 higher up in the tree
 		if (coveredBricks.size() == 1) {
 			errors[brick] = -0.1f;
-		}
-		else {
-
+		} else {
 			// Calculate standard deviation per voxel, average over brick
 			float avgStdDev = 0.f;
 			for (unsigned int voxel = 0; voxel<numBrickVals; ++voxel) {
@@ -650,6 +647,9 @@ unsigned int TSP::getBstRight(unsigned int _brickIndex) {
 }
 
 bool TSP::isBstLeaf(unsigned int _brickIndex) {
+	if (numBSTNodes_ <= 1) {
+		return true;
+	}
 	if (_brickIndex < numOTNodes_) {
 		return false;
 	}
