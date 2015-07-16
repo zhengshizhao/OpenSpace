@@ -109,22 +109,17 @@ ABufferStruct_t fragments[MAX_FRAGMENTS];
 // Helper functions functions
 // ================================================================================
 
-vec4 blend(vec4 src, vec4 dst) {
-	#if 0
-	vec4 o;
-	o.a = src.a + dst.a * (1.0f - src.a);
-	o.rgb = (src.rgb*src.a + dst.rgb*dst.a* (1.0f - src.a));
-	return o;
-	#else
-	return mix(src, dst, dst.a*(1.0f - src.a));
-	#endif
+vec4 blend(vec4 front, vec4 back) {
+    vec4 result;
+    result.a = front.a + (1.0 - front.a) * back.a;
+    result.rgb = (front.rgb * front.a) + (back.rgb * back.a * (1.0 - front.a));
+    result.rgb = result.a > 0.000001 ? (result.rgb / result.a) : result.rgb;
+    return result;
 }
 
 void blendStep(inout vec4 dst, in vec4 src, in float stepSize) {
-    src.a = 1.0 - pow(1.0 - src.a, stepSize );
-    // src.a = 1.0 -(1.0 - src.a*stepSize);
-    dst.rgb = dst.rgb + (1.0 - dst.a) * src.a * src.rgb;
-    dst.a = dst.a + (1.0 -dst.a) * src.a;
+    src.a = 1.0 - pow(1.0 - src.a, stepSize);
+    dst = blend(dst, src);
 }
 
 float rand(vec2 co){
