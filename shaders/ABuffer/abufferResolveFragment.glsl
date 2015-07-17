@@ -103,6 +103,7 @@ ABufferStruct_t fragments[MAX_FRAGMENTS];
 	float volume_scale[MAX_VOLUMES];
 	int volume_count = 0;
 #endif
+#include "../PowerScaling/powerScalingMath.hglsl"
 #include "abufferSort.hglsl"
 
 // ================================================================================
@@ -154,7 +155,10 @@ vec4 calculate_final_color(uint frag_count) {
 
 		if (currentVolumeBitmask > 0) {
 
-		    float fragDistance = abs(_z_(endFrag) - _z_(startFrag));
+		    vec4 startPos = _pos_(startFrag);
+		    vec4 endPos = _pos_(endFrag);
+		    vec2 pscDistance = psc_subtraction(startPos.zw, endPos.zw);
+		    float fragDistance = abs(pscDistance.x) * pow(k, pscDistance.y);
 
 		    float maxStepSizeLocal; //maximum step size in local scale
 		    float maxStepSize; // maxStepSizeLocal converted to global scale

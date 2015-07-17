@@ -23,6 +23,7 @@
  ****************************************************************************************/
  
 #include "abufferAddToBuffer.hglsl"
+#include "../PowerScaling/powerScalingMath.hglsl"
 
 int build_local_fragments_list() {
 
@@ -92,14 +93,14 @@ void sort_fragments_list(uint frag_count) {
 	for(ii = 0; ii < MAX_VOLUMES; ++ii) {
 		bool start = true;
 		vec3 startColor;
-		float startZ;
-		float endZ;
+		vec2 startZ;
 		for(jj = 0; jj < frag_count; ++jj) {
 			int type = int(_type_(fragments[jj])) - 1;
 			if(type == ii) {
 				if(start) {
 					startColor = _col_(fragments[jj]).rgb;
-					startZ = _z_(fragments[jj]);
+					vec4 startPos = _pos_(fragments[jj]);
+					startZ = startPos.zw;
 					start = false;
 				} else {
 					volumes_in_fragment[volume_count++] = ii;
@@ -108,9 +109,13 @@ void sort_fragments_list(uint frag_count) {
 					volume_direction[ii] = normalize(dir);
 
 					vec3 endColor = _col_(fragments[jj]).rgb;
-					float endZ = _z_(fragments[jj]);
+					vec4 endPos = _pos_(fragments[jj]);
+					vec2 endZ = endPos.zw;
 
-					volume_scale[ii] = length(startColor - endColor) / abs(startZ - endZ);
+					vec2 pscDist = psc_subtraction(startZ, endZ);
+					float dist = abs(pscDist.x) * pow(k, pscDist.y);
+
+					volume_scale[ii] = length(startColor - endColor) / dist;
 
 					break;
 				}
