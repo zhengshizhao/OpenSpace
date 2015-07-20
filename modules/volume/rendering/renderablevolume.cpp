@@ -273,12 +273,15 @@ void RenderableVolume::renderIntersection(const RenderData& data) {
     };
 
     // Get powerscaled coordinates of normal ends
-    float nearW = 1.0001;
-    glm::vec3 nearPlaneNormalStart = perspectiveToCubeSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW));
-    glm::vec3 nearPlaneNormalEnd = perspectiveToCubeSpace(data, glm::vec4(0.0, 0.0, 1.0, nearW + 1.0));
+    float nearZ = 1.0;
+    float nearW = nearZ;
 
-    glm::vec3 nearPlaneNormal = glm::normalize(nearPlaneNormalEnd - nearPlaneNormalStart);
-    float nearPlaneDistance = glm::dot(nearPlaneNormalStart, nearPlaneNormal);
+    glm::vec3 nearPlaneP0 = perspectiveToCubeSpace(data, glm::vec4(0.0, 0.0, nearZ, nearW));
+    glm::vec3 nearPlaneP1 = perspectiveToCubeSpace(data, glm::vec4(1.0, 0.0, nearZ, nearW));
+    glm::vec3 nearPlaneP2 = perspectiveToCubeSpace(data, glm::vec4(0.0, 1.0, nearZ, nearW));
+
+    glm::vec3 nearPlaneNormal = glm::normalize(glm::cross(nearPlaneP1 - nearPlaneP0, nearPlaneP2 - nearPlaneP0));
+    float nearPlaneDistance = glm::dot(nearPlaneP0, nearPlaneNormal);
 
     glm::vec3 intersections[12];
     int nIntersections = 0;
