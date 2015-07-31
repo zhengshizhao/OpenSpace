@@ -23,7 +23,7 @@
  ****************************************************************************************/
 
 #include <sgct.h>
-#include <openspace/rendering/flare/tsp.h>
+#include <modules/multiresvolume/rendering/tsp.h>
 
 // ghoul
 #include <ghoul/filesystem/filesystem.h>

@@ -22,7 +22,7 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#include <openspace/rendering/flare/brickselector.h>
+#include <modules/multiresvolume/rendering/brickselector.h>
 
 namespace {
     const std::string _loggerCat = "BrickSelector";
