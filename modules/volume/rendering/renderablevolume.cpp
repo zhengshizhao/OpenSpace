@@ -223,8 +223,10 @@ void RenderableVolume::render(const RenderData& data) {
     _nearPlaneProgram->setUniform("volumeType", _id);
     _nearPlaneProgram->setUniform("viewProjection", data.camera.viewProjectionMatrix());
     _nearPlaneProgram->setUniform("modelTransform", transform);
-    setPscUniforms(_nearPlaneProgram, &data.camera, currentPosition);
-    _nearPlaneProgram->setUniform("near", 0.f);
+    _nearPlaneProgram->setUniform("campos", data.camera.position().vec4());
+    _nearPlaneProgram->setUniform("objpos", currentPosition.vec4());
+    _nearPlaneProgram->setUniform("camrot", data.camera.viewRotationMatrix());
+    _nearPlaneProgram->setUniform("scaling", data.camera.scaling());
     renderIntersection(data);
     _nearPlaneProgram->deactivate();
 
