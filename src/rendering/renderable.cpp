@@ -120,6 +120,7 @@ void Renderable::setPscUniforms(
 	program->setUniform("objpos", position.vec4());
 	program->setUniform("camrot", camera->viewRotationMatrix());
 	program->setUniform("scaling", camera->scaling());
+    program->setUniform("near", camera->nearPlane());
 }
 
 bool Renderable::isVisible() const {

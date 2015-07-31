@@ -120,6 +120,10 @@ public:
 	void setFocusPosition(psc pos);
 	const psc& focusPosition() const;
 
+    void setNearAndFarPlanes(float nearPlane, float farPlane);
+    const float& nearPlane() const;
+    const float& farPlane() const;
+
 	void setViewRotationMatrix(glm::mat4 m);
 	const glm::mat4& viewRotationMatrix() const;
     void compileViewRotationMatrix();
@@ -148,6 +152,8 @@ public:
 private:
     float _maxFov;
     float _sinMaxFov;
+    float _nearPlane;
+    float _farPlane;
     glm::mat4 _viewProjectionMatrix;
 	glm::mat4 _modelMatrix;
 	glm::mat4 _viewMatrix;

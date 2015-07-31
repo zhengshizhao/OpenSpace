@@ -146,6 +146,9 @@ private:
 	ABufferVisualizer* _visualizer;
 
     bool _disableMasterRendering = false;
+
+    float _nearPlaneZ = 0.001f;
+    float _farPlaneZ = 1000.0f;
 };
 
 } // namespace openspace

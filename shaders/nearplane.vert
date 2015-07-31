@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014-2015                                                               *
+ * Copyright (c) 2014                                                                    *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -22,64 +22,26 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEVOLUME_H__
-#define __RENDERABLEVOLUME_H__
+#version __CONTEXT__
 
-// open space includes
-#include <openspace/rendering/renderable.h>
-#include <openspace/abuffer/abuffervolume.h>
+layout(location = 0) in vec4 vertPosition;
 
-// ghoul includes
-#include <ghoul/io/rawvolumereader.h>
+uniform mat4 viewProjection;
+uniform mat4 modelTransform;
 
-// Forward declare to minimize dependencies
-namespace ghoul {
-	namespace filesystem {
-		class File;
-	}
-	namespace opengl {
-		class Texture;
-	}
+out vec3 vPosition;
+out vec4 worldPosition;
+out float s;
+
+#include "PowerScaling/powerScaling_vs.hglsl"
+
+void main() {
+    vPosition = vertPosition.xyz;
+    worldPosition = vertPosition;
+    
+    vec4 position = pscTransform(worldPosition, modelTransform);
+
+    // project the position to view space
+    gl_Position =  viewProjection * position;
+    gl_Position.zw = vec2(0.0, 1.0);
 }
-
-namespace openspace {
-
-class ABufferVolume;
-
-class RenderableVolume: public Renderable, public ABufferVolume {
-public:
-	// constructors & destructor
-	RenderableVolume(const ghoul::Dictionary& dictionary);
-	~RenderableVolume();
-
-    virtual bool initialize() override;
-    virtual bool deinitialize() override;
-    virtual void update(const UpdateData& data) override;
-    virtual void render(const RenderData& data) override;
-
-protected:
-    ghoul::opengl::Texture* loadVolume(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
-    glm::vec3 getVolumeOffset(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
-    ghoul::RawVolumeReader::ReadHints readHints(const ghoul::Dictionary& dictionary);
-
-    float _w;
-
-    GLuint _intersectionArray;
-    GLuint _intersectionVertexPositionBuffer;
-    GLuint _boxArray;
-    GLuint _vertexPositionBuffer;
-    ghoul::opengl::ProgramObject* _boxProgram;
-    ghoul::opengl::ProgramObject* _nearPlaneProgram;
-    glm::vec3 _boxScaling;
-    psc _pscOffset;
-
-    glm::mat4 _modelTransform;
-    std::string _modelName;
-private:
-    void renderIntersection(const RenderData& data);
-    glm::vec3 perspectiveToCubeSpace(const RenderData& data, glm::vec4 vector);
-};
-
-} // namespace openspace
-
-#endif

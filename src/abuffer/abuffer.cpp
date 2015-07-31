@@ -324,9 +324,10 @@ void ABuffer::generateSamplerCalls() {
           << "  vec3 jitteredPosition = volume_position[" << index << "] + volume_direction[" << index << "]*jitteredStepSizeLocal;" << std::endl
           << "  volume_position[" << index << "] += volume_direction[" << index << "]*stepSizeLocal;" << std::endl
           << "  vec4 contribution = sampleVolume_" << id << "(jitteredPosition, volume_direction[" << index << "], final_color.a, maxStepSizeLocal);" << std::endl
-          << "  blendStep(final_color, contribution, 10*(jitteredStepSizeLocal + previousJitterDistance_" << id << "));" << std::endl
+          << "  float sampleDistance = 10*(jitteredStepSizeLocal + previousJitterDistance_" << id << ");" << std::endl
+          << "  blendStep(final_color, contribution, sampleDistance);" << std::endl
           << "  previousJitterDistance_" << id << " = stepSizeLocal - jitteredStepSizeLocal;" << std::endl
-          << "  maxStepSize"  << " = maxStepSizeLocal/volume_scale[" << index << "];" << std::endl
+          << "  maxStepSize = maxStepSizeLocal/volume_scale[" << index << "];" << std::endl
           << "  nextStepSize = min(nextStepSize, maxStepSize);" << std::endl
           << "}" << std::endl
             

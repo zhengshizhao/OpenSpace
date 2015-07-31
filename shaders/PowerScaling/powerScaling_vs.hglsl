@@ -30,6 +30,7 @@ uniform mat4 camrot;
 uniform mat4 inv_camrot;
 uniform vec2 scaling;
 uniform vec4 objpos;
+uniform float near = 1.0;
 
 #include "powerScalingMath.hglsl"
 
@@ -93,6 +94,12 @@ vec4 invPscTransform(vec4 vertexPosition, mat4 invModelTransform) {
 	vec3 vertexPosXyz = mat3(invModelTransform) * vertexPosition.xyz;
 	vertexPosition = vec4(vertexPosXyz, vertexPosition.w);
 	return vertexPosition;
+}
+
+vec4 nearPlaneProjection(vec4 v_in) {
+	vec4 v_out = v_in;
+	v_out.z = near;
+	return v_out;
 }
 
 #endif

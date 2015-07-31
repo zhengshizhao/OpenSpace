@@ -128,6 +128,15 @@ bool Scene::initialize() {
 	_programs.push_back(tmpProgram);
     OsEng.ref().configurationManager()->setValue("RaycastProgram", tmpProgram);
 
+    // NearPlaneProgram
+    tmpProgram = ProgramObject::Build("NearPlaneProgram",
+        "${SHADERS}/nearplane.vert",
+        "${SHADERS}/exitpoints.frag");
+    if (!tmpProgram) return false;
+    tmpProgram->setProgramObjectCallback(cb);
+    _programs.push_back(tmpProgram);
+    OsEng.ref().configurationManager()->setValue("NearPlaneProgram", tmpProgram);
+
     return true;
 }
 

@@ -85,6 +85,7 @@ RenderableVolume::RenderableVolume(const ghoul::Dictionary& dictionary) : Render
     , _boxArray(0)
     , _vertexPositionBuffer(0)
     , _boxProgram(nullptr)
+    , _nearPlaneProgram(nullptr)
     , _boxScaling(1.0, 1.0, 1.0) {}
 
 
@@ -92,6 +93,9 @@ RenderableVolume::~RenderableVolume() {}
 
 bool RenderableVolume::initialize() {
     OsEng.configurationManager()->getValue("RaycastProgram", _boxProgram);
+    OsEng.configurationManager()->getValue("NearPlaneProgram", _nearPlaneProgram);
+
+
 
     // ============================
     //      GEOMETRY (box)
@@ -213,10 +217,17 @@ void RenderableVolume::render(const RenderData& data) {
     glBindVertexArray(_boxArray);
     glDrawArrays(GL_TRIANGLES, 0, 6*6);
     glEnable(GL_CULL_FACE);
-
-    renderIntersection(data);
-
     _boxProgram->deactivate();
+
+    _nearPlaneProgram->activate();
+    _nearPlaneProgram->setUniform("volumeType", _id);
+    _nearPlaneProgram->setUniform("viewProjection", data.camera.viewProjectionMatrix());
+    _nearPlaneProgram->setUniform("modelTransform", transform);
+    setPscUniforms(_nearPlaneProgram, &data.camera, currentPosition);
+    _nearPlaneProgram->setUniform("near", 0.f);
+    renderIntersection(data);
+    _nearPlaneProgram->deactivate();
+
 }
 
 glm::vec3 RenderableVolume::perspectiveToCubeSpace(const RenderData& data, glm::vec4 vector) {
@@ -273,7 +284,7 @@ void RenderableVolume::renderIntersection(const RenderData& data) {
     };
 
     // Get powerscaled coordinates of normal ends
-    float nearZ = 1.0;
+    float nearZ = data.camera.nearPlane();
     float nearW = nearZ;
 
     glm::vec3 nearPlaneP0 = perspectiveToCubeSpace(data, glm::vec4(0.0, 0.0, nearZ, nearW));
@@ -333,7 +344,6 @@ void RenderableVolume::renderIntersection(const RenderData& data) {
         vertices.push_back(intersections[j].z);
         vertices.push_back(_w);
     }
-
     glBindBuffer(GL_ARRAY_BUFFER, _intersectionVertexPositionBuffer); // bind buffer
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 4 * nIntersections, vertices.data(), GL_STATIC_DRAW);
 

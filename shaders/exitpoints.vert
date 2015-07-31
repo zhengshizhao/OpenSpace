@@ -42,5 +42,5 @@ void main() {
 	vec4 position = pscTransform(worldPosition, modelTransform);
 
 	// project the position to view space
-	gl_Position =  z_normalization(viewProjection * position);
+	gl_Position =  nearPlaneProjection(viewProjection * position);
 }

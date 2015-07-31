@@ -175,6 +175,19 @@ const psc& Camera::focusPosition() const{
 	return _focusPosition;
 }
 
+void Camera::setNearAndFarPlanes(float nearPlane, float farPlane) {
+    _nearPlane = nearPlane;
+    _farPlane = farPlane;
+}
+
+const float& Camera::nearPlane() const {
+    return _nearPlane;
+}
+
+const float& Camera::farPlane() const {
+    return _farPlane;
+}
+
 
 const glm::vec3& Camera::viewDirection() const
 {
