@@ -52,6 +52,7 @@
 #include <ghoul/systemcapabilities/openglcapabilitiescomponent.h>
 
 #include <ghoul/io/texture/texturereader.h>
+#include <ghoul/io/texture/texturewriter.h>
 #ifdef GHOUL_USE_DEVIL
 #include <ghoul/io/texture/texturereaderdevil.h>
 #endif //GHOUL_USE_DEVIL
@@ -60,9 +61,10 @@
 #endif // GHOUL_USE_FREEIMAGE
 #ifdef GHOUL_USE_SOIL
 #include <ghoul/io/texture/texturereadersoil.h>
+#include <ghoul/io/texture/texturewritersoil.h>
 #endif //GHOUL_USE_SOIL
 
-
+#include <ghoul/opengl/framebufferobject.h>
 #include <ghoul/io/texture/texturereadercmap.h>
 
 #include <array>
@@ -102,6 +104,8 @@ RenderEngine::RenderEngine()
 	, _showInfo(true)
 	, _showScreenLog(true)
 	, _takeScreenshot(false)
+	, _aBufferToFile(false)
+	, _aBufferToFileName("")
 	, _doPerformanceMeasurements(false)
 	, _performanceMemory(nullptr)
 	, _globalBlackOutFactor(0.f)
@@ -191,6 +195,7 @@ bool RenderEngine::initialize() {
 #endif // GHOUL_USE_FREEIMAGE
 #ifdef GHOUL_USE_SOIL
 	ghoul::io::TextureReader::ref().addReader(new ghoul::io::impl::TextureReaderSOIL);
+	ghoul::io::TextureWriter::ref().addWriter(new ghoul::io::impl::TextureWriterSOIL);
 #endif // GHOUL_USE_SOIL
 
 	ghoul::io::TextureReader::ref().addReader(new ghoul::io::impl::TextureReaderCMAP);
@@ -399,8 +404,39 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             _abuffer->resolve(_globalBlackOutFactor);
             glDisable(GL_BLEND);
-        }
-        else {
+            
+            if (_aBufferToFile) {
+                
+                GLuint activeFbo = ghoul::opengl::FramebufferObject::getActiveObject(); 
+
+                int width = sgct::Engine::instance()->getActiveWindowPtr()->getXFramebufferResolution();
+                int height = sgct::Engine::instance()->getActiveWindowPtr()->getYFramebufferResolution();
+
+                ghoul::opengl::FramebufferObject fbo;
+                ghoul::opengl::Texture texture(glm::size3_t(width, height, 1));
+
+                GLuint screenFbo = ghoul::opengl::FramebufferObject::getActiveObject();
+
+                fbo.activate();
+                texture.uploadTexture();
+                fbo.attachTexture(&texture);
+
+                glClearColor(0.0, 0.0, 0.0, 1.0);
+                glClear(GL_COLOR_BUFFER_BIT);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+                _abuffer->resolve(_globalBlackOutFactor);
+                fbo.deactivate();
+
+                glBindFramebuffer(GL_FRAMEBUFFER, screenFbo);
+
+                // Save texture
+                texture.downloadTexture();
+                ghoul::io::TextureWriter::ref().saveTexture(&texture, _aBufferToFileName);
+                _aBufferToFile = false;
+            }
+        } else {
             _visualizer->render();
         }
     }
@@ -640,6 +676,11 @@ void RenderEngine::takeScreenshot() {
 	_takeScreenshot = true;
 }
 
+void RenderEngine::aBufferToFile(const std::string& path) {
+    _aBufferToFile = true;
+    _aBufferToFileName = path;
+}
+
 void RenderEngine::toggleVisualizeABuffer(bool b) {
 	_visualizeABuffer = b;
 	if (!_visualizeABuffer)
@@ -757,6 +798,12 @@ scripting::ScriptEngine::LuaLibrary RenderEngine::luaLibrary() {
 				&luascriptfunctions::takeScreenshot,
 				"",
 				"Renders the current image to a file on disk"
+			},
+			{
+				"aBufferToFile",
+				&luascriptfunctions::aBufferToFile,
+				"string",
+				"Renders the current abuffer output to a file on disk"
 			},
 			{
 				"visualizeABuffer",
