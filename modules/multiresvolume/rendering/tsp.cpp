@@ -430,7 +430,6 @@ bool TSP::calculateTemporalError() {
 	// Calculate temporal error for one brick at a time
 	for (unsigned int brick = 0; brick<numTotalNodes_; ++brick) {
 
-
 		unsigned int numBrickVals =
 			paddedBrickDim_*paddedBrickDim_*paddedBrickDim_;
 
@@ -627,7 +626,10 @@ float TSP::getTemporalError(unsigned int _brickIndex) {
 }
 
 unsigned int TSP::getFirstChild(unsigned int _brickIndex) {
-	return data_[_brickIndex*NUM_DATA + CHILD_INDEX];
+	unsigned int otNode = _brickIndex % numOTNodes_;
+	unsigned int bstOffset = _brickIndex - otNode;
+	int otChildIndex = data_[otNode*NUM_DATA + CHILD_INDEX];
+	return bstOffset + otChildIndex;
 }
 
 unsigned int TSP::getBstLeft(unsigned int _brickIndex) {
@@ -657,7 +659,8 @@ bool TSP::isBstLeaf(unsigned int _brickIndex) {
 }
 
 bool TSP::isOctreeLeaf(unsigned int _brickIndex) {
-	return data_[_brickIndex*NUM_DATA + CHILD_INDEX] == -1;
+	unsigned int OTNode = _brickIndex % numOTNodes_;
+	return data_[OTNode*NUM_DATA + CHILD_INDEX] == -1;
 }
 
 std::list<unsigned int> TSP::CoveredLeafBricks(unsigned int _brickIndex) {
