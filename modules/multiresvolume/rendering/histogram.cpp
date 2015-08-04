@@ -91,6 +91,19 @@ bool Histogram::add(const Histogram& histogram) {
 }
 
 
+float Histogram::sample(float bin) const {
+    float normalizedBin = (bin - _minBin) / (_maxBin - _minBin);
+    float binIndex = normalizedBin * _numBins - 0.5; // Center
+    // Clamp bins
+    if (binIndex < 0) binIndex = 0;
+    if (binIndex > _numBins) binIndex = _numBins;
+
+    float interpolator = binIndex - floor(binIndex);
+    int binLow = floor(binIndex);
+    int binHigh = ceil(binIndex);
+    return (1.0 - interpolator) * _data[binLow] + interpolator * _data[binHigh];
+}
+
 const std::vector<float>& Histogram::data() const {
     return _data;
 }
