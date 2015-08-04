@@ -103,6 +103,7 @@ namespace openspace {
 	    _texture->uploadTexture();
 	    _needsUpdate = false;
 	}
+	
 	return _texture;
     }
 
@@ -220,5 +221,18 @@ namespace openspace {
 	ghoul::opengl::Texture* t = ghoul::io::TextureReader::ref().loadTexture(_filepath);
         t->setWrapping(wrappingmode);
 	_texture = t;
+    }
+
+    glm::vec4 TransferFunction::sample(float t) {
+	if (!_texture) return glm::vec4(0.0);
+
+	int nPixels = _texture->width();
+	size_t offset = t*nPixels;
+
+	// Clamp to range.
+	if (offset >= nPixels) offset = nPixels - 1;
+	if (offset < 0) offset = 0;
+
+	return _texture->texelAsFloat(offset);
     }
 }

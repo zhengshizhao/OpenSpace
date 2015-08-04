@@ -47,6 +47,7 @@ namespace openspace {
         ~TransferFunction();
 	void setPath(const std::string& filepath);
 	ghoul::opengl::Texture* getTexture();
+	glm::vec4 sample(float t);
     private:
 	void setTextureFromTxt();
 	void setTextureFromImage();
