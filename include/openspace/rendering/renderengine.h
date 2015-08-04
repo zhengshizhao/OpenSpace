@@ -76,6 +76,7 @@ public:
     void postDraw();
 
 	void takeScreenshot();
+	void aBufferToFile(const std::string& path);
 	void toggleVisualizeABuffer(bool b);
 
 	void toggleInfoText(bool b);
@@ -130,6 +131,8 @@ private:
 	bool _showInfo;
 	bool _showScreenLog;
 	bool _takeScreenshot;
+	bool _aBufferToFile;
+	std::string _aBufferToFileName;
 
 	bool _doPerformanceMeasurements;
 	ghoul::SharedMemory* _performanceMemory;

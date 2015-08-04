@@ -54,6 +54,24 @@ int takeScreenshot(lua_State* L) {
 * visualizeABuffer(bool):
 * Toggle the visualization of the ABuffer
 */
+int aBufferToFile(lua_State* L) {
+    int nArguments = lua_gettop(L);
+    if (nArguments != 1)
+        return luaL_error(L, "Expected %i arguments, got %i", 1, nArguments);
+
+    const int type = lua_type(L, -1);
+    if (type != LUA_TSTRING)
+        return luaL_error(L, "Expected argument of type 'string'");
+    std::string path = lua_tostring(L, -1);
+    OsEng.renderEngine()->aBufferToFile(path);
+    return 0;
+}
+
+/**
+* \ingroup LuaScripts
+* visualizeABuffer(bool):
+* Toggle the visualization of the ABuffer
+*/
 int visualizeABuffer(lua_State* L) {
 	int nArguments = lua_gettop(L);
 	if (nArguments != 1)
