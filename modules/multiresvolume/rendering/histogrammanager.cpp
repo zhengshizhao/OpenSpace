@@ -55,18 +55,7 @@ bool HistogramManager::buildHistograms(int numBins) {
     minVal = FLT_MAX;
     maxVal = -FLT_MAX;
 
-    bool success = buildHistogram(0);
-
-    if (success) {
-        // Print stuff
-        _histograms[0].print();
-    } else {
-        std::cout << "buildHistogram failed!!!!" << std::endl;
-    }
-
-    std::cout << "min: " << minVal << ", max: " << maxVal << std::endl;
-
-    return success;
+    return buildHistogram(0);
 }
 
 bool HistogramManager::buildHistogram(unsigned int brickIndex) {
@@ -81,9 +70,6 @@ bool HistogramManager::buildHistogram(unsigned int brickIndex) {
         unsigned int numVoxels = voxelValues.size();
 
         for (unsigned int v = 0; v < numVoxels; ++v) {
-            // DEBUG
-            minVal = std::min(minVal, voxelValues[v]);
-            maxVal = std::max(maxVal, voxelValues[v]);
             histogram.add(voxelValues[v], 1.0);
         }
     } else {
