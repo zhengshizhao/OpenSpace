@@ -52,9 +52,6 @@ bool HistogramManager::buildHistograms(int numBins) {
     int numTotalNodes = _tsp->numTotalNodes();
     _histograms = std::vector<Histogram>(numTotalNodes);
 
-    minVal = FLT_MAX;
-    maxVal = -FLT_MAX;
-
     return buildHistogram(0);
 }
 
@@ -110,7 +107,8 @@ bool HistogramManager::buildHistogram(unsigned int brickIndex) {
 }
 
 std::vector<float> HistogramManager::readValues(unsigned int brickIndex) {
-    unsigned int numBrickVals = _tsp->paddedBrickDim();
+    unsigned int paddedBrickDim = _tsp->paddedBrickDim();
+    unsigned int numBrickVals = paddedBrickDim * paddedBrickDim * paddedBrickDim;
     std::vector<float> voxelValues(numBrickVals);
 
     std::streampos offset = _tsp->dataPosition() + static_cast<long long>(brickIndex*numBrickVals*sizeof(float));
