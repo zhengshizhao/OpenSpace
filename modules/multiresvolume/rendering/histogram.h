@@ -44,6 +44,7 @@ public:
     bool add(float bin, float value);
     bool add(const Histogram& histogram);
 
+    float sample(float bin) const;
     const std::vector<float>& data() const;
     std::vector<std::pair<float,float>> getDecimated(int numBins) const;
 
