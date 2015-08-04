@@ -25,7 +25,7 @@
 #ifndef __ATLASMANAGER_H__
 #define __ATLASMANAGER_H__
 
-#include <openspace/rendering/flare/tsp.h>
+#include <modules/multiresvolume/rendering/tsp.h>
 
 #include <string>
 #include <vector>

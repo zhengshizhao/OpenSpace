@@ -25,7 +25,7 @@
 #ifndef __BRICKMANAGER_H__
 #define __BRICKMANAGER_H__
 
-#include <openspace/rendering/flare/tsp.h>
+#include <modules/multiresvolume/rendering/tsp.h>
 
 #include <string>
 #include <vector>

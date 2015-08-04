@@ -22,32 +22,32 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#include <modules/multiresvolume/rendering/brickselector.h>
+#include <modules/multiresvolume/rendering/shenbrickselector.h>
 
 namespace {
-    const std::string _loggerCat = "BrickSelector";
+    const std::string _loggerCat = "ShenBrickSelector";
 }
 
 namespace openspace {
 
-BrickSelector::BrickSelector(TSP* tsp, float spatialTolerance, float temporalTolerance)
+ShenBrickSelector::ShenBrickSelector(TSP* tsp, float spatialTolerance, float temporalTolerance)
     : _tsp(tsp)
     , _spatialTolerance(spatialTolerance)
     , _temporalTolerance(temporalTolerance) {}
 
-BrickSelector::~BrickSelector() {
+ShenBrickSelector::~ShenBrickSelector() {
 
 }
 
-void BrickSelector::setSpatialTolerance(float spatialTolerance) {
+void ShenBrickSelector::setSpatialTolerance(float spatialTolerance) {
     _spatialTolerance = spatialTolerance;
 }
 
-void BrickSelector::setTemporalTolerance(float temporalTolerance) {
+void ShenBrickSelector::setTemporalTolerance(float temporalTolerance) {
     _temporalTolerance = temporalTolerance;
 }
 
-void BrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
+void ShenBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
     int numTimeSteps = _tsp->header().numTimesteps_;
     BrickCover coveredBricks(_tsp->header().xNumBricks_);
     selectBricks(timestep, 0, 0, 0, numTimeSteps, coveredBricks, bricks);
@@ -56,7 +56,7 @@ void BrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
 /**
  * Traverse the Octree in the BST root
  */
-void BrickSelector::traverseOT(int timestep, unsigned int brickIndex, BrickCover coveredBricks, std::vector<int>& bricks) {
+void ShenBrickSelector::traverseOT(int timestep, unsigned int brickIndex, BrickCover coveredBricks, std::vector<int>& bricks) {
     unsigned int firstChild = _tsp->getFirstChild(brickIndex);
     int numTimeSteps = _tsp->header().numTimesteps_;
     for (unsigned int i = 0; i < 8; i++) {
@@ -66,7 +66,7 @@ void BrickSelector::traverseOT(int timestep, unsigned int brickIndex, BrickCover
     }
 }
 
-void BrickSelector::traverseBST(int timestep,
+void ShenBrickSelector::traverseBST(int timestep,
                                 unsigned int brickIndex,
                                 unsigned int bstRootBrickIndex,
                                 int timeSpanStart,
@@ -87,7 +87,7 @@ void BrickSelector::traverseBST(int timestep,
     selectBricks(timestep, bstChild, bstRootBrickIndex, timeSpanStart, timeSpanEnd, coveredBricks, bricks);
 }
 
-void BrickSelector::selectBricks(int timestep,
+void ShenBrickSelector::selectBricks(int timestep,
                                  unsigned int brickIndex,
                                  unsigned int bstRootBrickIndex,
                                  int timeSpanStart,
@@ -116,12 +116,12 @@ void BrickSelector::selectBricks(int timestep,
     }
 }
 
-int BrickSelector::linearCoords(int x, int y, int z) {
+int ShenBrickSelector::linearCoords(int x, int y, int z) {
     const TSP::Header &header = _tsp->header();
     return x + (header.xNumBricks_ * y) + (header.xNumBricks_ * header.yNumBricks_ * z);
 }
 
-void BrickSelector::selectCover(BrickCover coveredBricks, unsigned int brickIndex, std::vector<int>& bricks) {
+void ShenBrickSelector::selectCover(BrickCover coveredBricks, unsigned int brickIndex, std::vector<int>& bricks) {
     for (int z = coveredBricks.lowZ; z < coveredBricks.highZ; z++) {
         for (int y = coveredBricks.lowY; y < coveredBricks.highY; y++) {
             for (int x = coveredBricks.lowX; x < coveredBricks.highX; x++) {

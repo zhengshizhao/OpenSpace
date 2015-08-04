@@ -40,7 +40,7 @@
 
 #include <modules/multiresvolume/rendering/tsp.h>
 #include <modules/multiresvolume/rendering/atlasmanager.h>
-#include <modules/multiresvolume/rendering/brickselector.h>
+#include <modules/multiresvolume/rendering/shenbrickselector.h>
 
 #include <algorithm>
 #include <iterator>
@@ -126,7 +126,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
 
     _tsp = new TSP(_filename);
     _atlasManager = new AtlasManager(_tsp);
-    _brickSelector = new BrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
+    _brickSelector = new ShenBrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
 }
 
 RenderableMultiresVolume::~RenderableMultiresVolume() {
@@ -137,9 +137,8 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
         delete _atlasManager;
     if (_brickSelector)
         delete _brickSelector;
-    if (_transferFunction) {
-	delete _transferFunction;
-    }
+    if (_transferFunction)
+        delete _transferFunction;
 }
 
 bool RenderableMultiresVolume::initialize() {
@@ -189,8 +188,6 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
     const int numTimesteps = _tsp->header().numTimesteps_;
     const int currentTimestep = _timestep % numTimesteps;
 
-    _brickSelector->setSpatialTolerance(_spatialTolerance);
-    _brickSelector->setTemporalTolerance(_temporalTolerance);
     _brickSelector->selectBricks(currentTimestep, _brickIndices);
 
     _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
