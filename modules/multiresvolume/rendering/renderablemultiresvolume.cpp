@@ -41,6 +41,7 @@
 #include <modules/multiresvolume/rendering/tsp.h>
 #include <modules/multiresvolume/rendering/atlasmanager.h>
 #include <modules/multiresvolume/rendering/shenbrickselector.h>
+#include <modules/multiresvolume/rendering/histogrammanager.h>
 
 #include <algorithm>
 #include <iterator>
@@ -127,6 +128,8 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     _tsp = new TSP(_filename);
     _atlasManager = new AtlasManager(_tsp);
     _brickSelector = new ShenBrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
+
+    _histogramManager = new HistogramManager(_tsp);
 }
 
 RenderableMultiresVolume::~RenderableMultiresVolume() {
@@ -137,6 +140,8 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
         delete _atlasManager;
     if (_brickSelector)
         delete _brickSelector;
+    if (_histogramManager)
+        delete _histogramManager;
     if (_transferFunction)
         delete _transferFunction;
 }
@@ -153,6 +158,7 @@ bool RenderableMultiresVolume::initialize() {
 
     if (success) {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
+        success &= _histogramManager->buildHistograms(3);
     }
 
     success &= _atlasManager && _atlasManager->initialize();

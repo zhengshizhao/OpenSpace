@@ -31,6 +31,8 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/shenbrickselector.h
 	${CMAKE_CURRENT_SOURCE_DIR}/rendering/renderablemultiresvolume.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/tsp.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/rendering/histogram.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/rendering/histogrammanager.h
 )
 source_group("Header Files" FILES ${HEADER_FILES})
 
@@ -40,6 +42,8 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/shenbrickselector.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/renderablemultiresvolume.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/tsp.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/rendering/histogram.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/rendering/histogrammanager.cpp
 )
 source_group("Source Files" FILES ${SOURCE_FILES})
 

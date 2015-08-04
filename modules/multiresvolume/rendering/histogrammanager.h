@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014-2015                                                               *
+ * Copyright (c) 2015                                                                    *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -22,77 +22,37 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEMULTIRESVOLUME_H__
-#define __RENDERABLEMULTIRESVOLUME_H__
+#ifndef __HISTOGRAMMANAGER_H__
+#define __HISTOGRAMMANAGER_H__
 
-#include <vector>
-#include <modules/volume/rendering/renderablevolume.h>
-#include <modules/volume/rendering/transferfunction.h>
-#include <openspace/util/powerscaledcoordinate.h>
-
-
-// Forward declare to minimize dependencies
-namespace ghoul {
-    namespace filesystem {
-        class File;
-    }
-    namespace opengl {
-        class ProgramObject;
-        class Texture;
-    }
-}
+#include <fstream>
+#include <modules/multiresvolume/rendering/tsp.h>
+#include <modules/multiresvolume/rendering/histogram.h>
 
 namespace openspace {
-// Forward declare
-class TSP;
-class AtlasManager;
-class BrickSelector;
-class HistogramManager;
 
-class RenderableMultiresVolume: public RenderableVolume {
+class HistogramManager {
 public:
-    RenderableMultiresVolume(const ghoul::Dictionary& dictionary);
-    ~RenderableMultiresVolume();
+    HistogramManager(TSP* tsp);
+    ~HistogramManager();
 
-    bool initialize() override;
-    bool deinitialize() override;
-
-    bool isReady() const override;
-
-    std::string getGlslHelpers();
-
-    virtual void update(const UpdateData& data) override;
-    virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
-    virtual std::string getSampler(const std::string& functionName) override;
-    virtual std::string getStepSizeFunction(const std::string& functionName) override;
-    virtual std::string getHeader() override;
-    virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
-    virtual std::vector<int> getBuffers() override;
+    bool buildHistograms(int numBins);
 
 private:
-    int _timestep;
-    std::string _filename;
-
-    std::string _transferFunctionName;
-    std::string _volumeName;
-
-    std::string _transferFunctionPath;
-
-    TransferFunction* _transferFunction;
-
-    float _spatialTolerance;
-    float _temporalTolerance;
-
     TSP* _tsp;
-    std::vector<int> _brickIndices;
-    int _atlasMapSize;
+    std::ifstream* _file;
 
-    AtlasManager* _atlasManager;
-    BrickSelector* _brickSelector;
+    std::vector<Histogram> _histograms;
+    float _minBin;
+    float _maxBin;
+    int _numBins;
 
-    HistogramManager* _histogramManager;
+    float minVal; float maxVal;
+
+    bool buildHistogram(unsigned int brickIndex);
+    std::vector<float> readValues(unsigned int brickIndex);
 };
 
 } // namespace openspace
 
-#endif // __RENDERABLEMULTIRESVOLUME_H__
+#endif // __HISTOGRAMMANAGER_H__

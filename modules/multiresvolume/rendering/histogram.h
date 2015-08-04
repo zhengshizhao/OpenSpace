@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014-2015                                                               *
+ * Copyright (c) 2015                                                                    *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -22,77 +22,42 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEMULTIRESVOLUME_H__
-#define __RENDERABLEMULTIRESVOLUME_H__
+#ifndef __HISTOGRAM_H__
+#define __HISTOGRAM_H__
 
 #include <vector>
-#include <modules/volume/rendering/renderablevolume.h>
-#include <modules/volume/rendering/transferfunction.h>
-#include <openspace/util/powerscaledcoordinate.h>
-
-
-// Forward declare to minimize dependencies
-namespace ghoul {
-    namespace filesystem {
-        class File;
-    }
-    namespace opengl {
-        class ProgramObject;
-        class Texture;
-    }
-}
+#include <iostream>
 
 namespace openspace {
-// Forward declare
-class TSP;
-class AtlasManager;
-class BrickSelector;
-class HistogramManager;
+class Histogram {
 
-class RenderableMultiresVolume: public RenderableVolume {
 public:
-    RenderableMultiresVolume(const ghoul::Dictionary& dictionary);
-    ~RenderableMultiresVolume();
+    Histogram();
+    Histogram(float minBin, float maxBin, int numBins);
+    ~Histogram();
 
-    bool initialize() override;
-    bool deinitialize() override;
+    int numBins() const;
+    float minBin() const;
+    float maxBin() const;
+    bool isValid() const;
 
-    bool isReady() const override;
+    bool add(float bin, float value);
+    bool add(const Histogram& histogram);
 
-    std::string getGlslHelpers();
+    const std::vector<float>& data() const;
+    std::vector<std::pair<float,float>> getDecimated(int numBins) const;
 
-    virtual void update(const UpdateData& data) override;
-    virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
-    virtual std::string getSampler(const std::string& functionName) override;
-    virtual std::string getStepSizeFunction(const std::string& functionName) override;
-    virtual std::string getHeader() override;
-    virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
-    virtual std::vector<int> getBuffers() override;
+    void normalize();
+    void print();
 
 private:
-    int _timestep;
-    std::string _filename;
+    int _numBins;
+    float _minBin;
+    float _maxBin;
 
-    std::string _transferFunctionName;
-    std::string _volumeName;
+    std::vector<float> _data;
 
-    std::string _transferFunctionPath;
+}; // class Histogram
+}  // namespace openspace
 
-    TransferFunction* _transferFunction;
-
-    float _spatialTolerance;
-    float _temporalTolerance;
-
-    TSP* _tsp;
-    std::vector<int> _brickIndices;
-    int _atlasMapSize;
-
-    AtlasManager* _atlasManager;
-    BrickSelector* _brickSelector;
-
-    HistogramManager* _histogramManager;
-};
-
-} // namespace openspace
-
-#endif // __RENDERABLEMULTIRESVOLUME_H__
+#endif //__HISTOGRAM_H__
