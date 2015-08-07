@@ -90,8 +90,42 @@ bool Histogram::add(const Histogram& histogram) {
     }
 }
 
+bool Histogram::addRectangle(float lowBin, float highBin, float value) {
+    if (lowBin == highBin) return true;
+    if (lowBin > highBin) {
+        std::swap(lowBin, highBin);
+    }
+    if (lowBin < _minBin || highBin > _maxBin) {
+        // Out of range
+        return false;
+    }
 
-float Histogram::sample(float bin) const {
+    float normalizedLowBin = (lowBin - _minBin) / (_maxBin - _minBin);
+    float normalizedHighBin = (highBin - _minBin) / (_maxBin - _minBin);
+
+    float lowBinIndex = normalizedLowBin * _numBins;
+    float highBinIndex = normalizedHighBin * _numBins;
+
+    int fillLow = floor(lowBinIndex);
+    int fillHigh = ceil(highBinIndex);
+
+    for (int i = fillLow; i < fillHigh; i++) {
+        _data[i] = value;
+    }
+
+    if (lowBinIndex > fillLow) {
+        float diff = lowBinIndex - fillLow;
+        _data[fillLow] -= diff * value;
+    }
+    if (highBinIndex < fillHigh) {
+        float diff = -highBinIndex + fillHigh;
+        _data[fillHigh - 1] -= diff * value;
+    }
+    return true;
+}
+
+
+float Histogram::interpolate(float bin) const {
     float normalizedBin = (bin - _minBin) / (_maxBin - _minBin);
     float binIndex = normalizedBin * _numBins - 0.5; // Center
     // Clamp bins
@@ -103,6 +137,11 @@ float Histogram::sample(float bin) const {
     int binHigh = ceil(binIndex);
     return (1.0 - interpolator) * _data[binLow] + interpolator * _data[binHigh];
 }
+
+float Histogram::sample(int binIndex) const {
+    return _data[binIndex];
+}
+
 
 const std::vector<float>& Histogram::data() const {
     return _data;

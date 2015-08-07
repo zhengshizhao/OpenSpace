@@ -47,6 +47,8 @@ private:
     float _maxBin;
     int _numBins;
 
+    float minVal; float maxVal;
+
     bool buildHistogram(unsigned int brickIndex);
     std::vector<float> readValues(unsigned int brickIndex);
 };
