@@ -251,12 +251,20 @@ unsigned int TSP::numBSTNodes() const {
 	return numBSTNodes_; 
 }
 
+unsigned int TSP::numBSTLevels() const {
+	return numBSTLevels_;
+}
+
 unsigned int TSP::numOTNodes() const { 
 	return numOTNodes_; 
 }
 
 unsigned int TSP::numOTLevels() const { 
 	return numOTLevels_; 
+}
+
+unsigned int TSP::brickDim() const {
+	return _header.xBrickDim_;
 }
 
 unsigned int TSP::paddedBrickDim() const {

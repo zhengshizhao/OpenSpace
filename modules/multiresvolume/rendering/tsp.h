@@ -79,8 +79,10 @@ public:
 	unsigned int numTotalNodes() const;
 	unsigned int numValuesPerNode() const;
 	unsigned int numBSTNodes() const;
+	unsigned int numBSTLevels() const;
 	unsigned int numOTNodes() const;
 	unsigned int numOTLevels() const;
+	unsigned int brickDim() const;
 	unsigned int paddedBrickDim() const;
 	unsigned int numBricksPerAxis() const;
 	GLuint ssbo() const;
