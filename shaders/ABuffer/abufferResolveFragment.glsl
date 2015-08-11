@@ -162,7 +162,7 @@ vec4 calculate_final_color(uint frag_count) {
 
 		    float maxStepSizeLocal; //maximum step size in local scale
 		    float maxStepSize; // maxStepSizeLocal converted to global scale
-		    float nextStepSize = 10000000000000000.0; // global next step size, minimum maxStepSize
+		    float nextStepSize = fragDistance; // global next step size, minimum maxStepSize
 		    float stepSize; // global step size, taken from previous nextStepSize
 		    float stepSizeLocal;  // stepSize converted to local scale
 		    float jitterFactor = rand(gl_FragCoord.xy); // should be between 0.5 and 1.0
@@ -175,13 +175,16 @@ vec4 calculate_final_color(uint frag_count) {
 
 			for(int k = 0; final_color.a < ALPHA_LIMIT && k < LOOP_LIMIT; ++k) {
 
-			    stepSize = nextStepSize;
-			    zPosition += stepSize;
-			    nextStepSize = fragDistance - zPosition;
+                bool beyondNextFrag = zPosition + nextStepSize * jitterFactor > fragDistance;
+                bool shortStepSize = nextStepSize < fragDistance/10000.0;
 
-			    if (nextStepSize < fragDistance/10000.0) {
-				break;
-			    }
+                if (fragDistance < 0.000001 || beyondNextFrag || shortStepSize) {
+                    break;
+                }
+
+                stepSize = nextStepSize;
+                zPosition += stepSize;
+                nextStepSize = fragDistance - zPosition;
 
 // #pragma openspace insert SAMPLERCALLS
 #include <${SHADERS_GENERATED}/ABufferSamplerCalls.hglsl>:notrack
