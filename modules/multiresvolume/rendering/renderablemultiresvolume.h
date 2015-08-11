@@ -71,6 +71,7 @@ public:
 
 private:
     int _timestep;
+    int _brickBudget;
     std::string _filename;
 
     std::string _transferFunctionName;

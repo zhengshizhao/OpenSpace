@@ -22,52 +22,76 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __ERRORHISTOGRAMMANAGER_H__
-#define __ERRORHISTOGRAMMANAGER_H__
+#ifndef __BRICKSELECTION_H__
+#define __BRICKSELECTION_H__
 
-#include <fstream>
-#include <modules/multiresvolume/rendering/tsp.h>
-#include <modules/multiresvolume/rendering/histogram.h>
-#include <map>
+#include <modules/multiresvolume/rendering/brickcover.h>
 
-#include <ghoul/glm.h>
 
 namespace openspace {
 
-class ErrorHistogramManager {
-public:
-    ErrorHistogramManager(TSP* tsp);
-    ~ErrorHistogramManager();
+struct BrickSelection {
+    enum SplitType {
+        None = 0,
+        Temporal = 1,
+        Spatial = 2
+    };
 
-    bool buildHistograms(int numBins);
-    const Histogram* getHistogram(unsigned int brickIndex) const;
+    unsigned int brickIndex;
+    float splitPoints;
+    BrickSelection::SplitType splitType;
+    BrickCover cover;
+    int lowT;
+    int highT;
 
-private:
-    TSP* _tsp;
-    std::ifstream* _file;
+    BrickSelection() {}
 
-    std::vector<Histogram> _histograms;
-    unsigned int _numInnerNodes;
-    float _minBin;
-    float _maxBin;
-    int _numBins;
+    BrickSelection(int numBricks, int numTimeSteps, SplitType splitType, float splitPoints) {
+        this->cover = BrickCover(numBricks);
+        this->lowT = 0;
+        this->highT = numTimeSteps;
+        this->brickIndex = 0;
+        this->splitType = splitType;
+        this->splitPoints = splitPoints;
+    }
 
-    std::map<unsigned int, std::vector<float>> _voxelCache;
+    BrickSelection splitSpatially(bool x, bool y, bool z, unsigned int childBrickIndex, SplitType childSplitType, float childSplitPoints) {
+        BrickSelection child;
+        child.cover = cover.split(x, y, z);
+        child.brickIndex = childBrickIndex;
+        child.splitPoints = childSplitPoints;
+        child.splitType = childSplitType;
+        return child;
+    }
 
-    bool buildFromLeaf(unsigned int bstOffset, unsigned int octreeOffset);
-    std::vector<float> readValues(unsigned int brickIndex) const;
+    BrickSelection splitTemporally(bool t, unsigned int childBrickIndex, SplitType childSplitType, float childSplitPoints) {
+        BrickSelection child;
+        child.cover = cover;
+        child.brickIndex = childBrickIndex;
+        child.splitPoints = childSplitPoints;
+        child.splitType = childSplitType;
+        if (t) {
+            child.lowT = centerT();
+            child.highT = highT;
+        } else {
+            child.lowT = lowT;
+            child.highT = centerT();
+        }
+        return child;
+    }
 
-    int parentOffset(int offset, int base) const;
+    int centerT() {
+        return lowT + (highT - lowT) / 2;
+    }
 
-    unsigned int brickToInnerNodeIndex(unsigned int brickIndex) const;
-    unsigned int innerNodeToBrickIndex(unsigned int innerNodeIndex) const;
-    unsigned int linearCoords(glm::vec3 coords) const;
-    unsigned int linearCoords(int x, int y, int z) const;
-    unsigned int linearCoords(glm::ivec3 coords) const;
+    bool timestepInRightChild(int timestep) {
+        return timestep >= centerT();
+    }
 
-    float interpolate(glm::vec3 samplePoint, const std::vector<float>& voxels) const;
+    static bool compareSplitPoints(const BrickSelection& a, const BrickSelection& b) {
+        return a.splitPoints < b.splitPoints;
+    }
 };
+}
 
-} // namespace openspace
-
-#endif // __ERRORHISTOGRAMMANAGER_H__
+#endif // __BRICKSELECTION_H__

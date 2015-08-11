@@ -22,52 +22,50 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __ERRORHISTOGRAMMANAGER_H__
-#define __ERRORHISTOGRAMMANAGER_H__
+#ifndef __TFBRICKSELECTOR_H__
+#define __TFBRICKSELECTOR_H__
 
-#include <fstream>
-#include <modules/multiresvolume/rendering/tsp.h>
-#include <modules/multiresvolume/rendering/histogram.h>
-#include <map>
+#include <vector>
+#include <modules/multiresvolume/rendering/brickselection.h>
+#include <modules/multiresvolume/rendering/brickselector.h>
+#include <modules/multiresvolume/rendering/brickcover.h>
 
-#include <ghoul/glm.h>
 
 namespace openspace {
 
-class ErrorHistogramManager {
+class TSP;
+class ErrorHistogramManager;
+class TransferFunction;
+
+class TfBrickSelector : public BrickSelector {
 public:
-    ErrorHistogramManager(TSP* tsp);
-    ~ErrorHistogramManager();
+    TfBrickSelector(TSP* tsp, ErrorHistogramManager* hm, TransferFunction* tf, int brickBudget);
 
-    bool buildHistograms(int numBins);
-    const Histogram* getHistogram(unsigned int brickIndex) const;
+    ~TfBrickSelector();
 
-private:
+    virtual bool initialize();
+
+    void selectBricks(int timestep, std::vector<int>& bricks);
+    void setBrickBudget(int brickBudget);
+ private:
+
     TSP* _tsp;
-    std::ifstream* _file;
+    ErrorHistogramManager* _histogramManager;
+    TransferFunction* _transferFunction;
+    std::vector<float> _brickErrors;
+    bool calculateBrickErrors();
+    float spatialSplitPoints(unsigned int brickIndex);
+    float temporalSplitPoints(unsigned int brickIndex);
+    float splitPoints(unsigned int brickIndex, BrickSelection::SplitType& splitType);
 
-    std::vector<Histogram> _histograms;
-    unsigned int _numInnerNodes;
-    float _minBin;
-    float _maxBin;
-    int _numBins;
+    int linearCoords(int x, int y, int z);
+    void writeSelection(BrickSelection coveredBricks, std::vector<int>& bricks);
 
-    std::map<unsigned int, std::vector<float>> _voxelCache;
-
-    bool buildFromLeaf(unsigned int bstOffset, unsigned int octreeOffset);
-    std::vector<float> readValues(unsigned int brickIndex) const;
-
-    int parentOffset(int offset, int base) const;
-
-    unsigned int brickToInnerNodeIndex(unsigned int brickIndex) const;
-    unsigned int innerNodeToBrickIndex(unsigned int innerNodeIndex) const;
-    unsigned int linearCoords(glm::vec3 coords) const;
-    unsigned int linearCoords(int x, int y, int z) const;
-    unsigned int linearCoords(glm::ivec3 coords) const;
-
-    float interpolate(glm::vec3 samplePoint, const std::vector<float>& voxels) const;
+    int _brickBudget;
+    
 };
 
 } // namespace openspace
 
-#endif // __ERRORHISTOGRAMMANAGER_H__
+#endif // __TFBRICKSELECTOR_H__
+

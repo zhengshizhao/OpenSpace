@@ -40,23 +40,24 @@ namespace ghoul {
 
 namespace openspace {
 
-
     class TransferFunction {
     public:
         TransferFunction(const std::string& filepath);
         ~TransferFunction();
-	void setPath(const std::string& filepath);
-	ghoul::opengl::Texture* getTexture();
-	glm::vec4 sample(float t);
+        void setPath(const std::string& filepath);
+        ghoul::opengl::Texture* getTexture();
+        void update();
+        glm::vec4 sample(size_t t);
+        size_t width();
     private:
-	void setTextureFromTxt();
-	void setTextureFromImage();
-	void uploadTexture();
+        void setTextureFromTxt();
+        void setTextureFromImage();
+        void uploadTexture();
 
-	std::string _filepath;
-	ghoul::filesystem::File* _file = nullptr;
-	ghoul::opengl::Texture* _texture = nullptr;
-	bool _needsUpdate = false;
+        std::string _filepath;
+        ghoul::filesystem::File* _file = nullptr;
+        ghoul::opengl::Texture* _texture = nullptr;
+        bool _needsUpdate = false;
     };
 
     struct MappingKey {

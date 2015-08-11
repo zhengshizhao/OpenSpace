@@ -22,52 +22,47 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __ERRORHISTOGRAMMANAGER_H__
-#define __ERRORHISTOGRAMMANAGER_H__
-
-#include <fstream>
-#include <modules/multiresvolume/rendering/tsp.h>
-#include <modules/multiresvolume/rendering/histogram.h>
-#include <map>
-
-#include <ghoul/glm.h>
+#ifndef __BRICKCOVER_H__
+#define __BRICKCOVER_H__
 
 namespace openspace {
 
-class ErrorHistogramManager {
-public:
-    ErrorHistogramManager(TSP* tsp);
-    ~ErrorHistogramManager();
+struct BrickCover {
+    int lowX, highX, lowY, highY, lowZ, highZ;
 
-    bool buildHistograms(int numBins);
-    const Histogram* getHistogram(unsigned int brickIndex) const;
+    BrickCover() {}
 
-private:
-    TSP* _tsp;
-    std::ifstream* _file;
+    BrickCover(int numBricks) {
+        lowX = lowY = lowZ = 0;
+        highX = highY = highZ = numBricks;
+    }
 
-    std::vector<Histogram> _histograms;
-    unsigned int _numInnerNodes;
-    float _minBin;
-    float _maxBin;
-    int _numBins;
-
-    std::map<unsigned int, std::vector<float>> _voxelCache;
-
-    bool buildFromLeaf(unsigned int bstOffset, unsigned int octreeOffset);
-    std::vector<float> readValues(unsigned int brickIndex) const;
-
-    int parentOffset(int offset, int base) const;
-
-    unsigned int brickToInnerNodeIndex(unsigned int brickIndex) const;
-    unsigned int innerNodeToBrickIndex(unsigned int innerNodeIndex) const;
-    unsigned int linearCoords(glm::vec3 coords) const;
-    unsigned int linearCoords(int x, int y, int z) const;
-    unsigned int linearCoords(glm::ivec3 coords) const;
-
-    float interpolate(glm::vec3 samplePoint, const std::vector<float>& voxels) const;
+    BrickCover split(bool x, bool y, bool z) {
+        BrickCover child;
+        if (x) {
+            child.lowX = lowX + (highX - lowX) / 2;
+            child.highX = highX;
+        } else {
+            child.lowX = lowX;
+            child.highX = lowX + (highX - lowX) / 2;
+        }
+        if (y) {
+            child.lowY = lowY + (highY - lowY) / 2;
+            child.highY = highY;
+        } else {
+            child.lowY = lowY;
+            child.highY = lowY + (highY - lowY) / 2;
+        }
+        if (z) {
+            child.lowZ = lowZ + (highZ - lowZ) / 2;
+            child.highZ = highZ;
+        } else {
+            child.lowZ = lowZ;
+            child.highZ = lowZ + (highZ - lowZ) / 2;
+        }
+        return child;
+    }
 };
+}
 
-} // namespace openspace
-
-#endif // __ERRORHISTOGRAMMANAGER_H__
+#endif // __BRICKCOVER_H__

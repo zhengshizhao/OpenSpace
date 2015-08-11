@@ -27,7 +27,7 @@
 #include <ghoul/logging/logmanager.h>
 
 #include <cmath>
-
+#include <cassert>
 namespace {
     const std::string _loggerCat = "Histogram";
 }
@@ -41,7 +41,7 @@ Histogram::Histogram(float minBin, float maxBin, int numBins)
     , _maxBin(maxBin)
     , _numBins(numBins) {
 
-    _data = std::vector<float>(numBins);
+    _data = std::vector<float>(numBins, 0.0);
 }
 
 Histogram::~Histogram() {}
@@ -110,7 +110,7 @@ bool Histogram::addRectangle(float lowBin, float highBin, float value) {
     int fillHigh = ceil(highBinIndex);
 
     for (int i = fillLow; i < fillHigh; i++) {
-        _data[i] = value;
+        _data[i] += value;
     }
 
     if (lowBinIndex > fillLow) {
@@ -121,6 +121,7 @@ bool Histogram::addRectangle(float lowBin, float highBin, float value) {
         float diff = -highBinIndex + fillHigh;
         _data[fillHigh - 1] -= diff * value;
     }
+
     return true;
 }
 
@@ -128,17 +129,19 @@ bool Histogram::addRectangle(float lowBin, float highBin, float value) {
 float Histogram::interpolate(float bin) const {
     float normalizedBin = (bin - _minBin) / (_maxBin - _minBin);
     float binIndex = normalizedBin * _numBins - 0.5; // Center
-    // Clamp bins
-    if (binIndex < 0) binIndex = 0;
-    if (binIndex > _numBins) binIndex = _numBins;
 
     float interpolator = binIndex - floor(binIndex);
     int binLow = floor(binIndex);
     int binHigh = ceil(binIndex);
+
+    // Clamp bins
+    if (binLow < 0) binLow = 0;
+    if (binHigh >= _numBins) binHigh = _numBins - 1;
     return (1.0 - interpolator) * _data[binLow] + interpolator * _data[binHigh];
 }
 
 float Histogram::sample(int binIndex) const {
+    assert(binIndex >= 0 && binIndex < _numBins);
     return _data[binIndex];
 }
 
@@ -163,7 +166,7 @@ void Histogram::normalize() {
     }
 }
 
-void Histogram::print() {
+void Histogram::print() const {
     std::cout << "number of bins: " << _numBins << std::endl
               << "range: " << _minBin << " - " << _maxBin << std::endl << std::endl;
     for (int i = 0; i < _numBins; i++) {

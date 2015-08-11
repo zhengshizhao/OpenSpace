@@ -51,7 +51,7 @@ public:
     std::vector<std::pair<float,float>> getDecimated(int numBins) const;
 
     void normalize();
-    void print();
+    void print() const;
 
 private:
     int _numBins;

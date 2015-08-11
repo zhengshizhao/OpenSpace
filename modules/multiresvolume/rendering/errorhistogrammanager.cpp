@@ -23,8 +23,8 @@
  ****************************************************************************************/
 
 #include <float.h>
-#include <math.h>
 #include <map>
+#include <cmath>
 
 #include <modules/multiresvolume/rendering/errorhistogrammanager.h>
 #include <modules/multiresvolume/rendering/histogram.h>
@@ -69,15 +69,15 @@ bool ErrorHistogramManager::buildHistograms(int numBins) {
     int numBstNodes = _tsp->numBSTNodes();
     int bstOffset = numBstNodes / 2;
 
-    int numberOfLeafs = (numBstNodes - bstOffset) * (numOtNodes - otOffset);
-    ProgressBar pb(100);
+    int numberOfLeaves = (numBstNodes - bstOffset) * (numOtNodes - otOffset);
+    ProgressBar pb(numberOfLeaves);
     int processedLeaves = 0;
     bool success = true;
     for (int bst = bstOffset; bst < numBstNodes; bst++) {
         for (int ot = otOffset; ot < numOtNodes; ot++) {
             success &= buildFromLeaf(bst, ot);
             if (!success) return false;
-            pb.print(++processedLeaves % 100);
+            pb.print(++processedLeaves);
         }
     }
 }
@@ -96,6 +96,8 @@ bool ErrorHistogramManager::buildFromLeaf(unsigned int bstOffset, unsigned int o
 
     int bstNode = bstOffset;
     bool bstRightOnly = true;
+    unsigned int bstLevel = 0;
+
     do {
 
         glm::vec3 leafOffset(0.0); // Leaf offset in leaf sized voxels
@@ -122,18 +124,19 @@ bool ErrorHistogramManager::buildFromLeaf(unsigned int bstOffset, unsigned int o
 
                 float voxelScale = pow(2, octreeLevel);
                 float invVoxelScale = 1.0 / voxelScale;
-                glm::vec3 ancestorOffset = (leafOffset * invVoxelScale) + glm::vec3(padding - 0.5); // Leaf offset in ancestor sized voxels
+
+                // Calculate leaf offset in ancestor sized voxels
+                glm::vec3 ancestorOffset = (leafOffset * invVoxelScale) + glm::vec3(padding - 0.5);
 
                 for (int z = 0; z < brickDim; z++) {
                     for (int y = 0; y < brickDim; y++) {
                         for (int x = 0; x < brickDim; x++) {
                             glm::vec3 leafSamplePoint = glm::vec3(x, y, z) + glm::vec3(padding);
-                            glm::vec3 ancestorSamplePoint = (glm::vec3(x, y, z) + glm::vec3(0.5)) * invVoxelScale;
-
+                            glm::vec3 ancestorSamplePoint = ancestorOffset + (glm::vec3(x, y, z) + glm::vec3(0.5)) * invVoxelScale;
                             float leafValue = leafValues[linearCoords(leafSamplePoint)];
                             float ancestorValue = interpolate(ancestorSamplePoint, ancestorVoxels);
 
-                            _histograms[innerNodeIndex].addRectangle(leafValue, ancestorValue, 1.0);
+                            _histograms[innerNodeIndex].addRectangle(leafValue, ancestorValue, std::abs(leafValue - ancestorValue));
                         }
                     }
                 }
@@ -158,6 +161,8 @@ bool ErrorHistogramManager::buildFromLeaf(unsigned int bstOffset, unsigned int o
 
         bstRightOnly &= (bstNode % 2 == 0);
         bstNode = parentOffset(bstNode, 2);
+
+        bstLevel++;
     } while (bstNode != -1);
 
     return true;
@@ -177,8 +182,6 @@ unsigned int ErrorHistogramManager::linearCoords(glm::ivec3 coords) const {
 }
 
 float ErrorHistogramManager::interpolate(glm::vec3 samplePoint, const std::vector<float>& voxels) const {
-    return voxels[linearCoords(round(samplePoint.x), round(samplePoint.y), round(samplePoint.z))];
-
     int lowX = samplePoint.x;
     int lowY = samplePoint.y;
     int lowZ = samplePoint.z;
@@ -186,7 +189,7 @@ float ErrorHistogramManager::interpolate(glm::vec3 samplePoint, const std::vecto
     int highX = ceil(samplePoint.x);
     int highY = ceil(samplePoint.y);
     int highZ = ceil(samplePoint.z);
-    
+
     float interpolatorX = 1.0 - (samplePoint.x - lowX);
     float interpolatorY = 1.0 - (samplePoint.y - lowY);
     float interpolatorZ = 1.0 - (samplePoint.z - lowZ);

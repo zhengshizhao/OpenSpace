@@ -41,13 +41,12 @@
 #include <modules/multiresvolume/rendering/tsp.h>
 #include <modules/multiresvolume/rendering/atlasmanager.h>
 #include <modules/multiresvolume/rendering/shenbrickselector.h>
+
 #include <modules/multiresvolume/rendering/errorhistogrammanager.h>
+#include <modules/multiresvolume/rendering/tfbrickselector.h>
 
 #include <algorithm>
 #include <iterator>
-
-
-
 
 namespace {
     const std::string _loggerCat = "RenderableMultiresVolume";
@@ -71,6 +70,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     , _spatialTolerance(1.000001)
     , _temporalTolerance(0.000001)
     , _timestep(0)
+    , _brickBudget(512)
     , _atlasMapSize(0)
 {
     std::string name;
@@ -127,9 +127,11 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
 
     _tsp = new TSP(_filename);
     _atlasManager = new AtlasManager(_tsp);
-    _brickSelector = new ShenBrickSelector(_tsp, _spatialTolerance, _temporalTolerance);
 
     _histogramManager = new ErrorHistogramManager(_tsp);
+    _brickSelector = new TfBrickSelector(_tsp, _histogramManager, _transferFunction, _brickBudget);
+    //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
+
 }
 
 RenderableMultiresVolume::~RenderableMultiresVolume() {
@@ -158,10 +160,11 @@ bool RenderableMultiresVolume::initialize() {
 
     if (success) {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
-        success &= _histogramManager->buildHistograms(5);
+        success &= _histogramManager->buildHistograms(50);
     }
 
     success &= _atlasManager && _atlasManager->initialize();
+    success &= _brickSelector && _brickSelector->initialize();
 
     success &= isReady();
 
@@ -194,6 +197,10 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
     const int numTimesteps = _tsp->header().numTimesteps_;
     const int currentTimestep = _timestep % numTimesteps;
 
+    if (TfBrickSelector* tfbs = dynamic_cast<TfBrickSelector*>(_brickSelector)) {
+        tfbs->setBrickBudget(_brickBudget);
+    }
+
     _brickSelector->selectBricks(currentTimestep, _brickIndices);
 
     _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
@@ -221,19 +228,20 @@ std::string RenderableMultiresVolume::getSampler(const std::string& functionName
 
        << "    float intensity = texture(" << getGlslName("textureAtlas") << ", sampleCoords).x;" << std::endl
        << "    vec4 contribution = texture(" << getGlslName("transferFunction") << ", intensity);" << std::endl
-       << "    maxStepSize = 0.01;" << std::endl
+       << "    maxStepSize = 1.0/float(" << getGlslName("maxNumBricksPerAxis") << ")/float(" << getGlslName("paddedBrickDim") << ");" << std::endl
        << "    return contribution;" << std::endl
        << "}" << std::endl;
-
+    // TODO: Calculate maximum step size as distance to next voxel
     return ss.str();
 }
 
 std::string RenderableMultiresVolume::getStepSizeFunction(const std::string& functionName) {
     std::stringstream ss;
     ss << "float " << functionName << "(vec3 samplePos, vec3 dir) {" << std::endl
-       << "    return 0.01;" << std::endl // TODO: Calculate maximum step size as distance to next voxel
+       << "    return 1.0/float(" << getGlslName("maxNumBricksPerAxis") << ")/float(" << getGlslName("paddedBrickDim") << ");" << std::endl
        << "}" << std::endl;
 
+    // TODO: Calculate maximum step size as distance to next voxel
     return ss.str();
 }
 

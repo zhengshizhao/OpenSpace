@@ -37,7 +37,7 @@ public:
     ~HistogramManager();
 
     bool buildHistograms(int numBins);
-
+    Histogram* getHistogram(unsigned int brickIndex);
 private:
     TSP* _tsp;
     std::ifstream* _file;

@@ -72,6 +72,10 @@ bool HistogramManager::buildHistograms(int numBins) {
     return success;
 }
 
+Histogram* HistogramManager::getHistogram(unsigned int brickIndex) {
+    return &_histograms[brickIndex];
+}
+
 bool HistogramManager::buildHistogram(unsigned int brickIndex) {
     Histogram histogram(_minBin, _maxBin, _numBins);
 
