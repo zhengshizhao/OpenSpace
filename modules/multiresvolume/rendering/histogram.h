@@ -34,7 +34,11 @@ class Histogram {
 public:
     Histogram();
     Histogram(float minBin, float maxBin, int numBins);
+    Histogram(float minBin, float maxBin, int numBins, float *data);
+    Histogram(Histogram&& other);
     ~Histogram();
+
+    Histogram& operator=(Histogram&& other);
 
     int numBins() const;
     float minBin() const;
@@ -47,7 +51,7 @@ public:
 
     float interpolate(float bin) const;
     float sample(int binIndex) const;
-    const std::vector<float>& data() const;
+    const float* data() const;
     std::vector<std::pair<float,float>> getDecimated(int numBins) const;
 
     void normalize();
@@ -58,7 +62,7 @@ private:
     float _minBin;
     float _maxBin;
 
-    std::vector<float> _data;
+    float* _data;
 
 }; // class Histogram
 }  // namespace openspace

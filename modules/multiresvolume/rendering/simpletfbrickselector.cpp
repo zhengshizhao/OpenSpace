@@ -23,36 +23,37 @@
  ****************************************************************************************/
 
 #include <modules/multiresvolume/rendering/tsp.h>
-#include <modules/multiresvolume/rendering/tfbrickselector.h>
-#include <modules/multiresvolume/rendering/errorhistogrammanager.h>
+#include <modules/multiresvolume/rendering/simpletfbrickselector.h>
+#include <modules/multiresvolume/rendering/histogrammanager.h>
 #include <modules/multiresvolume/rendering/histogram.h>
 #include <modules/volume/rendering/transferfunction.h>
 #include <algorithm>
 #include <cassert>
+#include <ghoul/logging/logmanager.h>
 
 namespace {
-    const std::string _loggerCat = "TfBrickSelector";
+    const std::string _loggerCat = "SimpleTfBrickSelector";
 }
 
 namespace openspace {
 
-    TfBrickSelector::TfBrickSelector(TSP* tsp, ErrorHistogramManager* hm, TransferFunction* tf, int brickBudget)
+    SimpleTfBrickSelector::SimpleTfBrickSelector(TSP* tsp, HistogramManager* hm, TransferFunction* tf, int brickBudget)
     : _tsp(tsp)
     , _histogramManager(hm)
     , _transferFunction(tf)
     , _brickBudget(brickBudget - 7) {}
 
-TfBrickSelector::~TfBrickSelector() {}
+SimpleTfBrickSelector::~SimpleTfBrickSelector() {}
 
-bool TfBrickSelector::initialize() {
-    return calculateBrickErrors();
+bool SimpleTfBrickSelector::initialize() {
+    return true;
 }
 
-void TfBrickSelector::setBrickBudget(int brickBudget) {
+void SimpleTfBrickSelector::setBrickBudget(int brickBudget) {
     _brickBudget = brickBudget - 7;
 }
 
-void TfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
+void SimpleTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
     int numTimeSteps = _tsp->header().numTimesteps_;
     int numBricksPerDim = _tsp->header().xNumBricks_;
 
@@ -133,64 +134,48 @@ void TfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
     }
 }
 
-float TfBrickSelector::temporalSplitPoints(unsigned int brickIndex) {
+float SimpleTfBrickSelector::temporalSplitPoints(unsigned int brickIndex) {
     if (_tsp->isBstLeaf(brickIndex)) {
         return -1;
     }
-
-    unsigned int leftChild = _tsp->getBstLeft(brickIndex);
-    unsigned int rightChild = _tsp->getBstRight(brickIndex);
-
-    float currentError = _brickErrors[brickIndex];
-    float splitError = _brickErrors[leftChild] + _brickErrors[rightChild];
-
-    return (currentError - splitError) * 0.5;
+    return _brickImportances[brickIndex] * 0.5;
 }
 
-float TfBrickSelector::spatialSplitPoints(unsigned int brickIndex) {
+float SimpleTfBrickSelector::spatialSplitPoints(unsigned int brickIndex) {
     if (_tsp->isOctreeLeaf(brickIndex)) {
         return -1;
     }
-
-    float currentError = _brickErrors[brickIndex];
-    float splitError = 0;
-
-    unsigned int firstChild = _tsp->getFirstChild(brickIndex);
-    for (unsigned int i = 0; i < 8; i++) {
-        unsigned int child = firstChild + i;
-        splitError += _brickErrors[child];
-    }
-
-    return (currentError - splitError) * 0.125;
+    return _brickImportances[brickIndex] * 0.125;
 }
 
-float TfBrickSelector::splitPoints(unsigned int brickIndex, BrickSelection::SplitType& splitType) {
+float SimpleTfBrickSelector::splitPoints(unsigned int brickIndex, BrickSelection::SplitType& splitType) {
     float temporalPoints = temporalSplitPoints(brickIndex);
     float spatialPoints = spatialSplitPoints(brickIndex);
     float splitPoints;
 
-    if (spatialPoints > -1 && spatialPoints > temporalPoints) {
+    if (spatialPoints > 0 && spatialPoints > temporalPoints) {
         splitPoints = spatialPoints;
         splitType = BrickSelection::SplitType::Spatial;
-    } else if (temporalPoints > -1) {
+    } else if (temporalPoints > 0) {
         splitPoints = temporalPoints;
         splitType = BrickSelection::SplitType::Temporal;
     } else {
         splitPoints = -1;
         splitType = BrickSelection::SplitType::None;
     }
+
     return splitPoints;
 }
 
 
-bool TfBrickSelector::calculateBrickErrors() {
+bool SimpleTfBrickSelector::calculateBrickImportances() {
     TransferFunction *tf = _transferFunction;
     if (!tf) return false;
 
-    size_t tfWidth = tf->width();
+    float tfWidth = tf->width();
     if (tfWidth <= 0) return false;
 
-    std::vector<float> gradients(tfWidth - 1);
+    /*    std::vector<float> gradients(tfWidth - 1);
     for (size_t offset = 0; offset < tfWidth - 1; offset++) {
         glm::vec4 prevRgba = tf->sample(offset);
         glm::vec4 nextRgba = tf->sample(offset + 1);
@@ -199,37 +184,39 @@ bool TfBrickSelector::calculateBrickErrors() {
         float alpha = (prevRgba.w + nextRgba.w) * 0.5;
 
         gradients[offset] = colorDifference*alpha;
-    }
+        }*/
 
     unsigned int nHistograms = _tsp->numTotalNodes();
-    _brickErrors = std::vector<float>(nHistograms);
+    _brickImportances = std::vector<float>(nHistograms);
 
     for (unsigned int brickIndex = 0; brickIndex < nHistograms; brickIndex++) {
-        if (_tsp->isBstLeaf(brickIndex) && _tsp->isOctreeLeaf(brickIndex)) {
-            _brickErrors[brickIndex] = 0;
-        } else {
-            const Histogram* histogram = _histogramManager->getHistogram(brickIndex);
-            float error = 0;
-            for (int i = 0; i < gradients.size(); i++) {
-                float x = (i + 0.5) / tfWidth;
-                float sample = histogram->interpolate(x);
-                assert(sample >= 0);
-                assert(gradients[i] >= 0);
-                error += sample * gradients[i];
-            }
-            _brickErrors[brickIndex] = error;
+        const Histogram* histogram = _histogramManager->getHistogram(brickIndex);
+        if (!histogram->isValid()) {
+            return false;
         }
+
+        float dotProduct = 0;
+        for (int i = 0; i < tf->width(); i++) {
+            float x = float(i) / tfWidth;
+            float sample = histogram->interpolate(x);
+
+            assert(sample >= 0);
+            dotProduct += sample * tf->sample(i).w;
+        }
+        _brickImportances[brickIndex] = dotProduct;
     }
+
+    LINFO("Updated brick importances");
 
     return true;
 }
 
-int TfBrickSelector::linearCoords(int x, int y, int z) {
+int SimpleTfBrickSelector::linearCoords(int x, int y, int z) {
     const TSP::Header &header = _tsp->header();
     return x + (header.xNumBricks_ * y) + (header.xNumBricks_ * header.yNumBricks_ * z);
 }
 
-void TfBrickSelector::writeSelection(BrickSelection brickSelection, std::vector<int>& bricks) {
+void SimpleTfBrickSelector::writeSelection(BrickSelection brickSelection, std::vector<int>& bricks) {
     BrickCover coveredBricks = brickSelection.cover;
     for (int z = coveredBricks.lowZ; z < coveredBricks.highZ; z++) {
         for (int y = coveredBricks.lowY; y < coveredBricks.highY; y++) {

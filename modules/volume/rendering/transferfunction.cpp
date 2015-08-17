@@ -58,9 +58,11 @@ namespace {
 
 }
 
+
 namespace openspace {
-    TransferFunction::TransferFunction(const std::string& filepath) : _filepath(filepath) {
+    TransferFunction::TransferFunction(const std::string& filepath, TfChangedCallback tfChangedCallback) : _filepath(filepath) {
         setPath(filepath);
+        setCallback(tfChangedCallback);
     }
 
     TransferFunction::~TransferFunction() {
@@ -104,7 +106,12 @@ namespace openspace {
             }
             _texture->uploadTexture();
             _needsUpdate = false;
+            _tfChangedCallback(*this);
         }
+    }
+
+    void TransferFunction::setCallback(TfChangedCallback callback) {
+        _tfChangedCallback = std::move(callback);
     }
 
     void TransferFunction::setTextureFromTxt() {

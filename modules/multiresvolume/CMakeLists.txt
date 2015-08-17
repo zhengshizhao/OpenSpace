@@ -32,6 +32,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/brickselection.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/shenbrickselector.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/tfbrickselector.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/rendering/simpletfbrickselector.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/renderablemultiresvolume.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/tsp.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/histogram.h
@@ -45,6 +46,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/brickmanager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/shenbrickselector.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/tfbrickselector.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/rendering/simpletfbrickselector.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/renderablemultiresvolume.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/tsp.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/histogram.cpp
