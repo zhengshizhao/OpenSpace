@@ -113,8 +113,8 @@ ABufferStruct_t fragments[MAX_FRAGMENTS];
 vec4 blend(vec4 front, vec4 back) {
     vec4 result;
     result.a = front.a + (1.0 - front.a) * back.a;
-    result.rgb = (front.rgb * front.a) + (back.rgb * back.a * (1.0 - front.a));
-    result.rgb = result.a > 0.000001 ? (result.rgb / result.a) : result.rgb;
+    result.rgb = ((front.rgb * front.a) + (back.rgb * back.a * (1.0 - front.a))) / result.a;
+    result = clamp(result, 0.0, 1.0);
     return result;
 }
 
