@@ -34,17 +34,52 @@ namespace {
 
 namespace openspace {
 
-Histogram::Histogram() {}
+Histogram::Histogram()
+    : _minBin(0)
+    , _maxBin(0)
+    , _numBins(-1)
+    , _data(nullptr) {}
 
 Histogram::Histogram(float minBin, float maxBin, int numBins)
     : _minBin(minBin)
     , _maxBin(maxBin)
-    , _numBins(numBins) {
+    , _numBins(numBins)
+    , _data(nullptr) {
 
-    _data = std::vector<float>(numBins, 0.0);
+    _data = new float[numBins];
+    for (int i = 0; i < numBins; ++i) {
+        _data[i] = 0.0;
+    }
 }
 
-Histogram::~Histogram() {}
+Histogram::Histogram(float minBin, float maxBin, int numBins, float *data)
+    : _minBin(minBin)
+    , _maxBin(maxBin)
+    , _numBins(numBins)
+    , _data(data) {}
+
+Histogram::Histogram(Histogram&& other) {
+    _minBin = other._minBin;
+    _maxBin = other._maxBin;
+    _numBins = other._numBins;
+    _data = other._data;
+    other._data = nullptr;
+}
+
+Histogram& Histogram::operator=(Histogram&& other) {
+    _minBin = other._minBin;
+    _maxBin = other._maxBin;
+    _numBins = other._numBins;
+    _data = other._data;
+    other._data = nullptr;
+}
+
+
+Histogram::~Histogram() {
+    if (_data) {
+        delete[] _data;
+    }
+}
 
 
 int Histogram::numBins() const {
@@ -60,7 +95,7 @@ float Histogram::maxBin() const {
 }
 
 bool Histogram::isValid() const {
-    return _data.size() > 0;
+    return _numBins != -1;
 }
 
 
@@ -73,15 +108,19 @@ bool Histogram::add(float bin, float value) {
     float normalizedBin = (bin - _minBin) / (_maxBin - _minBin);    // [0.0, 1.0]
     int binIndex = floor(normalizedBin * _numBins);                 // [0, _numBins]
     if (binIndex == _numBins) binIndex--;                           // [0, _numBins[
+
     _data[binIndex] += value;
     return true;
 }
 
 bool Histogram::add(const Histogram& histogram) {
     if (_minBin == histogram.minBin() && _maxBin == histogram.maxBin() && _numBins == histogram.numBins()) {
-        const std::vector<float>& data = histogram.data();
+
+        const float* data = histogram.data();
         for (int i = 0; i < _numBins; i++) {
+
             _data[i] += data[i];
+
         }
         return true;
     } else {
@@ -137,6 +176,7 @@ float Histogram::interpolate(float bin) const {
     // Clamp bins
     if (binLow < 0) binLow = 0;
     if (binHigh >= _numBins) binHigh = _numBins - 1;
+
     return (1.0 - interpolator) * _data[binLow] + interpolator * _data[binHigh];
 }
 
@@ -146,7 +186,7 @@ float Histogram::sample(int binIndex) const {
 }
 
 
-const std::vector<float>& Histogram::data() const {
+const float* Histogram::data() const {
     return _data;
 }
 

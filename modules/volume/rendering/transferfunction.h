@@ -27,6 +27,7 @@
 
 #include <string>
 #include <glm/glm.hpp>
+#include <functional>
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -42,13 +43,16 @@ namespace openspace {
 
     class TransferFunction {
     public:
-        TransferFunction(const std::string& filepath);
+        typedef std::function<void (const TransferFunction&)> TfChangedCallback;
+
+        TransferFunction(const std::string& filepath, TfChangedCallback tfChangedCallback = TfChangedCallback());
         ~TransferFunction();
         void setPath(const std::string& filepath);
         ghoul::opengl::Texture* getTexture();
         void update();
         glm::vec4 sample(size_t t);
         size_t width();
+        void setCallback(TfChangedCallback callback);
     private:
         void setTextureFromTxt();
         void setTextureFromImage();
@@ -58,6 +62,7 @@ namespace openspace {
         ghoul::filesystem::File* _file = nullptr;
         ghoul::opengl::Texture* _texture = nullptr;
         bool _needsUpdate = false;
+        TfChangedCallback _tfChangedCallback;
     };
 
     struct MappingKey {

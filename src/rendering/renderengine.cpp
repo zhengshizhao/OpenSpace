@@ -305,17 +305,15 @@ void RenderEngine::postSynchronizationPreDraw() {
     sgct::Engine::instance()->setStatsGraphVisibility(_sgctRenderStatisticsVisible);
 	//temporary fade funtionality
 	if (_fadeDirection != 0) {
+		if (_fadeDirection < 0) {
+			_globalBlackOutFactor = glm::smoothstep(1.f, 0.f, _currentFadeTime / _fadeDuration);
+		} else {
+			_globalBlackOutFactor = glm::smoothstep(0.f, 1.f, _currentFadeTime / _fadeDuration);
+		}
 		if (_currentFadeTime > _fadeDuration){
 			_fadeDirection = 0;
-			_globalBlackOutFactor = fminf(1.f, fmaxf(0.f, _globalBlackOutFactor));
-		} 
-		else {
-			if (_fadeDirection < 0)
-				_globalBlackOutFactor = glm::smoothstep(1.f, 0.f, _currentFadeTime / _fadeDuration);
-			else
-				_globalBlackOutFactor = glm::smoothstep(0.f, 1.f, _currentFadeTime / _fadeDuration);
-			_currentFadeTime += static_cast<float>(sgct::Engine::instance()->getAvgDt());
 		}
+		_currentFadeTime += static_cast<float>(sgct::Engine::instance()->getAvgDt());
 	}
 
 	if (_mainCamera)

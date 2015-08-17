@@ -45,7 +45,7 @@ class AtlasManager {
 public:
     enum BUFFER_INDEX { EVEN = 0, ODD = 1 };
 
-    AtlasManager(TSP* tsp);
+    AtlasManager(TSP* tsp, unsigned int nBricks);
     ~AtlasManager();
 
     void updateAtlas(BUFFER_INDEX bufferIndex, std::vector<int>& brickIndices);
@@ -72,6 +72,7 @@ private:
     ghoul::opengl::Texture* _textureAtlas;
 
     unsigned int _nBricksPerDim,
+                 _nBricksPerAtlasDim,
                  _nOtLeaves,
                  _nOtNodes,
                  _nOtLevels,
