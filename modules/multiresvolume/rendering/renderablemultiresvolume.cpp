@@ -43,11 +43,13 @@
 #include <modules/multiresvolume/rendering/tsp.h>
 #include <modules/multiresvolume/rendering/atlasmanager.h>
 #include <modules/multiresvolume/rendering/shenbrickselector.h>
+#include <modules/multiresvolume/rendering/tfbrickselector.h>
+#include <modules/multiresvolume/rendering/simpletfbrickselector.h>
+#include <modules/multiresvolume/rendering/localtfbrickselector.h>
 
 #include <modules/multiresvolume/rendering/histogrammanager.h>
 #include <modules/multiresvolume/rendering/errorhistogrammanager.h>
-#include <modules/multiresvolume/rendering/tfbrickselector.h>
-#include <modules/multiresvolume/rendering/simpletfbrickselector.h>
+#include <modules/multiresvolume/rendering/localerrorhistogrammanager.h>
 
 #include <algorithm>
 #include <iterator>
@@ -130,18 +132,30 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     setBoundingSphere(PowerScaledScalar::CreatePSS(glm::length(_boxScaling)*pow(10,_w)));
 
     _tsp = new TSP(_filename);
-    _atlasManager = new AtlasManager(_tsp, 512);
+    _atlasManager = new AtlasManager(_tsp);
 
+
+    //LocalTfBrickSelector* bs;
+    //_localErrorHistogramManager = new LocalErrorHistogramManager(_tsp);
+    //_brickSelector = bs = new LocalTfBrickSelector(_tsp, _localErrorHistogramManager, _transferFunction, _brickBudget);
+    //_transferFunction->setCallback([bs](const TransferFunction &tf) {
+    //    bs->calculateBrickErrors();
+    //});
+    
+    TfBrickSelector* bs;
     _errorHistogramManager = new ErrorHistogramManager(_tsp);
-    _histogramManager = new HistogramManager();
-    //_brickSelector = new TfBrickSelector(_tsp, _errorHistogramManager, _transferFunction, _brickBudget);
-    SimpleTfBrickSelector *bs;
-    _brickSelector = bs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _brickBudget);
-    //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
+    _brickSelector = bs = new TfBrickSelector(_tsp, _errorHistogramManager, _transferFunction, _brickBudget);
     _transferFunction->setCallback([bs](const TransferFunction &tf) {
-        bs->calculateBrickImportances();
+        bs->calculateBrickErrors();
     });
 
+    //SimpleTfBrickSelector *bs;
+    //_brickSelector = bs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _brickBudget);
+    //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
+    //_transferFunction->setCallback([bs](const TransferFunction &tf) {
+    //    bs->calculateBrickImportances();
+    //});
+    //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
 }
 
 RenderableMultiresVolume::~RenderableMultiresVolume() {
@@ -152,6 +166,8 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
         delete _atlasManager;
     if (_brickSelector)
         delete _brickSelector;
+    if (_localErrorHistogramManager)
+        delete _localErrorHistogramManager;
     if (_errorHistogramManager)
         delete _errorHistogramManager;
     if (_histogramManager)
@@ -172,7 +188,12 @@ bool RenderableMultiresVolume::initialize() {
 
     if (success) {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
+ 
+    	//success &= _localErrorHistogramManager->buildHistograms(500);
+        success &= _errorHistogramManager->buildHistograms(500);
+    	//success &= _histogramManager->buildHistograms(tsp, 500);
 
+    	/*
         // TODO: Cache data for error histogram manager.
 
         int nHistograms = 500;
@@ -196,6 +217,7 @@ bool RenderableMultiresVolume::initialize() {
                 _histogramManager->saveToFile(cacheFilename);
             }
         }
+    	*/
     }
 
     success &= _atlasManager && _atlasManager->initialize();
@@ -233,14 +255,16 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
     const int numTimesteps = _tsp->header().numTimesteps_;
     const int currentTimestep = _timestep % numTimesteps;
 
-    _brickBudget = 512;
-
     if (TfBrickSelector* tfbs = dynamic_cast<TfBrickSelector*>(_brickSelector)) {
         tfbs->setBrickBudget(_brickBudget);
     }
 
     if (SimpleTfBrickSelector* stfbs = dynamic_cast<SimpleTfBrickSelector*>(_brickSelector)) {
         stfbs->setBrickBudget(_brickBudget);
+    }
+
+    if (LocalTfBrickSelector* ltfbs = dynamic_cast<LocalTfBrickSelector*>(_brickSelector)) {
+        ltfbs->setBrickBudget(_brickBudget);
     }
 
     _brickSelector->selectBricks(currentTimestep, _brickIndices);
@@ -256,7 +280,6 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
     program->setUniform(getGlslName("paddedBrickDim"), static_cast<unsigned int>(_tsp->paddedBrickDim()));
 
     _timestep++;
-
 }
 
 std::string RenderableMultiresVolume::getSampler(const std::string& functionName) {

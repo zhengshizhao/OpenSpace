@@ -47,8 +47,9 @@ namespace openspace {
 class TSP;
 class AtlasManager;
 class BrickSelector;
-class ErrorHistogramManager;
 class HistogramManager;
+class ErrorHistogramManager;
+class LocalErrorHistogramManager;
 
 class RenderableMultiresVolume: public RenderableVolume {
 public:
@@ -94,6 +95,7 @@ private:
 
     HistogramManager* _histogramManager;
     ErrorHistogramManager* _errorHistogramManager;
+    LocalErrorHistogramManager* _localErrorHistogramManager;
 };
 
 } // namespace openspace

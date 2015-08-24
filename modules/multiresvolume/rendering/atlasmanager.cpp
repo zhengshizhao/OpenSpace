@@ -32,7 +32,6 @@
 #include <fstream>
 #include <cassert>
 #include <cstring>
-#include <cmath>
 
 namespace {
     const std::string _loggerCat = "AtlasManager";
@@ -40,7 +39,7 @@ namespace {
 
 namespace openspace {
 
-AtlasManager::AtlasManager(TSP* tsp, unsigned int nBricks) : _tsp(tsp), _nBricksInAtlas(nBricks) {}
+AtlasManager::AtlasManager(TSP* tsp) : _tsp(tsp) {}
 
 AtlasManager::~AtlasManager() {}
 
@@ -52,14 +51,13 @@ bool AtlasManager::initialize() {
     _nOtNodes = _tsp->numOTNodes();
     _nOtLevels = log(_nOtLeaves)/log(8) + 1;
     _paddedBrickDim = _tsp->paddedBrickDim();
-    _nBricksInMap = _nOtLeaves;
-
+    _nBricksInMap = _nBricksPerDim * _nBricksPerDim * _nBricksPerDim;
+    _atlasDim = _nBricksPerDim * _paddedBrickDim;
     _nBrickVals = _paddedBrickDim*_paddedBrickDim*_paddedBrickDim;
     _brickSize = _nBrickVals * sizeof(float);
     _volumeSize = _brickSize * _nOtLeaves;
     _atlasMap = std::vector<unsigned int>(_nOtLeaves, NOT_USED);
-    _nBricksPerAtlasDim = std::ceil(std::pow(_nBricksInAtlas, 1.0/3.0));
-    _atlasDim = _nBricksPerAtlasDim * _paddedBrickDim;
+    _nBricksInAtlas = _nBricksInMap;
 
     _freeAtlasCoords = std::vector<unsigned int>(_nBricksInAtlas, 0);
 
@@ -186,9 +184,9 @@ void AtlasManager::removeFromAtlas(int brickIndex) {
 }
 
 void AtlasManager::fillVolume(float* in, float* out, unsigned int linearAtlasCoords) {
-    int x = linearAtlasCoords % _nBricksPerAtlasDim;
-    int y = (linearAtlasCoords / _nBricksPerAtlasDim) % _nBricksPerAtlasDim;
-    int z = linearAtlasCoords / _nBricksPerAtlasDim / _nBricksPerAtlasDim;
+    int x = linearAtlasCoords % _nBricksPerDim;
+    int y = (linearAtlasCoords / _nBricksPerDim) % _nBricksPerDim;
+    int z = linearAtlasCoords / _nBricksPerDim / _nBricksPerDim;
 
 
     unsigned int xMin = x*_paddedBrickDim;

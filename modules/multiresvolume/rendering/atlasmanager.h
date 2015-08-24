@@ -25,7 +25,7 @@
 #ifndef __ATLASMANAGER_H__
 #define __ATLASMANAGER_H__
 
-#include <modules/multiresvolume/rendering/tsp.h>
+#include <openspace/rendering/flare/tsp.h>
 
 #include <string>
 #include <vector>
@@ -45,7 +45,7 @@ class AtlasManager {
 public:
     enum BUFFER_INDEX { EVEN = 0, ODD = 1 };
 
-    AtlasManager(TSP* tsp, unsigned int nBricks);
+    AtlasManager(TSP* tsp);
     ~AtlasManager();
 
     void updateAtlas(BUFFER_INDEX bufferIndex, std::vector<int>& brickIndices);
@@ -72,7 +72,6 @@ private:
     ghoul::opengl::Texture* _textureAtlas;
 
     unsigned int _nBricksPerDim,
-                 _nBricksPerAtlasDim,
                  _nOtLeaves,
                  _nOtNodes,
                  _nOtLevels,
