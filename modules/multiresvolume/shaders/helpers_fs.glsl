@@ -24,8 +24,8 @@ int multires_intCoord(ivec3 vec3Coords, ivec3 spaceDim) {
 
 vec3 multires_vec3Coords(uint intCoord, ivec3 spaceDim) {
     vec3 coords = vec3(0.0);
-    coords.x = mod(intCoord, spaceDim.y);
-    coords.y = mod(intCoord / spaceDim.x, spaceDim.z);
+    coords.x = mod(intCoord, spaceDim.x);
+    coords.y = mod(intCoord / spaceDim.x, spaceDim.y);
     coords.z = intCoord / spaceDim.x / spaceDim.y;
     return coords;
 }
