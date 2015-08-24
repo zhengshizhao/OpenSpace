@@ -59,8 +59,13 @@ bool LocalErrorHistogramManager::buildHistograms(int numBins) {
     unsigned int numBstLeaves = pow(2, _tsp->numBSTLevels() - 1);
 
     _numInnerNodes = _tsp->numTotalNodes() - numOtLeaves * numBstLeaves;
+
     _spatialHistograms = std::vector<Histogram>(_numInnerNodes);
     _temporalHistograms = std::vector<Histogram>(_numInnerNodes);
+    for (unsigned int i = 0; i < _numInnerNodes; i++) {
+        _spatialHistograms[i] = Histogram(_minBin, _maxBin, numBins);
+        _temporalHistograms[i] = Histogram(_minBin, _maxBin, numBins);
+    }
 
     // All TSP Leaves
     int numOtNodes = _tsp->numOTNodes();
@@ -160,7 +165,9 @@ bool LocalErrorHistogramManager::buildFromOctreeChild(unsigned int bstOffset, un
                     float childValue = childValues[linearCoords(childSamplePoint)];
                     float parentValue = interpolate(parentSamplePoint, parentValues);
 
-                    _spatialHistograms[parentInnerNodeIndex].addRectangle(childValue, parentValue, std::abs(childValue - parentValue));
+                    // Divide by number of child voxels that will be taken into account
+                    float rectangleHeight = std::abs(childValue - parentValue) / 8.0;
+                    _spatialHistograms[parentInnerNodeIndex].addRectangle(childValue, parentValue, rectangleHeight);
                 }
             }
         }
@@ -241,7 +248,9 @@ bool LocalErrorHistogramManager::buildFromBstChild(unsigned int bstOffset, unsig
                     float childValue = childValues[linearSamplePoint];
                     float parentValue = parentValues[linearSamplePoint];
 
-                    _temporalHistograms[parentInnerNodeIndex].addRectangle(childValue, parentValue, std::abs(childValue - parentValue));
+                    // Divide by number of child voxels that will be taken into account
+                    float rectangleHeight = std::abs(childValue - parentValue) / 2.0;
+                    _temporalHistograms[parentInnerNodeIndex].addRectangle(childValue, parentValue, rectangleHeight);
                 }
             }
         }
