@@ -22,73 +22,56 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __ATLASMANAGER_H__
-#define __ATLASMANAGER_H__
+#ifndef __LOCALERRORHISTOGRAMMANAGER_H__
+#define __LOCALERRORHISTOGRAMMANAGER_H__
 
+#include <fstream>
 #include <modules/multiresvolume/rendering/tsp.h>
-#include <ghoul/glm.h>
-#include <glm/gtx/std_based_type.hpp>
-
-#include <string>
-#include <vector>
-#include <climits>
+#include <modules/multiresvolume/rendering/histogram.h>
 #include <map>
-#include <set>
 
-namespace ghoul {
-    namespace opengl {
-        class Texture;
-    }
-}
+#include <ghoul/glm.h>
 
 namespace openspace {
 
-class AtlasManager {
+class LocalErrorHistogramManager {
 public:
-    enum BUFFER_INDEX { EVEN = 0, ODD = 1 };
+    LocalErrorHistogramManager(TSP* tsp);
+    ~LocalErrorHistogramManager();
 
-    AtlasManager(TSP* tsp);
-    ~AtlasManager();
+    bool buildHistograms(int numBins);
+    const Histogram* getSpatialHistogram(unsigned int brickIndex) const;
+    const Histogram* getTemporalHistogram(unsigned int brickIndex) const;
 
-    void updateAtlas(BUFFER_INDEX bufferIndex, std::vector<int>& brickIndices);
-    void addToAtlas(int firstBrickIndex, int lastBrickIndex, float* mappedBuffer);
-    void removeFromAtlas(int brickIndex);
-    bool initialize();
-    std::vector<unsigned int> atlasMap();
-    unsigned int atlasMapBuffer();
-
-    void pboToAtlas(BUFFER_INDEX bufferIndex);
-    ghoul::opengl::Texture* textureAtlas();
-    glm::size3_t textureSize();
 private:
-    const unsigned int NOT_USED = UINT_MAX;
     TSP* _tsp;
-    unsigned int _pboHandle[2];
-    unsigned int _atlasMapBuffer;
+    std::ifstream* _file;
 
-    std::vector<unsigned int> _atlasMap;
-    std::map<unsigned int, unsigned int> _brickMap;
-    std::vector<unsigned int> _freeAtlasCoords;
-    std::set<unsigned int> _requiredBricks;
-    std::set<unsigned int> _prevRequiredBricks;
+    std::vector<Histogram> _spatialHistograms;
+    std::vector<Histogram> _temporalHistograms;
+    unsigned int _numInnerNodes;
+    float _minBin;
+    float _maxBin;
+    int _numBins;
 
-    ghoul::opengl::Texture* _textureAtlas;
+    std::map<unsigned int, std::vector<float>> _voxelCache;
 
-    unsigned int _nBricksPerDim,
-                 _nOtLeaves,
-                 _nOtNodes,
-                 _nOtLevels,
-                 _brickSize,
-                 _nBrickVals,
-                 _volumeSize,
-                 _paddedBrickDim,
-                 _nBricksInAtlas,
-                 _nBricksInMap,
-                 _atlasDim;
+    bool buildFromOctreeChild(unsigned int bstOffset, unsigned int octreeOffset);
+    bool buildFromBstChild(unsigned int bstOffset, unsigned int octreeOffset);
 
-    void fillVolume(float* in, float* out, unsigned int linearAtlasCoords);
+    std::vector<float> readValues(unsigned int brickIndex) const;
+
+    int parentOffset(int offset, int base) const;
+
+    unsigned int brickToInnerNodeIndex(unsigned int brickIndex) const;
+    unsigned int innerNodeToBrickIndex(unsigned int innerNodeIndex) const;
+    unsigned int linearCoords(glm::vec3 coords) const;
+    unsigned int linearCoords(int x, int y, int z) const;
+    unsigned int linearCoords(glm::ivec3 coords) const;
+
+    float interpolate(glm::vec3 samplePoint, const std::vector<float>& voxels) const;
 };
 
 } // namespace openspace
 
-#endif
+#endif // __LOCALERRORHISTOGRAMMANAGER_H__

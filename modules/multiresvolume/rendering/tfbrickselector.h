@@ -47,13 +47,13 @@ public:
 
     void selectBricks(int timestep, std::vector<int>& bricks);
     void setBrickBudget(int brickBudget);
+    bool calculateBrickErrors();
  private:
 
     TSP* _tsp;
     ErrorHistogramManager* _histogramManager;
     TransferFunction* _transferFunction;
     std::vector<float> _brickErrors;
-    bool calculateBrickErrors();
     float spatialSplitPoints(unsigned int brickIndex);
     float temporalSplitPoints(unsigned int brickIndex);
     float splitPoints(unsigned int brickIndex, BrickSelection::SplitType& splitType);

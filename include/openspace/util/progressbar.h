@@ -31,18 +31,21 @@ namespace openspace {
 
 class ProgressBar {
 public:
-	ProgressBar(int end, int width = 70, std::ostream& stream = std::cout);
-	~ProgressBar();
+    ProgressBar(int end, int width = 70, std::ostream& stream = std::cout);
+    ~ProgressBar();
 
     ProgressBar& operator=(const ProgressBar& rhs) = delete;
 
-	void print(int current);
+    void print(int current);
+    void stop();
 
 private:
-	int _width;
-	int _previous;
-	int _end;
-	std::ostream& _stream;
+    int _width;
+    int _previous;
+    int _end;
+    std::ostream& _stream;
+
+    bool _stopped;
 
 };
 
