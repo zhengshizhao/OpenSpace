@@ -158,7 +158,7 @@ void Scene::update(const UpdateData& data) {
 		_sceneGraphToLoad = "";
 		if (!success)
 			return;
-		OsEng.renderEngine()->aBuffer()->invalidateABuffer();
+		OsEng.renderEngine()->aBuffer()->invalidate();
 	}
     for (SceneGraphNode* node : _graph.nodes())
         node->update(data);

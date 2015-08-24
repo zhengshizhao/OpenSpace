@@ -40,26 +40,48 @@ namespace openspace {
 class ABufferVolume {
 public:
     ABufferVolume() : _id(-1) {};
-	virtual ~ABufferVolume() {};
-	virtual void preResolve(ghoul::opengl::ProgramObject* program) {};
-	/*
-	 * Return a glsl function source, with the signature
-	 * void functionName(vec3 samplePos, vec3 dir, float occludingAlpha, inout float maxStepSize)
-	 */
-	virtual std::string getSampler(const std::string& functionName) { return ""; };
+    virtual ~ABufferVolume() {};
+    virtual void preResolve(ghoul::opengl::ProgramObject* program) {};
 
-	/*
-	 * Return a glsl function source, with the signature
-	 * float functionName(vec3 samplePos, vec3 dir)
-	 */
-	virtual std::string getStepSizeFunction(const std::string& functionName) { return ""; };
-	virtual std::string getHeader() { return ""; };
-	virtual std::vector<ghoul::opengl::Texture*> getTextures() { return std::vector<ghoul::opengl::Texture*>(); };
+    /*
+     * Return a path to a file with all the header definitions
+     * (uniforms, functions etc) required to render this volume.
+     *
+     * The shader preprocessor will have acceess to the #{id} variable.
+     *
+     * The header should define the following two functions:
+     *   void sampler#{id}(vec3 samplePos, vec3 dir, float occludingAlpha, inout float maxStepSize)
+     *   float stepSize#{id}(vec3 samplePos, vec3 dir)
+     */
+    virtual std::string getHeaderPath() = 0;
+
+    /*
+     * Return a path to a glsl file that should only be included once
+     * regardless of how many volumes say they require the file.
+     * Ideal for helper functions.
+     */
+    virtual std::string getHelperPath() = 0;
+
+    /**
+     * Return a vector of pointers to the textures required to render this volume.
+     */
+    virtual std::vector<ghoul::opengl::Texture*> getTextures() { return std::vector<ghoul::opengl::Texture*>(); };
+
+    /**
+     * Return a vector of integers representing the opengl buffers required to render this volume.
+     */
     virtual std::vector<int> getBuffers() { return std::vector<int>(); };
+
+    /**
+     * Return the id of this volume.
+     */
     int getId();
+
+    /**
+     * Get glsl name
+     */
 protected:
-	std::string getGlslName(const std::string &key);
-	int getTextureUnit(ghoul::opengl::Texture* texture);
+    int getTextureUnit(ghoul::opengl::Texture* texture);
     int getSsboBinding(int ssboId);
 
     int _id;

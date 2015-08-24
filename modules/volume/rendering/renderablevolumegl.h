@@ -47,7 +47,7 @@ class RenderableVolumeGL: public RenderableVolume {
 public:
     RenderableVolumeGL(const ghoul::Dictionary& dictionary);
     ~RenderableVolumeGL();
-    
+
     bool initialize() override;
     bool deinitialize() override;
 
@@ -55,9 +55,8 @@ public:
 
     virtual void update(const UpdateData& data) override;
     virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
-    virtual std::string getSampler(const std::string& functionName) override;
-    virtual std::string getStepSizeFunction(const std::string& functionName) override;
-    virtual std::string getHeader() override;
+    virtual std::string getHeaderPath() override;
+    virtual std::string getHelperPath() override;
     virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
 
 private:

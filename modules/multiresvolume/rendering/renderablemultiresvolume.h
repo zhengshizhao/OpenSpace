@@ -29,7 +29,7 @@
 #include <modules/volume/rendering/renderablevolume.h>
 #include <modules/volume/rendering/transferfunction.h>
 #include <openspace/util/powerscaledcoordinate.h>
-
+#include <ghoul/misc/dictionary.h>
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -60,13 +60,10 @@ public:
 
     bool isReady() const override;
 
-    std::string getGlslHelpers();
-
     virtual void update(const UpdateData& data) override;
     virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
-    virtual std::string getSampler(const std::string& functionName) override;
-    virtual std::string getStepSizeFunction(const std::string& functionName) override;
-    virtual std::string getHeader() override;
+    virtual std::string getHeaderPath() override;
+    virtual std::string getHelperPath() override;
     virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
     virtual std::vector<int> getBuffers() override;
 

@@ -106,7 +106,9 @@ namespace openspace {
             }
             _texture->uploadTexture();
             _needsUpdate = false;
-            _tfChangedCallback(*this);
+            if (_tfChangedCallback) {
+                _tfChangedCallback(*this);
+            }
         }
     }
 

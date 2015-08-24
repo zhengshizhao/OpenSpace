@@ -77,7 +77,7 @@ bool ABufferFramebuffer::initializeABuffer() {
         _validShader = false;
     };
 
-    generateShaderSource();
+    generateShaderSubstitutions();
     _resolveShader = ghoul::opengl::ProgramObject::Build(
         "ABufferResolve",
         "${SHADERS}/ABuffer/abufferResolveVertex.glsl",

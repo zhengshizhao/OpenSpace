@@ -31,6 +31,7 @@
 #include <ghoul/logging/logmanager.h>
 #include <ghoul/opengl/programobject.h>
 #include <ghoul/opengl/texture.h>
+#include <ghoul/misc/dictionary.h>
 
 #include <sgct.h>
 
@@ -41,20 +42,7 @@
 #include <cassert>
 
 namespace {
-
-    const std::string generatedSettingsPath      = "${SHADERS_GENERATED}/ABufferSettings.hglsl";
-    const std::string generatedHelpersPath       = "${SHADERS_GENERATED}/ABufferHelpers.hglsl";
-    const std::string generatedHeadersPath       = "${SHADERS_GENERATED}/ABufferHeaders.hglsl";
-
-    const std::string generatedStepSizeCallsPath = "${SHADERS_GENERATED}/ABufferStepSizeCalls.hglsl";
-    const std::string generatedSamplerCallsPath  = "${SHADERS_GENERATED}/ABufferSamplerCalls.hglsl";
-    const std::string generatedStepSizeFunctionsPath  = "${SHADERS_GENERATED}/ABufferStepSizeFunctions.hglsl";
-    const std::string generatedTransferFunctionVisualizerPath =
-                        "${SHADERS_GENERATED}/ABufferTransferFunctionVisualizer.hglsl";
-    const std::string generatedSamplersPath      = "${SHADERS_GENERATED}/ABufferSamplers.hglsl";
-
     const std::string _loggerCat = "ABuffer";
-
 }
 
 namespace openspace {
@@ -62,7 +50,6 @@ namespace openspace {
 ABuffer::ABuffer()
     : _validShader(false)
     , _resolveShader(nullptr)
-    , _volumeStepFactor(0.0f)
 {
 
     updateDimensions();
@@ -79,14 +66,15 @@ bool ABuffer::initializeABuffer() {
     // ============================
     auto shaderCallback = [this](ghoul::opengl::ProgramObject* program) {
         // Error for visibility in log
-        _validShader = false;
+        invalidate();
     };
 
-    generateShaderSource();
+    generateShaderSubstitutions();
     _resolveShader = ghoul::opengl::ProgramObject::Build(
         "ABufferResolve",
         "${SHADERS}/ABuffer/abufferResolveVertex.glsl",
-        "${SHADERS}/ABuffer/abufferResolveFragment.glsl");
+        "${SHADERS}/ABuffer/abufferResolveFragment.glsl",
+        _shaderSubstitutions);
     if (!_resolveShader)
         return false;
     _resolveShader->setProgramObjectCallback(shaderCallback);
@@ -98,13 +86,13 @@ bool ABuffer::initializeABuffer() {
     // ============================
     const GLfloat size = 1.0f;
     const GLfloat vertex_data[] = {
-        //	  x      y     s     t
+    //  x      y      s     t
         -size, -size, 0.0f, 1.0f,
-        size,    size, 0.0f, 1.0f, 
-        -size,  size, 0.0f, 1.0f, 
+        +size, +size, 0.0f, 1.0f, 
+        -size, +size, 0.0f, 1.0f, 
         -size, -size, 0.0f, 1.0f, 
-        size, -size, 0.0f, 1.0f, 
-        size,    size, 0.0f, 1.0f,
+        +size, -size, 0.0f, 1.0f, 
+        +size, +size, 0.0f, 1.0f,
     };
 
     GLuint vertexPositionBuffer;
@@ -143,9 +131,11 @@ int ABuffer::getSsboBinding(int ssboId) {
 }
 
 void ABuffer::resolve(float blackoutFactor) {
-    if( ! _validShader) {
-        generateShaderSource();
-        updateShader();
+    if(!isValid()) {
+        generateShaderSubstitutions();
+        if (_resolveShader) {
+            _resolveShader->rebuildWithDictionary(_shaderSubstitutions);
+        }
         _validShader = true;
     }
     
@@ -202,168 +192,62 @@ void ABuffer::resolve(float blackoutFactor) {
     _resolveShader->deactivate();
 }
 
-void ABuffer::registerGlslHelpers(std::string helpers) {
-    _glslHelpers.push_back(helpers);
-}
-
 int ABuffer::addVolume(ABufferVolume* volume) {
     int volumeId = nextId++;
     _aBufferVolumes.insert(std::pair<int, ABufferVolume*>(volumeId - 1, volume));
-    std::map<std::string, std::string> map;
-    _glslDictionary.insert(std::pair<ABufferVolume*, std::map<std::string, std::string> >(volume, map));
+    invalidate();
     return volumeId;
 }
 
-    /*    void ABuffer::removeVolume(ABufferVolume* volume) {
-    _aBufferVolumes.erase(volume);
-    _glslDictionary.erase(volume);
-    }*/
+/*void ABuffer::removeVolume(int id) {
+    _aBufferVolumes.erase(id);
+    invalidate();
+}*/
 
-std::string ABuffer::getGlslName(ABufferVolume* volume, const std::string& key) {
-    auto dictionaryPtr = _glslDictionary.find(volume);
-    if (dictionaryPtr == _glslDictionary.end()) {
-        LERROR("Trying to translate glsl name, but volume is not added to abuffer.");
-        return "ERROR";
-    }
-    std::map<std::string, std::string>& dictionary = dictionaryPtr->second;
-    if (dictionary.find(key) == dictionary.end()) {
-        std::string translation = generateGlslName(key);
-        dictionary.insert(std::pair<std::string, std::string>(key, translation));
-        return translation;
-    }
-    return dictionary.at(key);
-}
-    
-std::string ABuffer::generateGlslName(const std::string& name) {
-    std::stringstream ss;
-    ss << "_gen_" << name << "_" << nextGlslNameId++;
-    return  ss.str();
-}
+void ABuffer::generateShaderSubstitutions() {
 
-bool ABuffer::updateShader() {
-    if (_resolveShader == nullptr)
-        return false;
-    bool s = _resolveShader->rebuildFromFile();
-    return s;
-}
+    ghoul::Dictionary helpersDictionary;
+    ghoul::Dictionary volumesDictionary;
+    std::set<std::string> helperPaths;
 
-void ABuffer::generateShaderSource() {
-    LDEBUG("Generating shader includes");
-    generateHelpers();
-    generateHeaders();
-    generateStepSizeCalls();
-    generateSamplerCalls();
-    generateStepSizeFunctions();
-    generateSamplers();
-}
+    for (const std::pair<int, ABufferVolume*>& p: _aBufferVolumes) {
+        ghoul::Dictionary volumeDictionary;
 
+        ABufferVolume* v = p.second;
+        std::string helperPath = v->getHelperPath();
+        std::string headerPath = v->getHeaderPath();
 
-void ABuffer::generateHelpers() {
-    std::ofstream f(absPath(generatedHelpersPath));
-    for (std::string& str : _glslHelpers) {
-       f << str << std::endl;
-    }
-    f.close();
-}
+        volumeDictionary.setValue("id", v->getId());
+        volumeDictionary.setValue("bitmask", 1 << p.first);
+        volumeDictionary.setValue("headerPath", headerPath);
 
-void ABuffer::generateHeaders() {
-    
-    std::ofstream f(absPath(generatedHeadersPath));
-    f << "#define MAX_VOLUMES " << std::to_string(_aBufferVolumes.size()) << "\n";
+        if (helperPaths.find(helperPath) == helperPaths.end()) {
+            std::stringstream helperId;
+            helperId << helperPaths.size();
+            helpersDictionary.setValue(helperId.str(), helperPath);
+            helperPaths.insert(helperPath);
+        }
 
-    for (auto volumePair : _aBufferVolumes) {
-        f << volumePair.second->getHeader();
+        std::stringstream volumeIndex;
+        volumeIndex << p.first;
+        volumesDictionary.setValue(volumeIndex.str(), volumeDictionary);
     }
 
-    for (auto volumePair : _aBufferVolumes) {
-        int id = volumePair.second->getId();
-        f << "vec4 sampleVolume_" << id << "(vec3 samplePos, vec3 dir, float occludingAlpha, inout float maxStepSize);" << std::endl;
-        f << "float getStepSize_" << id << "(vec3 samplePos, vec3 dir);" << std::endl;
-    }
+    ghoul::Dictionary mainDictionary;
+    mainDictionary.setValue("helperPaths", helpersDictionary);
+    mainDictionary.setValue("volumes", volumesDictionary);
 
-    if (_aBufferVolumes.size() < 1) {
-        f.close();
-        return;
-    }
+    int nVolumes = _aBufferVolumes.size();
+    mainDictionary.setValue("nVolumes", nVolumes);
 
-    size_t maxLoop = 1000000;
-    f << "#define LOOP_LIMIT " << maxLoop << "\n";
-    
-    f.close();
-
-}
-    
-void ABuffer::generateStepSizeCalls() {
-    std::ofstream f(absPath(generatedStepSizeCallsPath));
-    
-    for (auto volumePair : _aBufferVolumes) {
-        int index = volumePair.first;
-        int id = volumePair.second->getId();
-        f << "#ifndef SKIP_VOLUME_" << id << "\n"
-          << "if((currentVolumeBitmask & " << (1 << index) << ") == " << (1 << index) << ") {" << std::endl
-          << "  maxStepSizeLocal = getStepSize_" << id << "(volume_position[" << index << "], volume_direction[" << index << "]);" << std::endl
-          << "  maxStepSize"  << " = maxStepSizeLocal/volume_scale[" << index << "];" << std::endl
-          << "  nextStepSize = min(nextStepSize, maxStepSize);" << std::endl
-          << "}" << std::endl
-          << "float previousJitterDistance_" << id << " = 0.0;" << std::endl
-          << "#endif" << std::endl;
-    }
-    f.close();
+    _shaderSubstitutions = std::move(mainDictionary);
 }
 
-void ABuffer::generateSamplerCalls() {
-    std::ofstream f(absPath(generatedSamplerCallsPath));
-    
-    for (auto volumePair : _aBufferVolumes) {
-        int index = volumePair.first;
-        int id = volumePair.second->getId();
-        f << "#ifndef SKIP_VOLUME_" << id << "\n"
-          << "if((currentVolumeBitmask & " << (1 << index) << ") == " << (1 << index) << ") {" << std::endl
-          << "  stepSizeLocal = stepSize*volume_scale[" << index << "];" << std::endl
-          << "  float jitteredStepSizeLocal = stepSizeLocal*jitterFactor;" << std::endl
-          << "  vec3 jitteredPosition = volume_position[" << index << "] + volume_direction[" << index << "]*jitteredStepSizeLocal;" << std::endl
-          << "  volume_position[" << index << "] += volume_direction[" << index << "]*stepSizeLocal;" << std::endl
-          << "  vec4 contribution = sampleVolume_" << id << "(jitteredPosition, volume_direction[" << index << "], final_color.a, maxStepSizeLocal);" << std::endl
-          << "  float sampleDistance = 10*(jitteredStepSizeLocal + previousJitterDistance_" << id << ");" << std::endl
-          << "  blendStep(final_color, contribution, sampleDistance);" << std::endl
-          << "  previousJitterDistance_" << id << " = stepSizeLocal - jitteredStepSizeLocal;" << std::endl
-          << "  maxStepSize = maxStepSizeLocal/volume_scale[" << index << "];" << std::endl
-          << "  nextStepSize = min(nextStepSize, maxStepSize);" << std::endl
-          << "}" << std::endl
-            
-          << "#endif\n";
-    }
-    
-    f.close();
+bool ABuffer::isValid() {
+    return _validShader;
 }
 
-void ABuffer::generateSamplers() {
-    std::ofstream f(absPath(generatedSamplersPath));
-
-    for (auto volumePair : _aBufferVolumes) {
-        std::stringstream functionName;
-        ABufferVolume* volume = volumePair.second;
-        functionName << "sampleVolume_" << volume->getId();
-        f << volume->getSampler(functionName.str());
-    }
-    
-    f.close();
-}
-
-void ABuffer::generateStepSizeFunctions() {
-    std::ofstream f(absPath(generatedStepSizeFunctionsPath));
-    for (auto volumePair : _aBufferVolumes) {
-        std::stringstream functionName;
-        ABufferVolume* volume = volumePair.second;
-        functionName << "getStepSize_" << volume->getId();
-        f << volume->getStepSizeFunction(functionName.str());
-    }
-    
-    f.close();
-}
-
-void ABuffer::invalidateABuffer() {
-    LDEBUG("Shader invalidated");
+void ABuffer::invalidate() {
     _validShader = false;
 }
 

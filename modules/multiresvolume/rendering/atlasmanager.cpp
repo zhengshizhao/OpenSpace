@@ -238,4 +238,9 @@ ghoul::opengl::Texture* AtlasManager::textureAtlas() {
     return _textureAtlas;
 }
 
+
+glm::size3_t AtlasManager::textureSize() {
+    return _textureAtlas->dimensions();
+}
+
 }
