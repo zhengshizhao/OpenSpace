@@ -253,32 +253,14 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
         stfbs->setBrickBudget(_brickBudget);
     }
 
-<<<<<<< HEAD
-=======
     if (LocalTfBrickSelector* ltfbs = dynamic_cast<LocalTfBrickSelector*>(_brickSelector)) {
         ltfbs->setBrickBudget(_brickBudget);
     }
->>>>>>> 4fd467d02d5c51b4704b7be1994a03c48ca4989a
 
     _brickSelector->selectBricks(currentTimestep, _brickIndices);
 
     _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
 
-<<<<<<< HEAD
-=======
-    program->setUniform(getGlslName("transferFunction"), getTextureUnit(_transferFunction->getTexture()));
-    program->setUniform(getGlslName("textureAtlas"), getTextureUnit(_atlasManager->textureAtlas()));
-    program->setSsboBinding(getGlslName("atlasMapBlock"), getSsboBinding(_atlasManager->atlasMapBuffer()));
-
-    program->setUniform(getGlslName("gridType"), static_cast<int>(_tsp->header().gridType_));
-    program->setUniform(getGlslName("maxNumBricksPerAxis"), static_cast<unsigned int>(_tsp->header().xNumBricks_));
-    program->setUniform(getGlslName("paddedBrickDim"), static_cast<unsigned int>(_tsp->paddedBrickDim()));
-
-    _timestep++;
-}
-
-std::string RenderableMultiresVolume::getSampler(const std::string& functionName) {
->>>>>>> 4fd467d02d5c51b4704b7be1994a03c48ca4989a
     std::stringstream ss;
     ss << "transferFunction_" << getId();
     program->setUniform(ss.str(), getTextureUnit(_transferFunction->getTexture()));
