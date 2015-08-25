@@ -25,7 +25,9 @@
 #ifndef __ATLASMANAGER_H__
 #define __ATLASMANAGER_H__
 
-#include <openspace/rendering/flare/tsp.h>
+#include <modules/multiresvolume/rendering/tsp.h>
+#include <ghoul/glm.h>
+#include <glm/gtx/std_based_type.hpp>
 
 #include <string>
 #include <vector>
@@ -57,6 +59,7 @@ public:
 
     void pboToAtlas(BUFFER_INDEX bufferIndex);
     ghoul::opengl::Texture* textureAtlas();
+    glm::size3_t textureSize();
 private:
     const unsigned int NOT_USED = UINT_MAX;
     TSP* _tsp;

@@ -33,10 +33,6 @@ namespace {
 }
 
 namespace openspace {
-    
-    std::string ABufferVolume::getGlslName(const std::string& key) {
-       return OsEng.renderEngine()->aBuffer()->getGlslName(this, key);
-    }
 
     int ABufferVolume::getTextureUnit(ghoul::opengl::Texture* texture) {
        return OsEng.renderEngine()->aBuffer()->getTextureUnit(texture);

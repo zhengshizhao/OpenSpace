@@ -65,6 +65,8 @@ namespace {
     const std::string KeyVolumeName = "VolumeName";
     const std::string KeyBrickSelector = "BrickSelector";
     const std::string GlslHelpersPath = "${MODULES}/multiresvolume/shaders/helpers_fs.glsl";
+    const std::string GlslHelperPath = "${MODULES}/multiresvolume/shaders/helper.glsl";
+    const std::string GlslHeaderPath = "${MODULES}/multiresvolume/shaders/header.glsl";
     bool registeredGlslHelpers = false;
 }
 
@@ -229,11 +231,6 @@ void RenderableMultiresVolume::setSelectorType(Selector selector) {
 bool RenderableMultiresVolume::initialize() {
     bool success = RenderableVolume::initialize();
 
-    if (!registeredGlslHelpers) {
-        OsEng.renderEngine()->aBuffer()->registerGlslHelpers(RenderableMultiresVolume::getGlslHelpers());
-        registeredGlslHelpers = true;
-    }
-
     success &= _tsp && _tsp->load();
 
     if (success) {
@@ -265,12 +262,6 @@ bool RenderableMultiresVolume::isReady() const {
     return true;
 }
 
-std::string RenderableMultiresVolume::getGlslHelpers() {
-    std::ifstream f(absPath(GlslHelpersPath));
-    std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-    f.close();
-    return str;
-}
 
 bool RenderableMultiresVolume::initializeSelector() {
     int nHistograms = 500;
@@ -383,86 +374,45 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
 
     _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
 
-    program->setUniform(getGlslName("transferFunction"), getTextureUnit(_transferFunction->getTexture()));
-    program->setUniform(getGlslName("textureAtlas"), getTextureUnit(_atlasManager->textureAtlas()));
-    program->setSsboBinding(getGlslName("atlasMapBlock"), getSsboBinding(_atlasManager->atlasMapBuffer()));
+    std::stringstream ss;
+    ss << "transferFunction_" << getId();
+    program->setUniform(ss.str(), getTextureUnit(_transferFunction->getTexture()));
 
-    program->setUniform(getGlslName("gridType"), static_cast<int>(_tsp->header().gridType_));
-    program->setUniform(getGlslName("maxNumBricksPerAxis"), static_cast<unsigned int>(_tsp->header().xNumBricks_));
-    program->setUniform(getGlslName("paddedBrickDim"), static_cast<unsigned int>(_tsp->paddedBrickDim()));
+    ss.str(std::string());
+    ss << "textureAtlas_" << getId();
+    program->setUniform(ss.str(), getTextureUnit(_atlasManager->textureAtlas()));
+
+    ss.str(std::string());
+    ss << "atlasMapBlock_" << getId();
+    program->setSsboBinding(ss.str(), getSsboBinding(_atlasManager->atlasMapBuffer()));
+
+    ss.str(std::string());
+    ss << "gridType_" << getId();
+    program->setUniform(ss.str(), static_cast<int>(_tsp->header().gridType_));
+
+    ss.str(std::string());
+    ss << "maxNumBricksPerAxis_" << getId();
+    program->setUniform(ss.str(), static_cast<unsigned int>(_tsp->header().xNumBricks_));
+
+    ss.str(std::string());
+    ss << "paddedBrickDim_" << getId();
+    program->setUniform(ss.str(), static_cast<unsigned int>(_tsp->paddedBrickDim()));
+
+    ss.str(std::string());
+    ss << "atlasSize_" << getId();
+    glm::size3_t size = _atlasManager->textureSize();
+    glm::ivec3 atlasSize(size.x, size.y, size.z);
+    program->setUniform(ss.str(), atlasSize);
 
     _timestep++;
 }
 
-std::string RenderableMultiresVolume::getSampler(const std::string& functionName) {
-    std::stringstream ss;
-
-    ss << "vec4 " << functionName << "(vec3 samplePos, vec3 dir, "
-       << "float occludingAlpha, inout float maxStepSize) {" << std::endl
-       << "    if (" << getGlslName("gridType") << " == 1) {" << std::endl
-       << "        samplePos = multires_cartesianToSpherical(samplePos);" << std::endl
-       << "    }" << std::endl
-       << "    vec3 sampleCoords = " << getGlslName("atlasCoordsFunction") << "(samplePos);" << std::endl
-
-       << "    float intensity = texture(" << getGlslName("textureAtlas") << ", sampleCoords).x;" << std::endl
-       << "    vec4 contribution = texture(" << getGlslName("transferFunction") << ", intensity);" << std::endl
-       << "    maxStepSize = 1.0/float(" << getGlslName("maxNumBricksPerAxis") << ")/float(" << getGlslName("paddedBrickDim") << ");" << std::endl
-       << "    return contribution;" << std::endl
-       << "}" << std::endl;
-    // TODO: Calculate maximum step size as distance to next voxel
-    return ss.str();
+std::string RenderableMultiresVolume::getHelperPath() {
+    return absPath(GlslHelperPath);
 }
 
-std::string RenderableMultiresVolume::getStepSizeFunction(const std::string& functionName) {
-    std::stringstream ss;
-    ss << "float " << functionName << "(vec3 samplePos, vec3 dir) {" << std::endl
-       << "    return 1.0/float(" << getGlslName("maxNumBricksPerAxis") << ")/float(" << getGlslName("paddedBrickDim") << ");" << std::endl
-       << "}" << std::endl;
-
-    // TODO: Calculate maximum step size as distance to next voxel
-    return ss.str();
-}
-
-std::string RenderableMultiresVolume::getHeader() {
-    std::stringstream ss;
-    ss << "uniform sampler1D " << getGlslName("transferFunction") << ";" << std::endl
-       << "uniform sampler3D " << getGlslName("textureAtlas") << ";" << std::endl
-       << "uniform int " << getGlslName("gridType") << ";" << std::endl
-       << "uniform uint " << getGlslName("maxNumBricksPerAxis") << ";" << std::endl
-       << "uniform uint " << getGlslName("paddedBrickDim") << ";" << std::endl
-
-       << "layout (shared) buffer " << getGlslName("atlasMapBlock") << " {" << std::endl
-       << "    uint " << getGlslName("atlasMap") << "[];" << std::endl
-       << "};" << std::endl;
-
-    ss << "void " << getGlslName("atlasMapDataFunction") << "(ivec3 brickCoords, inout uint atlasIntCoord, inout uint level) {" << std::endl
-       << "    int linearBrickCoord = multires_intCoord(brickCoords, ivec3(" << getGlslName("maxNumBricksPerAxis") << "));" << std::endl
-       << "    uint mapData = " << getGlslName("atlasMap") << "[linearBrickCoord];" << std::endl
-       << "    level = mapData >> 28;" << std::endl
-       << "    atlasIntCoord = mapData & 0x0FFFFFFF;" << std::endl
-       << "}" << std::endl;
-
-    ss << "vec3 " << getGlslName("atlasCoordsFunction") << "(vec3 position) {" << std::endl
-       << "    uint maxNumBricksPerAxis = " << getGlslName("maxNumBricksPerAxis") << ";" << std::endl
-       << "    uint paddedBrickDim = " << getGlslName("paddedBrickDim") << ";" << std::endl
-
-       << "    ivec3 brickCoords = ivec3(position * maxNumBricksPerAxis);" << std::endl
-       << "    uint atlasIntCoord, level;" << std::endl
-       << "    " << getGlslName("atlasMapDataFunction") << "(brickCoords, atlasIntCoord, level);" << std::endl
-
-       << "    float levelDim = float(maxNumBricksPerAxis) / pow(2.0, level);" << std::endl
-       << "    vec3 inBrickCoords = mod(position*levelDim, 1.0);" << std::endl
-
-       << "    float scale = float(paddedBrickDim) - 2.0;" << std::endl
-       << "    vec3 paddedInBrickCoords = (1.0 + inBrickCoords * scale) / paddedBrickDim;" << std::endl
-
-       << "    ivec3 numBricksInAtlas = textureSize(" << getGlslName("textureAtlas") << ", 0) / int(paddedBrickDim);" << std::endl
-       << "    vec3 atlasOffset = multires_vec3Coords(atlasIntCoord, numBricksInAtlas);" << std::endl
-
-       << "    return (atlasOffset + paddedInBrickCoords) / vec3(numBricksInAtlas);" << std::endl
-       << "}" << std::endl;
-
-    return ss.str();
+std::string RenderableMultiresVolume::getHeaderPath() {
+    return absPath(GlslHeaderPath);
 }
 
 std::vector<ghoul::opengl::Texture*> RenderableMultiresVolume::getTextures() {

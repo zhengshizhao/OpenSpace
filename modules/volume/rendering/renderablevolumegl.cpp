@@ -44,9 +44,11 @@ namespace {
     const std::string KeyVolume = "Volume";
     const std::string KeyHints = "Hints";
     const std::string KeyTransferFunction = "TransferFunction";
-    const std::string KeySampler = "Sampler";
     const std::string KeyBoxScaling = "BoxScaling";
     const std::string KeyVolumeName = "VolumeName";
+
+    const std::string GlslHelperPath = "${MODULES}/volume/shaders/helper.glsl";
+    const std::string GlslHeaderPath = "${MODULES}/volume/shaders/header.glsl";
 }
 
 namespace openspace {
@@ -184,63 +186,32 @@ bool RenderableVolumeGL::deinitialize() {
 }
 
 void RenderableVolumeGL::preResolve(ghoul::opengl::ProgramObject* program) {
-	std::string transferFunctionName = getGlslName("transferFunction");
-	std::string volumeName = getGlslName("volume");
-	std::string stepSizeName = getGlslName("stepSize");
+    int transferFunctionUnit = getTextureUnit(_transferFunction->getTexture());
+    int volumeUnit = getTextureUnit(_volume);
 
-	int transferFunctionUnit = getTextureUnit(_transferFunction->getTexture());
-	int volumeUnit = getTextureUnit(_volume);
+    std::stringstream ss;
+    ss << "transferFunction_" << getId();
+    program->setUniform(ss.str(), transferFunctionUnit);
 
-	program->setUniform(transferFunctionName, transferFunctionUnit);
-	program->setUniform(volumeName, volumeUnit);
+    ss.str(std::string());
+    ss << "volume_" << getId();
+    program->setUniform(ss.str(), volumeUnit);
 
-	const glm::size3_t dims = _volume->dimensions();
-	float maxDiag = glm::sqrt(static_cast<float>(dims.x*dims.x + dims.y*dims.y + dims.z*dims.z));
-	program->setUniform(stepSizeName, static_cast<float>(glm::sqrt(3.0) / maxDiag));
+    const glm::size3_t dims = _volume->dimensions();
+    float maxDiag = glm::sqrt(static_cast<float>(dims.x*dims.x + dims.y*dims.y + dims.z*dims.z));
+
+    ss.str(std::string());
+    ss << "stepSize_" << getId();
+    program->setUniform(ss.str(), static_cast<float>(glm::sqrt(3.0) / maxDiag));
 }
 
 
-std::string RenderableVolumeGL::getSampler(const std::string& functionName) {
-	std::string transferFunctionName = getGlslName("transferFunction");
-	std::string volumeName = getGlslName("volume");
-	std::string stepSizeName = getGlslName("stepSize");
-
-	std::stringstream ss;
-	ss << "vec4 " << functionName << "(vec3 samplePos, vec3 dir, "
-	   << "float occludingAlpha, inout float maxStepSize) {" << std::endl;
-
-	ss << "float intensity = texture(" << volumeName << ", samplePos).x;" << std::endl;
-	ss << "vec4 contribution = texture(" << transferFunctionName << ", intensity);" << std::endl;
-	ss << "maxStepSize = " << stepSizeName << ";" << std::endl;
-	ss << "return contribution;" << std::endl;
-	ss << "}" << std::endl;
-
-	return ss.str();
+std::string RenderableVolumeGL::getHelperPath() {
+    return absPath(GlslHelperPath);
 }
 
-
-std::string RenderableVolumeGL::getStepSizeFunction(const std::string& functionName) {
-	std::string stepSizeName = getGlslName("stepSize");
-
-	std::stringstream ss;
-	ss << "float " << functionName << "(vec3 samplePos, vec3 dir) {" << std::endl
-	   << "return " << stepSizeName << ";" << std::endl
-	   << "}" << std::endl;
-	return ss.str();
-}
-
-
-std::string RenderableVolumeGL::getHeader() {
-	std::string transferFunctionName = getGlslName("transferFunction");
-	std::string volumeName = getGlslName("volume");
-	std::string stepSizeName = getGlslName("stepSize");
-
-	std::stringstream ss;
-	ss << "uniform sampler1D " << transferFunctionName << ";" << std::endl;
-	ss << "uniform sampler3D " << volumeName << ";" << std::endl;
-	ss << "uniform float " << stepSizeName << ";" << std::endl;
-
-	return ss.str();
+std::string RenderableVolumeGL::getHeaderPath() {
+    return absPath(GlslHeaderPath);
 }
 
 std::vector<ghoul::opengl::Texture*> RenderableVolumeGL::getTextures() {

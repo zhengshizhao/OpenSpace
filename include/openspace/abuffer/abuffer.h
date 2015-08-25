@@ -32,6 +32,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <ghoul/misc/dictionary.h>
 
 namespace ghoul {
     namespace filesystem {
@@ -64,14 +65,13 @@ public:
 	virtual bool reinitialize();
 	virtual void resetBindings();
 
-	void registerGlslHelpers(std::string helpers);
 	int addVolume(ABufferVolume* volume);
-	//void removeVolume(ABufferVolume* volume);
-	std::string getGlslName(ABufferVolume* volume, const std::string& key);
+	//void removeVolume(int id);
 	int getTextureUnit(ghoul::opengl::Texture* texture);
 	int getSsboBinding(int ssboId);
 
-	void invalidateABuffer();
+	bool isValid();
+	void invalidate();
     
     virtual void clear() = 0;
     virtual void preRender() = 0;
@@ -83,16 +83,7 @@ protected:
 	virtual bool reinitializeInternal() = 0;
 
 	virtual bool initializeABuffer();
-
-	void generateShaderSource();
-	bool updateShader();
-
-	void generateHelpers();
-	void generateHeaders();
-	void generateStepSizeCalls();
-	void generateSamplerCalls();
-	void generateStepSizeFunctions();
-	void generateSamplers();
+	void generateShaderSubstitutions();
 
 	unsigned int _width, _height, _totalPixels;
 
@@ -102,20 +93,13 @@ protected:
 
 	bool _validShader;
 	ghoul::opengl::ProgramObject* _resolveShader;
-
-	std::vector<std::pair<std::string,ghoul::opengl::Texture*> > _volumes;
-	std::vector<std::pair<std::string,ghoul::opengl::Texture*> > _transferFunctions;
-
 	std::map<int, ABufferVolume*> _aBufferVolumes;
-	std::map<ABufferVolume*, std::map<std::string, std::string> > _glslDictionary;
 
-	std::vector<std::string> _glslHelpers;
-	std::string generateGlslName(const std::string& name);
 	std::map<ghoul::opengl::Texture*, int> _textureUnits;
 	std::map<int, int> _bufferBindings;
-	int nextGlslNameId = 0;
+
 	int nextId = 1;
-	float _volumeStepFactor;
+	ghoul::Dictionary _shaderSubstitutions;
 
 };		// ABuffer
 }		// openspace
