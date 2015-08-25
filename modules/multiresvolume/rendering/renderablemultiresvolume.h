@@ -47,6 +47,9 @@ namespace openspace {
 class TSP;
 class AtlasManager;
 class BrickSelector;
+class TfBrickSelector;
+class SimpleTfBrickSelector;
+class LocalTfBrickSelector;
 class HistogramManager;
 class ErrorHistogramManager;
 class LocalErrorHistogramManager;
@@ -55,6 +58,11 @@ class RenderableMultiresVolume: public RenderableVolume {
 public:
     RenderableMultiresVolume(const ghoul::Dictionary& dictionary);
     ~RenderableMultiresVolume();
+
+    enum Selector {TF, SIMPLE, LOCAL};
+
+    void setSelectorType(Selector selector);
+    bool initializeSelector();
 
     bool initialize() override;
     bool deinitialize() override;
@@ -91,7 +99,12 @@ private:
     int _atlasMapSize;
 
     AtlasManager* _atlasManager;
-    BrickSelector* _brickSelector;
+
+    TfBrickSelector* _tfBrickSelector;
+    SimpleTfBrickSelector* _simpleTfBrickSelector;
+    LocalTfBrickSelector* _localTfBrickSelector;
+
+    Selector _selector;
 
     HistogramManager* _histogramManager;
     ErrorHistogramManager* _errorHistogramManager;

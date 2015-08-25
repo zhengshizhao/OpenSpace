@@ -63,6 +63,7 @@ namespace {
     const std::string KeyBoxScaling = "BoxScaling";
     const std::string KeyModelName = "ModelName";
     const std::string KeyVolumeName = "VolumeName";
+    const std::string KeyBrickSelector = "BrickSelector";
     const std::string GlslHelpersPath = "${MODULES}/multiresvolume/shaders/helpers_fs.glsl";
     bool registeredGlslHelpers = false;
 }
@@ -78,6 +79,12 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     , _timestep(0)
     , _brickBudget(512)
     , _atlasMapSize(0)
+    , _tfBrickSelector(nullptr)
+    , _simpleTfBrickSelector(nullptr)
+    , _localTfBrickSelector(nullptr)
+    , _errorHistogramManager(nullptr)
+    , _histogramManager(nullptr)
+    , _localErrorHistogramManager(nullptr)
 {
     std::string name;
     bool success = dictionary.getValue(constants::scenegraphnode::keyName, name);
@@ -109,7 +116,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     _boxScaling = glm::vec3(1.0);
 
     if (dictionary.hasKey(KeyModelName)) {
-	success = dictionary.getValue(KeyModelName, _modelName);
+        success = dictionary.getValue(KeyModelName, _modelName);
     }
 
     if (dictionary.hasKey(KeyBoxScaling)) {
@@ -135,26 +142,21 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     _atlasManager = new AtlasManager(_tsp);
 
 
-    //LocalTfBrickSelector* bs;
-    //_localErrorHistogramManager = new LocalErrorHistogramManager(_tsp);
-    //_brickSelector = bs = new LocalTfBrickSelector(_tsp, _localErrorHistogramManager, _transferFunction, _brickBudget);
-    //_transferFunction->setCallback([bs](const TransferFunction &tf) {
-    //    bs->calculateBrickErrors();
-    //});
-    
-    TfBrickSelector* bs;
-    _errorHistogramManager = new ErrorHistogramManager(_tsp);
-    _brickSelector = bs = new TfBrickSelector(_tsp, _errorHistogramManager, _transferFunction, _brickBudget);
-    _transferFunction->setCallback([bs](const TransferFunction &tf) {
-        bs->calculateBrickErrors();
-    });
-
-    //SimpleTfBrickSelector *bs;
-    //_brickSelector = bs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _brickBudget);
-    //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
-    //_transferFunction->setCallback([bs](const TransferFunction &tf) {
-    //    bs->calculateBrickImportances();
-    //});
+    std::string brickSelectorType;
+    Selector selector = Selector::TF;
+    if (dictionary.hasKey(KeyBrickSelector)) {
+        success = dictionary.getValue(KeyBrickSelector, brickSelectorType);
+        if (success) {
+            if (brickSelectorType == "tf") {
+                selector = Selector::TF;
+            } else if (brickSelectorType == "simple") {
+                selector = Selector::SIMPLE;
+            } else if (brickSelectorType == "local") {
+                selector = Selector::LOCAL;
+            }
+        }
+    }
+    setSelectorType(selector);
     //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
 }
 
@@ -164,16 +166,64 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
         delete _tsp;
     if (_atlasManager)
         delete _atlasManager;
-    if (_brickSelector)
-        delete _brickSelector;
-    if (_localErrorHistogramManager)
-        delete _localErrorHistogramManager;
+
+    if (_tfBrickSelector)
+        delete _tfBrickSelector;
+    if (_simpleTfBrickSelector)
+        delete _simpleTfBrickSelector;
+    if (_localTfBrickSelector)
+        delete _localTfBrickSelector;
+
     if (_errorHistogramManager)
         delete _errorHistogramManager;
     if (_histogramManager)
         delete _histogramManager;
+    if (_localErrorHistogramManager)
+        delete _localErrorHistogramManager;
+
     if (_transferFunction)
         delete _transferFunction;
+}
+
+void RenderableMultiresVolume::setSelectorType(Selector selector) {
+    _selector = selector;
+    switch (_selector) {
+        case Selector::TF:
+            if (!_tfBrickSelector) {
+                TfBrickSelector* tbs;
+                _errorHistogramManager = new ErrorHistogramManager(_tsp);
+                _tfBrickSelector = tbs = new TfBrickSelector(_tsp, _errorHistogramManager, _transferFunction, _brickBudget);
+                _transferFunction->setCallback([tbs](const TransferFunction &tf) {
+                    tbs->calculateBrickErrors();
+                });
+                initializeSelector();
+            }
+            break;
+
+        case Selector::SIMPLE:
+            if (!_simpleTfBrickSelector) {
+                SimpleTfBrickSelector *stbs;
+                _histogramManager = new HistogramManager();
+                _simpleTfBrickSelector = stbs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _brickBudget);
+                _transferFunction->setCallback([stbs](const TransferFunction &tf) {
+                    stbs->calculateBrickImportances();
+                });
+                initializeSelector();
+            }
+            break;
+
+        case Selector::LOCAL:
+            if (!_localTfBrickSelector) {
+                LocalTfBrickSelector* ltbs;
+                _localErrorHistogramManager = new LocalErrorHistogramManager(_tsp);
+                _localTfBrickSelector = ltbs = new LocalTfBrickSelector(_tsp, _localErrorHistogramManager, _transferFunction, _brickBudget);
+                _transferFunction->setCallback([ltbs](const TransferFunction &tf) {
+                    ltbs->calculateBrickErrors();
+                });
+                initializeSelector();
+            }
+            break;
+    }
 }
 
 bool RenderableMultiresVolume::initialize() {
@@ -188,40 +238,11 @@ bool RenderableMultiresVolume::initialize() {
 
     if (success) {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
- 
-    	//success &= _localErrorHistogramManager->buildHistograms(500);
-        success &= _errorHistogramManager->buildHistograms(500);
-    	//success &= _histogramManager->buildHistograms(tsp, 500);
-
-    	/*
-        // TODO: Cache data for error histogram manager.
-
-        int nHistograms = 500;
-        std::stringstream cacheName;
-        ghoul::filesystem::File f = _filename;
-        cacheName << f.baseName() << "_" << nHistograms << "_histograms";
-
-        std::string cacheFilename;
-        FileSys.cacheManager()->getCachedFile(cacheName.str(), "", cacheFilename, true);
-        std::ifstream cacheFile(cacheFilename, std::ios::in | std::ios::binary);
-        if (cacheFile.is_open()) {
-            // Read histograms from cache.
-            cacheFile.close();
-            LINFO("Loading histograms from " << cacheFilename);
-            success &= _histogramManager->loadFromFile(cacheFilename);
-        } else {
-            // Build histograms from tsp file.
-            LWARNING("Failed to open " << cacheFilename);
-            if (success &= _histogramManager->buildHistograms(_tsp, 500)) {
-                LINFO("Writing cache to " << cacheFilename);
-                _histogramManager->saveToFile(cacheFilename);
-            }
-        }
-    	*/
+        success &= initializeSelector();
     }
 
     success &= _atlasManager && _atlasManager->initialize();
-    success &= _brickSelector && _brickSelector->initialize();
+
     _transferFunction->update();
 
     success &= isReady();
@@ -251,23 +272,114 @@ std::string RenderableMultiresVolume::getGlslHelpers() {
     return str;
 }
 
+bool RenderableMultiresVolume::initializeSelector() {
+    int nHistograms = 500;
+    bool success = true;
+
+    switch (_selector) {
+        case Selector::TF:
+            if (_errorHistogramManager) {
+                std::stringstream cacheName;
+                ghoul::filesystem::File f = _filename;
+                cacheName << f.baseName() << "_" << nHistograms << "_errorHistograms";
+                std::string cacheFilename;
+                FileSys.cacheManager()->getCachedFile(cacheName.str(), "", cacheFilename, true);
+                std::ifstream cacheFile(cacheFilename, std::ios::in | std::ios::binary);
+                if (cacheFile.is_open()) {
+                    // Read histograms from cache.
+                    cacheFile.close();
+                    LINFO("Loading histograms from " << cacheFilename);
+                    success &= _errorHistogramManager->loadFromFile(cacheFilename);
+                } else {
+                    // Build histograms from tsp file.
+                    LWARNING("Failed to open " << cacheFilename);
+                    if (success &= _errorHistogramManager->buildHistograms(nHistograms)) {
+                        LINFO("Writing cache to " << cacheFilename);
+                        _errorHistogramManager->saveToFile(cacheFilename);
+                    }
+                }
+                success &= _tfBrickSelector && _tfBrickSelector->initialize();
+            }
+            break;
+
+        case Selector::SIMPLE:
+            if (_histogramManager) {
+                std::stringstream cacheName;
+                ghoul::filesystem::File f = _filename;
+                cacheName << f.baseName() << "_" << nHistograms << "_histograms";
+                std::string cacheFilename;
+                FileSys.cacheManager()->getCachedFile(cacheName.str(), "", cacheFilename, true);
+                std::ifstream cacheFile(cacheFilename, std::ios::in | std::ios::binary);
+                if (cacheFile.is_open()) {
+                    // Read histograms from cache.
+                    cacheFile.close();
+                    LINFO("Loading histograms from " << cacheFilename);
+                    success &= _histogramManager->loadFromFile(cacheFilename);
+                } else {
+                    // Build histograms from tsp file.
+                    LWARNING("Failed to open " << cacheFilename);
+                    if (success &= _histogramManager->buildHistograms(_tsp, nHistograms)) {
+                        LINFO("Writing cache to " << cacheFilename);
+                        _histogramManager->saveToFile(cacheFilename);
+                    }
+                }
+                success &= _simpleTfBrickSelector && _simpleTfBrickSelector->initialize();
+            }
+            break;
+
+        case Selector::LOCAL:
+            if (_localErrorHistogramManager) {
+                std::stringstream cacheName;
+                ghoul::filesystem::File f = _filename;
+                cacheName << f.baseName() << "_" << nHistograms << "_localErrorHistograms";
+                std::string cacheFilename;
+                FileSys.cacheManager()->getCachedFile(cacheName.str(), "", cacheFilename, true);
+                std::ifstream cacheFile(cacheFilename, std::ios::in | std::ios::binary);
+                if (cacheFile.is_open()) {
+                    // Read histograms from cache.
+                    cacheFile.close();
+                    LINFO("Loading histograms from " << cacheFilename);
+                    success &= _localErrorHistogramManager->loadFromFile(cacheFilename);
+                } else {
+                    // Build histograms from tsp file.
+                    LWARNING("Failed to open " << cacheFilename);
+                    if (success &= _localErrorHistogramManager->buildHistograms(nHistograms)) {
+                        LINFO("Writing cache to " << cacheFilename);
+                        _localErrorHistogramManager->saveToFile(cacheFilename);
+                    }
+                }
+                success &= _localTfBrickSelector && _localTfBrickSelector->initialize();
+            }
+            break;
+    }
+
+    return success;
+}
+
 void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program) {
     const int numTimesteps = _tsp->header().numTimesteps_;
     const int currentTimestep = _timestep % numTimesteps;
 
-    if (TfBrickSelector* tfbs = dynamic_cast<TfBrickSelector*>(_brickSelector)) {
-        tfbs->setBrickBudget(_brickBudget);
+    switch (_selector) {
+        case Selector::TF:
+            if (_tfBrickSelector) {
+                _tfBrickSelector->setBrickBudget(_brickBudget);
+                _tfBrickSelector->selectBricks(currentTimestep, _brickIndices);
+            }
+            break;
+        case Selector::SIMPLE:
+            if (_simpleTfBrickSelector) {
+                _simpleTfBrickSelector->setBrickBudget(_brickBudget);
+                _simpleTfBrickSelector->selectBricks(currentTimestep, _brickIndices);
+            }
+            break;
+        case Selector::LOCAL:
+            if (_localTfBrickSelector) {
+                _localTfBrickSelector->setBrickBudget(_brickBudget);
+                _localTfBrickSelector->selectBricks(currentTimestep, _brickIndices);
+            }
+            break;
     }
-
-    if (SimpleTfBrickSelector* stfbs = dynamic_cast<SimpleTfBrickSelector*>(_brickSelector)) {
-        stfbs->setBrickBudget(_brickBudget);
-    }
-
-    if (LocalTfBrickSelector* ltfbs = dynamic_cast<LocalTfBrickSelector*>(_brickSelector)) {
-        ltfbs->setBrickBudget(_brickBudget);
-    }
-
-    _brickSelector->selectBricks(currentTimestep, _brickIndices);
 
     _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
 

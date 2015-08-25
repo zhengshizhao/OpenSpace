@@ -24,6 +24,7 @@
 
 #include <float.h>
 #include <map>
+#include <string.h>
 #include <cmath>
 
 #include <modules/multiresvolume/rendering/errorhistogrammanager.h>
@@ -80,6 +81,8 @@ bool ErrorHistogramManager::buildHistograms(int numBins) {
             pb.print(++processedLeaves);
         }
     }
+    
+    return success;
 }
 
 bool ErrorHistogramManager::buildFromLeaf(unsigned int bstOffset, unsigned int octreeOffset) {
@@ -165,6 +168,65 @@ bool ErrorHistogramManager::buildFromLeaf(unsigned int bstOffset, unsigned int o
         bstLevel++;
     } while (bstNode != -1);
 
+    return true;
+}
+
+bool ErrorHistogramManager::loadFromFile(const std::string& filename) {
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    int numHistograms;
+    file.read(reinterpret_cast<char*>(&numHistograms), sizeof(int));
+    file.read(reinterpret_cast<char*>(&_numBins), sizeof(int));
+    file.read(reinterpret_cast<char*>(&_minBin), sizeof(float));
+    file.read(reinterpret_cast<char*>(&_maxBin), sizeof(float));
+
+    int nFloats = numHistograms * _numBins;
+    float* histogramData = new float[nFloats];
+    file.read(reinterpret_cast<char*>(histogramData), sizeof(float) * nFloats);
+
+    _histograms = std::vector<Histogram>(numHistograms);
+
+    for (int i = 0; i < numHistograms; ++i) {
+        int offset = i*_numBins;
+        float* data = new float[_numBins];
+        memcpy(data, &histogramData[offset], sizeof(float) * _numBins);
+        _histograms[i] = Histogram(_minBin, _maxBin, _numBins, data);
+    }
+
+    delete[] histogramData;
+    // No need to deallocate histogram data, since histograms take ownership.
+    file.close();
+    return true;
+}
+
+
+bool ErrorHistogramManager::saveToFile(const std::string& filename) {
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    int numHistograms = _histograms.size();
+    file.write(reinterpret_cast<char*>(&numHistograms), sizeof(int));
+    file.write(reinterpret_cast<char*>(&_numBins), sizeof(int));
+    file.write(reinterpret_cast<char*>(&_minBin), sizeof(float));
+    file.write(reinterpret_cast<char*>(&_maxBin), sizeof(float));
+
+    int nFloats = numHistograms * _numBins;
+    float* histogramData = new float[nFloats];
+
+    for (int i = 0; i < numHistograms; ++i) {
+        int offset = i*_numBins;
+        memcpy(&histogramData[offset], _histograms[i].data(), sizeof(float) * _numBins);
+    }
+
+    file.write(reinterpret_cast<char*>(histogramData), sizeof(float) * nFloats);
+    delete[] histogramData;
+
+    file.close();
     return true;
 }
 

@@ -43,6 +43,9 @@ public:
     const Histogram* getSpatialHistogram(unsigned int brickIndex) const;
     const Histogram* getTemporalHistogram(unsigned int brickIndex) const;
 
+    bool loadFromFile(const std::string& filename);
+    bool saveToFile(const std::string& filename);
+
 private:
     TSP* _tsp;
     std::ifstream* _file;

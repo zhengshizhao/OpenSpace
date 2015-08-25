@@ -42,6 +42,9 @@ public:
     bool buildHistograms(int numBins);
     const Histogram* getHistogram(unsigned int brickIndex) const;
 
+    bool loadFromFile(const std::string& filename);
+    bool saveToFile(const std::string& filename);
+
 private:
     TSP* _tsp;
     std::ifstream* _file;

@@ -24,6 +24,7 @@
 
 #include <float.h>
 #include <map>
+#include <string.h>
 #include <cmath>
 
 #include <modules/multiresvolume/rendering/localerrorhistogrammanager.h>
@@ -273,6 +274,79 @@ bool LocalErrorHistogramManager::buildFromBstChild(unsigned int bstOffset, unsig
         buildFromBstChild(bstOffset, octreeParent);
     }
 
+    return true;
+}
+
+bool LocalErrorHistogramManager::loadFromFile(const std::string& filename) {
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    int numHistograms;
+    file.read(reinterpret_cast<char*>(&numHistograms), sizeof(int));
+    file.read(reinterpret_cast<char*>(&_numBins), sizeof(int));
+    file.read(reinterpret_cast<char*>(&_minBin), sizeof(float));
+    file.read(reinterpret_cast<char*>(&_maxBin), sizeof(float));
+
+    int nFloats = numHistograms * _numBins;
+    float* histogramData = new float[nFloats];
+
+    file.read(reinterpret_cast<char*>(histogramData), sizeof(float) * nFloats);
+    _spatialHistograms = std::vector<Histogram>(numHistograms);
+    for (int i = 0; i < numHistograms; ++i) {
+        int offset = i*_numBins;
+        float* data = new float[_numBins];
+        memcpy(data, &histogramData[offset], sizeof(float) * _numBins);
+        _spatialHistograms[i] = Histogram(_minBin, _maxBin, _numBins, data);
+    }
+
+    file.read(reinterpret_cast<char*>(histogramData), sizeof(float) * nFloats);
+    _temporalHistograms = std::vector<Histogram>(numHistograms);
+    for (int i = 0; i < numHistograms; ++i) {
+        int offset = i*_numBins;
+        float* data = new float[_numBins];
+        memcpy(data, &histogramData[offset], sizeof(float) * _numBins);
+        _temporalHistograms[i] = Histogram(_minBin, _maxBin, _numBins, data);
+    }
+
+    delete[] histogramData;
+    // No need to deallocate histogram data, since histograms take ownership.
+    file.close();
+    return true;
+}
+
+
+bool LocalErrorHistogramManager::saveToFile(const std::string& filename) {
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    int numHistograms = _spatialHistograms.size();
+    file.write(reinterpret_cast<char*>(&numHistograms), sizeof(int));
+    file.write(reinterpret_cast<char*>(&_numBins), sizeof(int));
+    file.write(reinterpret_cast<char*>(&_minBin), sizeof(float));
+    file.write(reinterpret_cast<char*>(&_maxBin), sizeof(float));
+
+    int nFloats = numHistograms * _numBins;
+    float* histogramData = new float[nFloats];
+
+    for (int i = 0; i < numHistograms; ++i) {
+        int offset = i*_numBins;
+        memcpy(&histogramData[offset], _spatialHistograms[i].data(), sizeof(float) * _numBins);
+    }
+    file.write(reinterpret_cast<char*>(histogramData), sizeof(float) * nFloats);
+
+    for (int i = 0; i < numHistograms; ++i) {
+        int offset = i*_numBins;
+        memcpy(&histogramData[offset], _temporalHistograms[i].data(), sizeof(float) * _numBins);
+    }
+    file.write(reinterpret_cast<char*>(histogramData), sizeof(float) * nFloats);
+
+    delete[] histogramData;
+
+    file.close();
     return true;
 }
 
