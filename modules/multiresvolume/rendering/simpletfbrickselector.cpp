@@ -26,7 +26,7 @@
 #include <modules/multiresvolume/rendering/simpletfbrickselector.h>
 #include <modules/multiresvolume/rendering/histogrammanager.h>
 #include <modules/multiresvolume/rendering/histogram.h>
-#include <modules/volume/rendering/transferfunction.h>
+#include <modules/base/rendering/transferfunction.h>
 #include <algorithm>
 #include <cassert>
 #include <ghoul/logging/logmanager.h>

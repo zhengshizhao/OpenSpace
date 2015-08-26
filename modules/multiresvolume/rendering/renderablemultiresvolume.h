@@ -27,7 +27,7 @@
 
 #include <vector>
 #include <modules/volume/rendering/renderablevolume.h>
-#include <modules/volume/rendering/transferfunction.h>
+#include <modules/base/rendering/transferfunction.h>
 #include <openspace/util/powerscaledcoordinate.h>
 #include <ghoul/misc/dictionary.h>
 

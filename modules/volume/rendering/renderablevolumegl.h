@@ -28,7 +28,7 @@
 #include <vector>
 #include <modules/volume/rendering/renderablevolume.h>
 #include <openspace/util/powerscaledcoordinate.h>
-#include <modules/volume/rendering/transferfunction.h>
+#include <modules/base/rendering/transferfunction.h>
 
 // Forward declare to minimize dependencies
 namespace ghoul {

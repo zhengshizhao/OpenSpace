@@ -23,7 +23,7 @@
  ****************************************************************************************/
 
 // open space includes
-#include <modules/volume/rendering/transferfunction.h>
+#include <modules/base/rendering/transferfunction.h>
 
 // ghoul includes
 #include <ghoul/opengl/texture.h>
