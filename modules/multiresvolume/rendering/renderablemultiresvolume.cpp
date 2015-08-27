@@ -158,7 +158,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
             }
         }
     }
-    setSelectorType(selector);
+    _selector = selector;
     //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
 }
 
@@ -187,7 +187,7 @@ RenderableMultiresVolume::~RenderableMultiresVolume() {
         delete _transferFunction;
 }
 
-void RenderableMultiresVolume::setSelectorType(Selector selector) {
+bool RenderableMultiresVolume::setSelectorType(Selector selector) {
     _selector = selector;
     switch (_selector) {
         case Selector::TF:
@@ -198,7 +198,7 @@ void RenderableMultiresVolume::setSelectorType(Selector selector) {
                 _transferFunction->setCallback([tbs](const TransferFunction &tf) {
                     tbs->calculateBrickErrors();
                 });
-                initializeSelector();
+                return initializeSelector();
             }
             break;
 
@@ -210,7 +210,7 @@ void RenderableMultiresVolume::setSelectorType(Selector selector) {
                 _transferFunction->setCallback([stbs](const TransferFunction &tf) {
                     stbs->calculateBrickImportances();
                 });
-                initializeSelector();
+                return initializeSelector();
             }
             break;
 
@@ -222,10 +222,11 @@ void RenderableMultiresVolume::setSelectorType(Selector selector) {
                 _transferFunction->setCallback([ltbs](const TransferFunction &tf) {
                     ltbs->calculateBrickErrors();
                 });
-                initializeSelector();
+                return initializeSelector();
             }
             break;
     }
+    return false;
 }
 
 bool RenderableMultiresVolume::initialize() {
@@ -235,7 +236,7 @@ bool RenderableMultiresVolume::initialize() {
 
     if (success) {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
-        success &= initializeSelector();
+        success &= setSelectorType(_selector);
     }
 
     success &= _atlasManager && _atlasManager->initialize();

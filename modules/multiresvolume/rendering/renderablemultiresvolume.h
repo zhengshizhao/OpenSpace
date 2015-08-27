@@ -61,7 +61,7 @@ public:
 
     enum Selector {TF, SIMPLE, LOCAL};
 
-    void setSelectorType(Selector selector);
+    bool setSelectorType(Selector selector);
     bool initializeSelector();
 
     bool initialize() override;
