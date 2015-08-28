@@ -51,6 +51,9 @@
 #include <modules/multiresvolume/rendering/errorhistogrammanager.h>
 #include <modules/multiresvolume/rendering/localerrorhistogrammanager.h>
 
+#include <openspace/util/time.h>
+#include <openspace/util/spicemanager.h>
+
 #include <algorithm>
 #include <iterator>
 
@@ -64,6 +67,8 @@ namespace {
     const std::string KeyModelName = "ModelName";
     const std::string KeyVolumeName = "VolumeName";
     const std::string KeyBrickSelector = "BrickSelector";
+    const std::string KeyStartTime = "StartTime";
+    const std::string KeyEndTime = "EndTime";
     const std::string GlslHelpersPath = "${MODULES}/multiresvolume/shaders/helpers_fs.glsl";
     const std::string GlslHelperPath = "${MODULES}/multiresvolume/shaders/helper.glsl";
     const std::string GlslHeaderPath = "${MODULES}/multiresvolume/shaders/header.glsl";
@@ -102,6 +107,25 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     if (_filename == "") {
         return;
     }
+
+    std::string startTimeString, endTimeString;
+    bool hasTimeData = true;
+    hasTimeData &= dictionary.getValue(KeyStartTime, startTimeString);
+    hasTimeData &= dictionary.getValue(KeyEndTime, endTimeString);
+    if (hasTimeData) {
+        hasTimeData &= SpiceManager::ref().getETfromDate(startTimeString, _startTime);
+        hasTimeData &= SpiceManager::ref().getETfromDate(endTimeString, _endTime);
+        if (!hasTimeData) {
+            LERROR("Failed to convert times from config file");
+        }
+    }
+    if (hasTimeData) {
+        _loop = false;
+    } else {
+	_loop = true;
+        LWARNING("Node " << name << " does not provide valid time information. Viewing one image per frame.");
+    }
+
 
     _transferFunction = nullptr;
     _transferFunctionPath = "";
@@ -349,10 +373,19 @@ bool RenderableMultiresVolume::initializeSelector() {
 }
 
 void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program) {
-    const int numTimesteps = _tsp->header().numTimesteps_;
-    const int currentTimestep = _timestep % numTimesteps;
+    int numTimesteps = _tsp->header().numTimesteps_;
+    int currentTimestep;
+    bool visible = true;
+    if (_loop) {
+        currentTimestep = _timestep % numTimesteps;
+    } else {
+        double t = (_currentTime - _startTime) / (_endTime - _startTime);
+        currentTimestep = t * numTimesteps;
+        visible = currentTimestep >= 0 && currentTimestep < numTimesteps;
+    }
 
-    switch (_selector) {
+    if (visible) {
+        switch (_selector) {
         case Selector::TF:
             if (_tfBrickSelector) {
                 _tfBrickSelector->setBrickBudget(_brickBudget);
@@ -371,11 +404,15 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
                 _localTfBrickSelector->selectBricks(currentTimestep, _brickIndices);
             }
             break;
+        }
+        _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
     }
 
-    _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
-
     std::stringstream ss;
+    ss << "opacity_" << getId();
+    program->setUniform(ss.str(), visible ? 1.0f : 0.0f);
+
+    ss.str(std::string());
     ss << "transferFunction_" << getId();
     program->setUniform(ss.str(), getTextureUnit(_transferFunction->getTexture()));
 
@@ -427,6 +464,7 @@ std::vector<int> RenderableMultiresVolume::getBuffers() {
 }
 
 void RenderableMultiresVolume::update(const UpdateData& data) {
+    _currentTime = data.time;
     RenderableVolume::update(data);
 }
 

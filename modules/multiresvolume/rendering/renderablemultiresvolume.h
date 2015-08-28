@@ -77,6 +77,11 @@ public:
     virtual std::vector<int> getBuffers() override;
 
 private:
+    double _currentTime;
+    double _startTime;
+    double _endTime;
+    bool _loop;
+
     int _timestep;
     int _brickBudget;
     std::string _filename;
