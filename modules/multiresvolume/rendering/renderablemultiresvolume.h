@@ -61,7 +61,7 @@ public:
 
     enum Selector {TF, SIMPLE, LOCAL};
 
-    void setSelectorType(Selector selector);
+    bool setSelectorType(Selector selector);
     bool initializeSelector();
 
     bool initialize() override;
@@ -77,6 +77,11 @@ public:
     virtual std::vector<int> getBuffers() override;
 
 private:
+    double _currentTime;
+    double _startTime;
+    double _endTime;
+    bool _loop;
+
     int _timestep;
     int _brickBudget;
     std::string _filename;

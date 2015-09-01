@@ -1,6 +1,6 @@
 #define MULTIRES_PI      3.14159265358979323846  /* pi */
 #define MULTIRES_SQRT1_3 0.57735026919           /* 1/sqrt(3) */
-
+#define MULTIRES_OPACITY_THRESHOLD 0.01
 vec3 multires_cartesianToSpherical(vec3 _cartesian) {
     // Put cartesian in [-1..1] range first
     vec3 cartesian = vec3(-1.0,-1.0,-1.0) + _cartesian * 2.0f;

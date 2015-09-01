@@ -1,3 +1,4 @@
+uniform float opacity_#{volume.id};
 uniform sampler1D transferFunction_#{volume.id};
 uniform sampler3D textureAtlas_#{volume.id};
 uniform int gridType_#{volume.id};
@@ -37,16 +38,26 @@ vec3 atlasCoordsFunction_#{volume.id}(vec3 position) {
 }
 
 float getStepSize_#{volume.id}(vec3 samplePos, vec3 dir){
-      return 1.0/float(maxNumBricksPerAxis_#{volume.id})/float(paddedBrickDim_#{volume.id});
+    if (opacity_#{volume.id} >= MULTIRES_OPACITY_THRESHOLD) {
+        return 1.0/float(maxNumBricksPerAxis_#{volume.id})/float(paddedBrickDim_#{volume.id});
+    } else {
+        // return a number that is garantueed to be bigger than the whole volume
+        return 2.0;
+    }
 }
 
 vec4 sampler_#{volume.id}(vec3 samplePos, vec3 dir, float occludingAlpha, inout float maxStepSize) {
-    if (gridType_#{volume.id} == 1) {
-        samplePos = multires_cartesianToSpherical(samplePos);
+    if (opacity_#{volume.id} >= MULTIRES_OPACITY_THRESHOLD) {
+        if (gridType_#{volume.id} == 1) {
+            samplePos = multires_cartesianToSpherical(samplePos);
+        }
+        vec3 sampleCoords = atlasCoordsFunction_#{volume.id}(samplePos);
+        float intensity = texture(textureAtlas_#{volume.id}, sampleCoords).x;
+        vec4 contribution = texture(transferFunction_#{volume.id}, intensity);
+        maxStepSize = 1.0/float(maxNumBricksPerAxis_#{volume.id})/float(paddedBrickDim_#{volume.id});
+        return opacity_#{volume.id}*contribution;
+    } else {
+        maxStepSize = 2.0;
+        return vec4(0.0);
     }
-    vec3 sampleCoords = atlasCoordsFunction_#{volume.id}(samplePos);
-    float intensity = texture(textureAtlas_#{volume.id}, sampleCoords).x;
-    vec4 contribution = texture(transferFunction_#{volume.id}, intensity);
-    maxStepSize = 1.0/float(maxNumBricksPerAxis_#{volume.id})/float(paddedBrickDim_#{volume.id});
-    return contribution;
 }
