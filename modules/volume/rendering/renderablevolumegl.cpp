@@ -186,6 +186,8 @@ bool RenderableVolumeGL::deinitialize() {
 }
 
 void RenderableVolumeGL::preResolve(ghoul::opengl::ProgramObject* program) {
+    RenderableVolume::preResolve(program);
+
     int transferFunctionUnit = getTextureUnit(_transferFunction->getTexture());
     int volumeUnit = getTextureUnit(_volume);
 

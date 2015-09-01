@@ -36,7 +36,7 @@
 #define         PSCDEPTH                1
 #define         ZDEPTH                  2
 #define         ZTYPE                   ZDEPTH
-#define         LOOP_LIMIT              1000000
+#define         LOOP_LIMIT              10000
 
 // Maximum number of fragments
 #ifdef          MAX_LAYERS
@@ -83,7 +83,7 @@ out vec4 out_color;
 // Helpers,
 // Module specific functions required by samplers (one per volume rendering module)
 // ================================================================================
-#for id, helperPath in helperPaths
+#for index, helperPath in helperPaths
 #include <#{helperPath}>
 #endfor
 
@@ -91,7 +91,8 @@ out vec4 out_color;
 // Headers,
 // volume and transferfunctions uniforms (one per volume instance)
 // ================================================================================
-#for id, volume in volumes
+#for index, volume in volumes
+uniform float alphaCoefficient_#{volume.id} = 1.0;
 #include <#{volume.headerPath}>
 #endfor
 
@@ -199,7 +200,7 @@ vec4 calculate_final_color(uint frag_count) {
                             vec3 jitteredPosition = volume_position[#{index}] + volume_direction[#{index}]*jitteredStepSizeLocal;
                             volume_position[#{index}] += volume_direction[#{index}]*stepSizeLocal;
                             vec4 contribution = sampler_#{volume.id}(jitteredPosition, volume_direction[#{index}], final_color.a, maxStepSizeLocal);
-                            float sampleDistance = 10*(jitteredStepSizeLocal + previousJitterDistance_#{volume.id});
+                            float sampleDistance = alphaCoefficient_#{volume.id}*(jitteredStepSizeLocal + previousJitterDistance_#{volume.id});
                             blendStep(final_color, contribution, sampleDistance);
                             previousJitterDistance_#{volume.id} = stepSizeLocal - jitteredStepSizeLocal;
                             maxStepSize = maxStepSizeLocal/volume_scale[#{index}];

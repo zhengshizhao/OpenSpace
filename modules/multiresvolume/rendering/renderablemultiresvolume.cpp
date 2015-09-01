@@ -91,9 +91,10 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     , _errorHistogramManager(nullptr)
     , _histogramManager(nullptr)
     , _localErrorHistogramManager(nullptr)
+    , _stepSizeCoefficient("stepSizeCoefficient", "Stepsize Coefficient", 1.f, 0.01f, 10.f)
     , _currentTime("currentTime", "Current Time", 0.f, 0.f, 1.f)
-    , _memoryBudget("memoryBudget", "Memory Budget", 0.f, 0.f, 512.f)
-    , _streamingBudget("streamingBudget", "Streaming Budget", 0.f, 0.f, 512.f)
+    , _memoryBudget("memoryBudget", "Memory Budget", 0.f, 0.f, 2048.f)
+    , _streamingBudget("streamingBudget", "Streaming Budget", 0.f, 0.f, 2048.f)
     , _useGlobalTime("useGlobalTime", "Global Time", false)
     , _loop("loop", "Loop", false)
 {
@@ -188,6 +189,7 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     }
     _selector = selector;
 
+    addProperty(_stepSizeCoefficient);
     addProperty(_useGlobalTime);
     addProperty(_loop);
     addProperty(_currentTime);
@@ -268,8 +270,8 @@ bool RenderableMultiresVolume::initialize() {
     bool success = RenderableVolume::initialize();
 
     success &= _tsp && _tsp->load();
-    _memoryBudget = 512;
-    _streamingBudget = 512;
+    _memoryBudget = 2048;
+    _streamingBudget = 2048;
 
     if (success) {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
@@ -386,6 +388,8 @@ bool RenderableMultiresVolume::initializeSelector() {
 }
 
 void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program) {
+    RenderableVolume::preResolve(program);
+
     int numTimesteps = _tsp->header().numTimesteps_;
     int currentTimestep;
     bool visible = true;
@@ -427,6 +431,10 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
     std::stringstream ss;
     ss << "opacity_" << getId();
     program->setUniform(ss.str(), visible ? 1.0f : 0.0f);
+
+    ss.str(std::string());
+    ss << "stepSizeCoefficient_" << getId();
+    program->setUniform(ss.str(), _stepSizeCoefficient);
 
     ss.str(std::string());
     ss << "transferFunction_" << getId();

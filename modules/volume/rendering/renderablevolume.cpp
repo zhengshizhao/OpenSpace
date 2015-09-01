@@ -86,7 +86,10 @@ RenderableVolume::RenderableVolume(const ghoul::Dictionary& dictionary) : Render
     , _vertexPositionBuffer(0)
     , _boxProgram(nullptr)
     , _nearPlaneProgram(nullptr)
-    , _boxScaling(1.0, 1.0, 1.0) {}
+    , _boxScaling(1.0, 1.0, 1.0)
+    , _alphaCoefficient("alphaCoefficient", "Alpha coefficient", 10.0f, 0.f, 32.f) {
+    addProperty(_alphaCoefficient);
+}
 
 
 RenderableVolume::~RenderableVolume() {}
@@ -197,6 +200,12 @@ bool RenderableVolume::deinitialize() {
 		//std::cout << glm::dot(glm::normalize(sunNorthPole), glm::normalize(sunEarth)) << std::endl;
 	}*/
 }
+
+void RenderableVolume::preResolve(ghoul::opengl::ProgramObject* program) {
+    std::stringstream ss;
+    ss << "alphaCoefficient_" << getId();
+    program->setUniform(ss.str(), _alphaCoefficient);
+};
 
 
 void RenderableVolume::render(const RenderData& data) {

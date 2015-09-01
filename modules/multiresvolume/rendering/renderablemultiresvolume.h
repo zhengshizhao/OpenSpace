@@ -31,7 +31,6 @@
 #include <openspace/util/powerscaledcoordinate.h>
 #include <ghoul/misc/dictionary.h>
 #include <openspace/properties/scalarproperty.h>
-#include <openspace/properties/selectionproperty.h>
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -88,6 +87,7 @@ private:
     properties::FloatProperty _currentTime; // used to vary time, if not using global time nor looping
     properties::FloatProperty _memoryBudget;
     properties::FloatProperty _streamingBudget;
+    properties::FloatProperty _stepSizeCoefficient;
 
     int _timestep;
 

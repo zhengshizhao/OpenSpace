@@ -28,6 +28,7 @@
 // open space includes
 #include <openspace/rendering/renderable.h>
 #include <openspace/abuffer/abuffervolume.h>
+#include <openspace/properties/scalarproperty.h>
 
 // ghoul includes
 #include <ghoul/io/rawvolumereader.h>
@@ -54,6 +55,7 @@ public:
 
     virtual bool initialize() override;
     virtual bool deinitialize() override;
+    virtual void preResolve(ghoul::opengl::ProgramObject* program) override;
     virtual void update(const UpdateData& data) override;
     virtual void render(const RenderData& data) override;
 
@@ -78,6 +80,7 @@ protected:
 private:
     void renderIntersection(const RenderData& data);
     glm::vec3 perspectiveToCubeSpace(const RenderData& data, glm::vec4 vector);
+    properties::FloatProperty _alphaCoefficient;
 };
 
 } // namespace openspace
