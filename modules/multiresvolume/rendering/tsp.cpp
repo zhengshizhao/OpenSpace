@@ -80,7 +80,7 @@ bool TSP::load() {
 			return false;
 		}
 
-		if (true) {
+		if (false) {
 			if (!calculateSpatialError()) {
 				LERROR("Could not calculate spatial error");
 				return false;
@@ -633,43 +633,45 @@ float TSP::getTemporalError(unsigned int _brickIndex) {
 	return reinterpret_cast<float &>(data_[_brickIndex*NUM_DATA + TEMPORAL_ERR]);
 }
 
-unsigned int TSP::getFirstChild(unsigned int _brickIndex) {
-	unsigned int otNode = _brickIndex % numOTNodes_;
-	unsigned int bstOffset = _brickIndex - otNode;
-	int otChildIndex = data_[otNode*NUM_DATA + CHILD_INDEX];
-	return bstOffset + otChildIndex;
+unsigned int TSP::getFirstOctreeChild(unsigned int _brickIndex) {
+    unsigned int otNode = _brickIndex % numOTNodes_;
+    unsigned int bstOffset = _brickIndex - otNode;
+
+    unsigned int depth = log(7 * otNode + 1) / log(8);
+    unsigned int firstInLevel = (pow(8, depth) - 1) / 7;
+    unsigned int levelOffset = otNode - firstInLevel;
+    unsigned int firstInChildLevel = (pow(8, depth + 1) - 1) / 7;
+    unsigned int childIndex = firstInChildLevel + 8*levelOffset;
+
+    return bstOffset + childIndex;
 }
 
 unsigned int TSP::getBstLeft(unsigned int _brickIndex) {
-	if (_brickIndex < numOTNodes_) {
-		// BST Root
-		return data_[_brickIndex*NUM_DATA] + numOTNodes_;
-	}
-	return data_[_brickIndex*NUM_DATA + CHILD_INDEX];
+    unsigned int bstNode = _brickIndex / numOTNodes_;
+    unsigned int otOffset = _brickIndex % numOTNodes_;
+    unsigned int depth = log(bstNode + 1) / log(2);
+    unsigned int firstInLevel = pow(2, depth) - 1;
+    unsigned int levelOffset = bstNode - firstInLevel;
+    unsigned int firstInChildLevel = pow(2, depth + 1) - 1;
+    unsigned int childIndex = firstInChildLevel + 2*levelOffset;
+    return otOffset + childIndex * numOTNodes_;
 }
 
 unsigned int TSP::getBstRight(unsigned int _brickIndex) {
-	if (_brickIndex < numOTNodes_) {
-		// BST Root
-		return data_[_brickIndex*NUM_DATA] + 2*numOTNodes_;
-	}
-	return data_[_brickIndex*NUM_DATA + CHILD_INDEX] + numOTNodes_;
+    return getBstLeft(_brickIndex) + numOTNodes_;
 }
 
 bool TSP::isBstLeaf(unsigned int _brickIndex) {
-	if (numBSTNodes_ <= 1) {
-		return true;
-	}
-	if (_brickIndex < numOTNodes_) {
-		return false;
-	}
-	return data_[_brickIndex*NUM_DATA + CHILD_INDEX] == -1;
+    unsigned int bstNode = _brickIndex / numOTNodes_;
+    return bstNode >= numBSTNodes_ / 2;
 }
 
 bool TSP::isOctreeLeaf(unsigned int _brickIndex) {
-	unsigned int OTNode = _brickIndex % numOTNodes_;
-	return data_[OTNode*NUM_DATA + CHILD_INDEX] == -1;
+    unsigned int otNode = _brickIndex % numOTNodes_;
+    unsigned int depth = log(7 * otNode + 1) / log(8);
+    return depth == numOTLevels_ - 1;
 }
+
 
 std::list<unsigned int> TSP::CoveredLeafBricks(unsigned int _brickIndex) {
 	std::list<unsigned int> out;
@@ -679,7 +681,6 @@ std::list<unsigned int> TSP::CoveredLeafBricks(unsigned int _brickIndex) {
 
 	// Find what BST node the index corresponds to using int division
 	unsigned int BSTNode = _brickIndex / numOTNodes_;
-
 	// Calculate BST offset (to translate to root octree)
 	unsigned int BSTOffset = BSTNode * numOTNodes_;
 

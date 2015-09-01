@@ -57,7 +57,7 @@ void ShenBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
  * Traverse the Octree in the BST root
  */
 void ShenBrickSelector::traverseOT(int timestep, unsigned int brickIndex, BrickCover coveredBricks, std::vector<int>& bricks) {
-    unsigned int firstChild = _tsp->getFirstChild(brickIndex);
+    unsigned int firstChild = _tsp->getFirstOctreeChild(brickIndex);
     int numTimeSteps = _tsp->header().numTimesteps_;
     for (unsigned int i = 0; i < 8; i++) {
         unsigned int child = firstChild + i;

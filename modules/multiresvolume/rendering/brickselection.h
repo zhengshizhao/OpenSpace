@@ -43,6 +43,8 @@ struct BrickSelection {
     BrickCover cover;
     int lowT;
     int highT;
+    int nSpatialSplits;
+    int nTemporalSplits;
 
     BrickSelection() {}
 
@@ -53,6 +55,8 @@ struct BrickSelection {
         this->brickIndex = 0;
         this->splitType = splitType;
         this->splitPoints = splitPoints;
+        this->nSpatialSplits = 0;
+        this->nTemporalSplits = 0;
     }
 
     BrickSelection splitSpatially(bool x, bool y, bool z, unsigned int childBrickIndex, SplitType childSplitType, float childSplitPoints) {
@@ -61,6 +65,10 @@ struct BrickSelection {
         child.brickIndex = childBrickIndex;
         child.splitPoints = childSplitPoints;
         child.splitType = childSplitType;
+        child.nSpatialSplits = nSpatialSplits + 1;
+        child.nTemporalSplits = nTemporalSplits;
+        child.lowT = lowT;
+        child.highT = highT;
         return child;
     }
 
@@ -77,6 +85,9 @@ struct BrickSelection {
             child.lowT = lowT;
             child.highT = centerT();
         }
+        child.nSpatialSplits = nSpatialSplits;
+        child.nTemporalSplits = nTemporalSplits + 1;
+
         return child;
     }
 

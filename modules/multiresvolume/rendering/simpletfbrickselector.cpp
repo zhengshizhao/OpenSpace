@@ -104,7 +104,7 @@ void SimpleTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks)
             }
         } else if (bs.splitType == BrickSelection::SplitType::Spatial) {
             nSelectedBricks += 7; // Remove one and add eight.
-            unsigned int firstChild = _tsp->getFirstChild(brickIndex);
+            unsigned int firstChild = _tsp->getFirstOctreeChild(brickIndex);
 
             for (unsigned int i = 0; i < 8; i++) {
                 unsigned int childBrickIndex = firstChild + i;

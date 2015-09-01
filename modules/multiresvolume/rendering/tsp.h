@@ -92,7 +92,7 @@ public:
 
 	float getSpatialError(unsigned int _brickIndex);
 	float getTemporalError(unsigned int _brickIndex);
-	unsigned int getFirstChild(unsigned int _brickIndex);
+	unsigned int getFirstOctreeChild(unsigned int _brickIndex);
 
 	unsigned int getBstLeft(unsigned int _brickIndex);
 	unsigned int getBstRight(unsigned int _brickIndex);

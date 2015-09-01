@@ -87,7 +87,7 @@ bool HistogramManager::buildHistogram(TSP* tsp, unsigned int brickIndex) {
         }
         if (!isOctreeLeaf) {
             // Push Octree children
-            unsigned int firstChild = tsp->getFirstChild(brickIndex);
+            unsigned int firstChild = tsp->getFirstOctreeChild(brickIndex);
             for (int c = 0; c < 8; c++) {
                 children.push_back(firstChild + c);
             }

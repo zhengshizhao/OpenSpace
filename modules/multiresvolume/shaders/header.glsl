@@ -55,7 +55,8 @@ vec4 sampler_#{volume.id}(vec3 samplePos, vec3 dir, float occludingAlpha, inout 
         float intensity = texture(textureAtlas_#{volume.id}, sampleCoords).x;
         vec4 contribution = texture(transferFunction_#{volume.id}, intensity);
         maxStepSize = 1.0/float(maxNumBricksPerAxis_#{volume.id})/float(paddedBrickDim_#{volume.id});
-        return opacity_#{volume.id}*contribution;
+        contribution.a *= opacity_#{volume.id};
+        return contribution;
     } else {
         maxStepSize = 2.0;
         return vec4(0.0);

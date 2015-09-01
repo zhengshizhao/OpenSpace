@@ -39,14 +39,15 @@ class TransferFunction;
 
 class TfBrickSelector : public BrickSelector {
 public:
-    TfBrickSelector(TSP* tsp, ErrorHistogramManager* hm, TransferFunction* tf, int brickBudget);
+    TfBrickSelector(TSP* tsp, ErrorHistogramManager* hm, TransferFunction* tf, int memoryBudget, int streamingBudget);
 
     ~TfBrickSelector();
 
     virtual bool initialize();
 
     void selectBricks(int timestep, std::vector<int>& bricks);
-    void setBrickBudget(int brickBudget);
+    void setMemoryBudget(int memoryBudget);
+    void setStreamingBudget(int streamingBudget);
     bool calculateBrickErrors();
  private:
 
@@ -61,7 +62,8 @@ public:
     int linearCoords(int x, int y, int z);
     void writeSelection(BrickSelection coveredBricks, std::vector<int>& bricks);
 
-    int _brickBudget;
+    int _memoryBudget;
+    int _streamingBudget;
     
 };
 

@@ -84,7 +84,6 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     , _spatialTolerance(1.000001)
     , _temporalTolerance(0.000001)
     , _timestep(0)
-    , _brickBudget(512)
     , _atlasMapSize(0)
     , _tfBrickSelector(nullptr)
     , _simpleTfBrickSelector(nullptr)
@@ -92,6 +91,11 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     , _errorHistogramManager(nullptr)
     , _histogramManager(nullptr)
     , _localErrorHistogramManager(nullptr)
+    , _currentTime("currentTime", "Current Time", 0.f, 0.f, 1.f)
+    , _memoryBudget("memoryBudget", "Memory Budget", 0.f, 0.f, 512.f)
+    , _streamingBudget("streamingBudget", "Streaming Budget", 0.f, 0.f, 512.f)
+    , _useGlobalTime("useGlobalTime", "Global Time", false)
+    , _loop("loop", "Loop", false)
 {
     std::string name;
     bool success = dictionary.getValue(constants::scenegraphnode::keyName, name);
@@ -183,6 +187,13 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
         }
     }
     _selector = selector;
+
+    addProperty(_useGlobalTime);
+    addProperty(_loop);
+    addProperty(_currentTime);
+    addProperty(_memoryBudget);
+    addProperty(_streamingBudget);
+
     //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
 }
 
@@ -218,7 +229,7 @@ bool RenderableMultiresVolume::setSelectorType(Selector selector) {
             if (!_tfBrickSelector) {
                 TfBrickSelector* tbs;
                 _errorHistogramManager = new ErrorHistogramManager(_tsp);
-                _tfBrickSelector = tbs = new TfBrickSelector(_tsp, _errorHistogramManager, _transferFunction, _brickBudget);
+                _tfBrickSelector = tbs = new TfBrickSelector(_tsp, _errorHistogramManager, _transferFunction, _memoryBudget, _streamingBudget);
                 _transferFunction->setCallback([tbs](const TransferFunction &tf) {
                     tbs->calculateBrickErrors();
                 });
@@ -230,7 +241,7 @@ bool RenderableMultiresVolume::setSelectorType(Selector selector) {
             if (!_simpleTfBrickSelector) {
                 SimpleTfBrickSelector *stbs;
                 _histogramManager = new HistogramManager();
-                _simpleTfBrickSelector = stbs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _brickBudget);
+                _simpleTfBrickSelector = stbs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _memoryBudget);
                 _transferFunction->setCallback([stbs](const TransferFunction &tf) {
                     stbs->calculateBrickImportances();
                 });
@@ -242,7 +253,7 @@ bool RenderableMultiresVolume::setSelectorType(Selector selector) {
             if (!_localTfBrickSelector) {
                 LocalTfBrickSelector* ltbs;
                 _localErrorHistogramManager = new LocalErrorHistogramManager(_tsp);
-                _localTfBrickSelector = ltbs = new LocalTfBrickSelector(_tsp, _localErrorHistogramManager, _transferFunction, _brickBudget);
+                _localTfBrickSelector = ltbs = new LocalTfBrickSelector(_tsp, _localErrorHistogramManager, _transferFunction, _memoryBudget);
                 _transferFunction->setCallback([ltbs](const TransferFunction &tf) {
                     ltbs->calculateBrickErrors();
                 });
@@ -257,6 +268,8 @@ bool RenderableMultiresVolume::initialize() {
     bool success = RenderableVolume::initialize();
 
     success &= _tsp && _tsp->load();
+    _memoryBudget = 512;
+    _streamingBudget = 512;
 
     if (success) {
         _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
@@ -378,29 +391,32 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
     bool visible = true;
     if (_loop) {
         currentTimestep = _timestep % numTimesteps;
-    } else {
-        double t = (_currentTime - _startTime) / (_endTime - _startTime);
+    } else if (_useGlobalTime) {
+        double t = (_time - _startTime) / (_endTime - _startTime);
         currentTimestep = t * numTimesteps;
         visible = currentTimestep >= 0 && currentTimestep < numTimesteps;
+    } else {
+	currentTimestep = _currentTime * numTimesteps;
     }
 
     if (visible) {
         switch (_selector) {
         case Selector::TF:
             if (_tfBrickSelector) {
-                _tfBrickSelector->setBrickBudget(_brickBudget);
+                _tfBrickSelector->setMemoryBudget(_memoryBudget);
+                _tfBrickSelector->setStreamingBudget(_streamingBudget);
                 _tfBrickSelector->selectBricks(currentTimestep, _brickIndices);
             }
             break;
         case Selector::SIMPLE:
             if (_simpleTfBrickSelector) {
-                _simpleTfBrickSelector->setBrickBudget(_brickBudget);
+                _simpleTfBrickSelector->setBrickBudget(_memoryBudget);
                 _simpleTfBrickSelector->selectBricks(currentTimestep, _brickIndices);
             }
             break;
         case Selector::LOCAL:
             if (_localTfBrickSelector) {
-                _localTfBrickSelector->setBrickBudget(_brickBudget);
+                _localTfBrickSelector->setBrickBudget(_memoryBudget);
                 _localTfBrickSelector->selectBricks(currentTimestep, _brickIndices);
             }
             break;
@@ -464,7 +480,7 @@ std::vector<int> RenderableMultiresVolume::getBuffers() {
 }
 
 void RenderableMultiresVolume::update(const UpdateData& data) {
-    _currentTime = data.time;
+    _time = data.time;
     RenderableVolume::update(data);
 }
 

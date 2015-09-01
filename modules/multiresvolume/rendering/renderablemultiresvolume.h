@@ -30,6 +30,8 @@
 #include <modules/base/rendering/transferfunction.h>
 #include <openspace/util/powerscaledcoordinate.h>
 #include <ghoul/misc/dictionary.h>
+#include <openspace/properties/scalarproperty.h>
+#include <openspace/properties/selectionproperty.h>
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -77,13 +79,24 @@ public:
     virtual std::vector<int> getBuffers() override;
 
 private:
-    double _currentTime;
+    double _time;
     double _startTime;
     double _endTime;
-    bool _loop;
+
+    properties::BoolProperty _useGlobalTime;
+    properties::BoolProperty _loop;
+    properties::FloatProperty _currentTime; // used to vary time, if not using global time nor looping
+    properties::FloatProperty _memoryBudget;
+    properties::FloatProperty _streamingBudget;
 
     int _timestep;
-    int _brickBudget;
+
+    // How many bricks can we keep in memory at the time?
+//int _memoryBudget;
+
+    // How many bricks can we afford to stream during the whole time period?
+//  int _streamingBudget;
+
     std::string _filename;
 
     std::string _transferFunctionName;
