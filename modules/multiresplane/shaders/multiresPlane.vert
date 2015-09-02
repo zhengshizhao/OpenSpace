@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2015                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -22,69 +22,30 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __IMAGEATLASMANAGER_H__
-#define __IMAGEATLASMANAGER_H__
+#version __CONTEXT__
 
-#include <modules/multiresplane/rendering/quadtreelist.h>
-#include <ghoul/glm.h>
-#include <glm/gtx/std_based_type.hpp>
+uniform mat4 viewProjection;
+uniform mat4 modelTransform;
+uniform sampler2D atlas;
 
-#include <string>
-#include <vector>
-#include <climits>
-#include <map>
-#include <set>
+layout(location = 0) in vec4 inPosition;
+layout(location = 1) in vec2 inUv;
 
-namespace ghoul {
-    namespace opengl {
-        class Texture;
-    }
+out vec4 vPosition;
+out vec2 vUv;
+
+#include "PowerScaling/powerScaling_vs.hglsl"
+
+void main()
+{
+    vPosition = inPosition;
+    vec4 tmp = inPosition;
+
+
+    vec4 position = pscTransform(tmp, modelTransform);
+    vPosition = tmp;
+    position = viewProjection * position;
+    gl_Position =  nearPlaneProjection(position);
+
+    vUv = inUv;
 }
-
-namespace openspace {
-
-class ImageAtlasManager {
-public:
-    ImageAtlasManager(QuadtreeList* qtl);
-    ~ImageAtlasManager();
-
-    void updateAtlas(std::vector<int>& brickIndices);
-    void addToAtlas(int firstBrickIndex, int lastBrickIndex, float* mappedBuffer);
-    void removeFromAtlas(int brickIndex);
-    bool initialize();
-    std::vector<unsigned int> atlasMap();
-    unsigned int atlasMapBuffer();
-
-    void pboToAtlas();
-    ghoul::opengl::Texture* textureAtlas();
-    glm::size2_t textureSize();
-private:
-    const unsigned int NOT_USED = UINT_MAX;
-    QuadtreeList* _quadtreeList;
-
-    std::vector<unsigned int> _atlasMap;
-    std::map<unsigned int, unsigned int> _brickMap;
-    std::vector<unsigned int> _freeAtlasCoords;
-    std::set<unsigned int> _requiredBricks;
-    std::set<unsigned int> _prevRequiredBricks;
-
-    ghoul::opengl::Texture* _textureAtlas;
-
-    unsigned int _nBricksPerDim,
-                 _nQtLeaves,
-                 _nQtNodes,
-                 _nQtLevels,
-                 _brickSize,
-                 _nBrickVals,
-                 _volumeSize,
-                 _paddedBrickDim,
-                 _nBricksInAtlas,
-                 _nBricksInMap,
-                 _atlasDim;
-
-    void fillImage(float* in, float* out, unsigned int linearAtlasCoords);
-};
-
-} // namespace openspace
-
-#endif // __IMAGEATLASMANAGER_H__

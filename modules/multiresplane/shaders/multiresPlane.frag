@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2015                                                                    *
+ * Copyright (c) 2014-2015                                                               *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -22,69 +22,14 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __IMAGEATLASMANAGER_H__
-#define __IMAGEATLASMANAGER_H__
+#version __CONTEXT__
 
-#include <modules/multiresplane/rendering/quadtreelist.h>
-#include <ghoul/glm.h>
-#include <glm/gtx/std_based_type.hpp>
+uniform sampler2D atlas;
 
-#include <string>
-#include <vector>
-#include <climits>
-#include <map>
-#include <set>
+in vec2 vUv;
+in vec2 vPosition;
+out vec4 color;
 
-namespace ghoul {
-    namespace opengl {
-        class Texture;
-    }
+void main() {
+    color = vec4(vUv, 0.0, 1.0) + texture(atlas, vec2(0.5, 0.5));
 }
-
-namespace openspace {
-
-class ImageAtlasManager {
-public:
-    ImageAtlasManager(QuadtreeList* qtl);
-    ~ImageAtlasManager();
-
-    void updateAtlas(std::vector<int>& brickIndices);
-    void addToAtlas(int firstBrickIndex, int lastBrickIndex, float* mappedBuffer);
-    void removeFromAtlas(int brickIndex);
-    bool initialize();
-    std::vector<unsigned int> atlasMap();
-    unsigned int atlasMapBuffer();
-
-    void pboToAtlas();
-    ghoul::opengl::Texture* textureAtlas();
-    glm::size2_t textureSize();
-private:
-    const unsigned int NOT_USED = UINT_MAX;
-    QuadtreeList* _quadtreeList;
-
-    std::vector<unsigned int> _atlasMap;
-    std::map<unsigned int, unsigned int> _brickMap;
-    std::vector<unsigned int> _freeAtlasCoords;
-    std::set<unsigned int> _requiredBricks;
-    std::set<unsigned int> _prevRequiredBricks;
-
-    ghoul::opengl::Texture* _textureAtlas;
-
-    unsigned int _nBricksPerDim,
-                 _nQtLeaves,
-                 _nQtNodes,
-                 _nQtLevels,
-                 _brickSize,
-                 _nBrickVals,
-                 _volumeSize,
-                 _paddedBrickDim,
-                 _nBricksInAtlas,
-                 _nBricksInMap,
-                 _atlasDim;
-
-    void fillImage(float* in, float* out, unsigned int linearAtlasCoords);
-};
-
-} // namespace openspace
-
-#endif // __IMAGEATLASMANAGER_H__

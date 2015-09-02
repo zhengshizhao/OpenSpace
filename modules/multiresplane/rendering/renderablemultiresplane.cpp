@@ -35,8 +35,8 @@
 #include <ghoul/opengl/textureunit.h>
 
 #include <modules/multiresplane/rendering/quadtreelist.h>
-//#include <modules/multiresplane/rendering/imageatlasmanager.h>
-//#include <modules/multiresplane/rendering/imagebrickselector.h>
+#include <modules/multiresplane/rendering/imageatlasmanager.h>
+#include <modules/multiresplane/rendering/imagebrickselector.h>
 
 namespace {
     const std::string _loggerCat = "RenderableMultiresPlane";
@@ -49,8 +49,8 @@ namespace openspace {
 RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dictionary)
     : Renderable(dictionary)
     , _quadtreeList(nullptr)
-    //, _atlasManager(nullptr)
-    //, _brickSelector(nullptr)
+    , _atlasManager(nullptr)
+    , _brickSelector(nullptr)
     , _size("size", "Size", glm::vec2(1,1), glm::vec2(0.f), glm::vec2(1.f, 25.f))
     , _shader(nullptr)
     , _quad(0)
@@ -72,8 +72,8 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
     }
 
     _quadtreeList = new QuadtreeList(_filename);
-    //_atlasManager = new ImageAtlasManager(_quadtreeList);
-    //_brickSelector = new ImageBrickSelector(_quadtreeList);
+    _atlasManager = new ImageAtlasManager(_quadtreeList);
+    _brickSelector = new ImageBrickSelector(_quadtreeList);
 
     setBoundingSphere(PowerScaledScalar(5.0, 2.0));
 }
@@ -81,10 +81,10 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
 RenderableMultiresPlane::~RenderableMultiresPlane() {
     if (_quadtreeList)
         delete _quadtreeList;
-    //if (_atlasManager)
-    //    delete _atlasManager;
-    //if (_brickSelector)
-    //    delete _brickSelector;
+    if (_atlasManager)
+        delete _atlasManager;
+    if (_brickSelector)
+        delete _brickSelector;
 }
 
 bool RenderableMultiresPlane::initialize() {
@@ -96,7 +96,7 @@ bool RenderableMultiresPlane::initialize() {
 
     if (success) {
         _brickIndices.resize(_quadtreeList->nBricksPerDim() * _quadtreeList->nBricksPerDim(), 0);
-        //success &= _brickSelector->initialize();
+        success &= _brickSelector->initialize();
     }
 
 
@@ -112,7 +112,7 @@ bool RenderableMultiresPlane::initialize() {
     }
     _shader->setProgramObjectCallback(shaderCallback);
 
-    //success &= _atlasManager && _atlasManager->initialize();
+    success &= _atlasManager && _atlasManager->initialize();
 
     return success;
 }
@@ -128,13 +128,13 @@ bool RenderableMultiresPlane::deinitialize() {
         delete _quadtreeList;
     _quadtreeList = nullptr;
 
-    //if (_atlasManager)
-    //    delete _atlasManager;
-    //_atlasManager = nullptr;
+    if (_atlasManager)
+        delete _atlasManager;
+    _atlasManager = nullptr;
 
-    //if (_brickSelector)
-    //    delete _brickSelector;
-    //_brickSelector = nullptr;
+    if (_brickSelector)
+        delete _brickSelector;
+    _brickSelector = nullptr;
 }
 
 bool RenderableMultiresPlane::isReady() const {
@@ -153,9 +153,8 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     const int nTimesteps = _quadtreeList->nTimesteps();
     const int currentTimestep = _timestep % nTimesteps;
 
-    //_brickSelector->setBrickBudget(_brickBudget);
-    //_brickSelector->selectBrics(currentTimestep, _brickIndices);
-    //_atlasManager->updateAtlas(_brickIndices);
+    _brickSelector->selectBricks(currentTimestep, _brickIndices);
+    _atlasManager->updateAtlas(_brickIndices);
 
     // Activate shader program
     _shader->activate();
@@ -169,7 +168,7 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     // Bind texture atlas
     ghoul::opengl::TextureUnit unit;
     unit.activate();
-    //_atlasManager->textureAtlas()->bind();
+    _atlasManager->textureAtlas()->bind();
     _shader->setUniform("atlas", unit);
 
     // TODO: Bind atlas map

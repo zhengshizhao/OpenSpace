@@ -38,7 +38,7 @@ class TransferFunction;
 
 class ImageBrickSelector{
 public:
-    ImageBrickSelector(QuadtreeList* qtl, ImageHistogramManager* hm, TransferFunction* tf, int brickBudget);
+    ImageBrickSelector(QuadtreeList* qtl);
     ~ImageBrickSelector();
 
     bool initialize();
@@ -46,8 +46,8 @@ public:
  private:
     QuadtreeList* _quadtreeList;
 
-    int linearCoords(int x, int y, int z);
-    void writeSelection(BrickSelection coveredBricks, std::vector<int>& bricks);
+    //int linearCoords(int x, int y, int z);
+    //void writeSelection(BrickSelection coveredBricks, std::vector<int>& bricks);
 };
 
 } // namespace openspace
