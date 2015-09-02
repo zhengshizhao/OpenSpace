@@ -74,6 +74,7 @@ private:
 
     GLuint _quad;
     GLuint _vertexPositionBuffer;
+    bool _validShader;
 };
 
 } // namespace openspace

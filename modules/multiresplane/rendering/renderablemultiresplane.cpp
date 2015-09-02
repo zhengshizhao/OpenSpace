@@ -74,6 +74,8 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
     _quadtreeList = new QuadtreeList(_filename);
     //_atlasManager = new ImageAtlasManager(_quadtreeList);
     //_brickSelector = new ImageBrickSelector(_quadtreeList);
+
+    setBoundingSphere(PowerScaledScalar(5.0, 2.0));
 }
 
 RenderableMultiresPlane::~RenderableMultiresPlane() {
@@ -97,12 +99,18 @@ bool RenderableMultiresPlane::initialize() {
         //success &= _brickSelector->initialize();
     }
 
+
+    auto shaderCallback = [this](ghoul::opengl::ProgramObject* program) {
+	_validShader = false;
+    };
+
     if (_shader == nullptr) {
         _shader = ghoul::opengl::ProgramObject::Build("MultiResPlaneProgram",
-            "${MODULES/multiresplane/shaders/multiresPlane.vert",
-            "${MODULES/multiresplane/shaders/multiresPlane.frag");
+            "${MODULES}/multiresplane/shaders/multiresPlane.vert",
+            "${MODULES}/multiresplane/shaders/multiresPlane.frag");
         success &= !!_shader;
     }
+    _shader->setProgramObjectCallback(shaderCallback);
 
     //success &= _atlasManager && _atlasManager->initialize();
 
@@ -134,6 +142,13 @@ bool RenderableMultiresPlane::isReady() const {
 }
 
 void RenderableMultiresPlane::render(const RenderData& data) {
+    if(!_validShader) {
+        if (_shader) {
+            _shader->rebuildFromFile();
+        }
+        _validShader = true;
+    }
+
     // Select bricks
     const int nTimesteps = _quadtreeList->nTimesteps();
     const int currentTimestep = _timestep % nTimesteps;
@@ -147,15 +162,15 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     glm::mat4 transform = glm::mat4(1.0);
 
     // Set uniforms
-    _shader->setUniform("ViewProjection", data.camera.viewProjectionMatrix());
-    _shader->setUniform("ModelTransform", transform);
+    _shader->setUniform("viewProjection", data.camera.viewProjectionMatrix());
+    _shader->setUniform("modelTransform", transform);
     setPscUniforms(_shader, &data.camera, data.position);
 
     // Bind texture atlas
     ghoul::opengl::TextureUnit unit;
     unit.activate();
     //_atlasManager->textureAtlas()->bind();
-    _shader->setUniform("texture", unit);
+    _shader->setUniform("atlas", unit);
 
     // TODO: Bind atlas map
 
