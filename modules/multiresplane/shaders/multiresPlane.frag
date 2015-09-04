@@ -24,12 +24,53 @@
 
 #version __CONTEXT__
 
+uniform uint maxNumBricksPerAxis = 8;
+uniform ivec2 paddedBrickDim = ivec2(512, 512);
+uniform ivec2 bricksInAtlas = ivec2(8, 8);
+uniform ivec2 padding = ivec2(1, 1);
+
 uniform sampler2D atlas;
+
+layout (shared) buffer atlasMapBlock {
+    uint atlasMap[];
+};
 
 in vec2 vUv;
 in vec2 vPosition;
 out vec4 color;
 
+
+int intCoord(ivec2 vec2Coords, ivec2 spaceDim) {
+    return vec2Coords.x + spaceDim.x*vec2Coords.y;
+}
+
+vec2 vec2Coords(uint intCoord, ivec2 spaceDim) {
+    vec2 coords = vec2(0.0);
+    coords.x = mod(intCoord, spaceDim.x);
+    coords.y = intCoord / spaceDim.x;
+    return coords;
+}
+
+
 void main() {
-    color = vec4(vUv, 0.0, 1.0) + texture(atlas, vec2(0.5, 0.5));
+    // look up things in atlas map
+    ivec2 brickCoords = ivec2(vUv * maxNumBricksPerAxis);
+    uint linearBrickCoord = intCoord(brickCoords, ivec2(maxNumBricksPerAxis));
+    uint atlasMapValue = atlasMap[linearBrickCoord];
+    uint level = atlasMapValue >> 28;
+    uint atlasIntCoord = atlasMapValue & 0x0FFFFFFF;
+    float levelDim = float(maxNumBricksPerAxis) / pow(2.0, level);
+    vec2 atlasOffset = vec2Coords(atlasIntCoord, bricksInAtlas);
+    
+    // we now have:
+    // 1) Level dim (number of most high-res bricks this texture tile should fill)
+    // 2) Atlas offset (number of bricks to skip from (0, 0) in the atlas)
+    
+    vec2 inBrickCoords = mod(vUv*levelDim, 1.0);
+    vec2 scale = vec2(paddedBrickDim - 2*padding);
+    vec2 paddedInBrickCoords = (padding + inBrickCoords * scale) / paddedBrickDim;
+    vec2 atlasCoords = (atlasOffset + paddedInBrickCoords) / bricksInAtlas;
+
+    float intensity = texture(atlas, atlasCoords).r;
+    color = vec4(intensity, 0.0, 0.0, 1.0);
 }

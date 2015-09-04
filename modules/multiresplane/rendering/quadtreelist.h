@@ -72,6 +72,8 @@ public:
     unsigned int nQuadtreeNodes();
     unsigned int nTotalNodes();
 
+    std::ifstream& file();
+
     unsigned int getFirstChild(unsigned int brickIndex);
     bool isLeaf(unsigned int brickIndex);
 

@@ -72,7 +72,8 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
     }
 
     _quadtreeList = new QuadtreeList(_filename);
-    _atlasManager = new ImageAtlasManager(_quadtreeList);
+
+    _atlasManager = new ImageAtlasManager(_quadtreeList, 0);
     _brickSelector = new ImageBrickSelector(_quadtreeList);
 
     setBoundingSphere(PowerScaledScalar(5.0, 2.0));
@@ -112,7 +113,12 @@ bool RenderableMultiresPlane::initialize() {
     }
     _shader->setProgramObjectCallback(shaderCallback);
 
-    success &= _atlasManager && _atlasManager->initialize();
+
+    if (success = _atlasManager) {
+	_atlasManager->setAtlasCapacity(_quadtreeList->nBricksPerDim() * _quadtreeList->nBricksPerDim());
+	success &= _atlasManager->initialize();
+    }
+
 
     return success;
 }
@@ -153,8 +159,9 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     const int nTimesteps = _quadtreeList->nTimesteps();
     const int currentTimestep = _timestep % nTimesteps;
 
-    _brickSelector->selectBricks(currentTimestep, _brickIndices);
+    _brickSelector->selectBricks(_timestep % 55, _brickIndices);
     _atlasManager->updateAtlas(_brickIndices);
+    _timestep++;
 
     // Activate shader program
     _shader->activate();
@@ -171,7 +178,11 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     _atlasManager->textureAtlas()->bind();
     _shader->setUniform("atlas", unit);
 
-    // TODO: Bind atlas map
+    int ssboBinding = 0;
+    unsigned int atlasMapBuffer = _atlasManager->atlasMapBuffer();
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssboBinding, atlasMapBuffer);
+    _shader->setSsboBinding("atlasMap", ssboBinding);
+
 
     glBindVertexArray(_quad);
     glDrawArrays(GL_TRIANGLES, 0, 6);
