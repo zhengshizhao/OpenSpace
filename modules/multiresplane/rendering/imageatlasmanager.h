@@ -45,11 +45,11 @@ namespace openspace {
 
 class ImageAtlasManager {
 public:
-    ImageAtlasManager(QuadtreeList* qtl);
+    ImageAtlasManager(QuadtreeList* qtl, unsigned int atlasCapacity);
     ~ImageAtlasManager();
 
     void updateAtlas(std::vector<int>& brickIndices);
-    void addToAtlas(int firstBrickIndex, int lastBrickIndex, float* mappedBuffer);
+    void addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfloat* mappedBuffer);
     void removeFromAtlas(int brickIndex);
     bool initialize();
     std::vector<unsigned int> atlasMap();
@@ -57,7 +57,9 @@ public:
 
     void pboToAtlas();
     ghoul::opengl::Texture* textureAtlas();
-    glm::size2_t textureSize();
+    //glm::size2_t textureSize();
+    
+    void setAtlasCapacity(unsigned int atlasCapacity);
 private:
     const unsigned int NOT_USED = UINT_MAX;
     QuadtreeList* _quadtreeList;
@@ -71,18 +73,27 @@ private:
     ghoul::opengl::Texture* _textureAtlas;
 
     unsigned int _nBricksPerDim,
+                 _atlasBricksPerDim,
                  _nQtLeaves,
                  _nQtNodes,
                  _nQtLevels,
-                 _brickSize,
                  _nBrickVals,
-                 _volumeSize,
-                 _paddedBrickDim,
-                 _nBricksInAtlas,
+                 _brickSize,
+                 _atlasCapacity,
                  _nBricksInMap,
-                 _atlasDim;
+                 _atlasDim,
+                 _atlasWidth,
+                 _atlasHeight,
+                 _atlasSize;
+        
 
-    void fillImage(float* in, float* out, unsigned int linearAtlasCoords);
+    glm::ivec2 _paddedBrickDims;
+    GLuint _pboHandle;
+    GLuint _atlasMapBuffer;
+    
+    bool _needsReinitialization;
+
+    void insertTile(GLshort* in, GLfloat* out, unsigned int linearAtlasCoords);
 };
 
 } // namespace openspace

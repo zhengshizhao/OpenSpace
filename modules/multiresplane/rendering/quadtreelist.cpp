@@ -139,6 +139,10 @@ unsigned int QuadtreeList::nTotalNodes() {
     return _nTotalNodes;
 }
 
+std::ifstream& QuadtreeList::file() {
+	return _file;
+}
+
 unsigned int QuadtreeList::getFirstChild(unsigned int brickIndex) {
     int qtNode = brickIndex % _nQtNodes;
     unsigned int timestepOffset = brickIndex - qtNode;
