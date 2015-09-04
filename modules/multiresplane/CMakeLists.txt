@@ -29,6 +29,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/imageatlasmanager.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/imagebrickselector.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rendering/quadtreelist.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/rendering/imagebrickcover.h
 )
 source_group("Header Files" FILES ${HEADER_FILES})
 

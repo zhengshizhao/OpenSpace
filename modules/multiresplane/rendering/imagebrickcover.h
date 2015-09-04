@@ -2,7 +2,7 @@
  *                                                                                       *
  * OpenSpace                                                                             *
  *                                                                                       *
- * Copyright (c) 2014-2015                                                               *
+ * Copyright (c) 2015                                                                    *
  *                                                                                       *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
  * software and associated documentation files (the "Software"), to deal in the Software *
@@ -22,62 +22,39 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-#ifndef __RENDERABLEMULTIRESPLANE_H__
-#define __RENDERABLEMULTIRESPLANE_H__
-
-#include <openspace/rendering/renderable.h>
-#include <openspace/properties/vectorproperty.h>
-#include <ghoul/misc/dictionary.h>
-
-// Forward declare to minimize dependencies
-namespace ghoul {
-    namespace filesystem {
-        class File;
-    }
-    namespace opengl {
-        class ProgramObject;
-        class Texture;
-    }
-}
+#ifndef __IMAGEBRICKCOVER_H__
+#define __IMAGEBRICKCOVER_H__
 
 namespace openspace {
-// Forward declare
-class QuadtreeList;
-class ImageAtlasManager;
-class ImageBrickSelector;
 
-class RenderableMultiresPlane: public Renderable {
-public:
-    RenderableMultiresPlane(const ghoul::Dictionary& dictionary);
-    ~RenderableMultiresPlane();
+struct ImageBrickCover {
+    int lowX, highX, lowY, highY;
 
-    bool initialize() override;
-    bool deinitialize() override;
-    bool isReady() const override;
-    void render(const RenderData& data) override;
+    ImageBrickCover() {}
+    ImageBrickCover(int numBricks) {
+        lowX = lowY = 0;
+        highX = highY = numBricks;
+    }
 
-private:
-    void createPlane();
-
-    int _timestep;
-    int _brickBudget;
-    properties::Vec2Property _size;
-
-    std::string _filename;
-    ghoul::opengl::ProgramObject* _shader;
-
-    QuadtreeList* _quadtreeList;
-    ImageAtlasManager* _atlasManager;
-    ImageBrickSelector* _brickSelector;
-
-    std::vector<int> _brickIndices;
-
-    std::vector<glm::vec4> _quadCorners;
-    GLuint _quad;
-    GLuint _vertexPositionBuffer;
-    bool _validShader;
+    ImageBrickCover split(bool x, bool y) {
+        ImageBrickCover child;
+        if (x) {
+            child.lowX = lowX + (highX - lowX) / 2;
+            child.highX = highX;
+        } else {
+            child.lowX = lowX;
+            child.highX = lowX + (highX - lowX) / 2;
+        }
+        if (y) {
+            child.lowY = lowY + (highY - lowY) / 2;
+            child.highY = highY;
+        } else {
+            child.lowY = lowY;
+            child.highY = lowY + (highY - lowY) / 2;
+        }
+        return child;
+    }
 };
+}
 
-} // namespace openspace
-
-#endif // __RENDERABLEMULTIRESPLANE_H__
+#endif // __IMAGEBRICKCOVER_H__

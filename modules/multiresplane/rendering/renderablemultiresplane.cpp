@@ -71,9 +71,17 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
         return;
     }
 
+    const GLfloat size = _size.value()[0];
+    const GLfloat w = _size.value()[1];
+    _quadCorners.resize(4);
+    _quadCorners[0] = glm::vec4(-size,  size, 0.0, w);
+    _quadCorners[1] = glm::vec4(-size, -size, 0.0, w);
+    _quadCorners[2] = glm::vec4( size,  size, 0.0, w);
+    _quadCorners[3] = glm::vec4( size, -size, 0.0, w);
+
     _quadtreeList = new QuadtreeList(_filename);
     _atlasManager = new ImageAtlasManager(_quadtreeList);
-    _brickSelector = new ImageBrickSelector(_quadtreeList);
+    _brickSelector = new ImageBrickSelector(_quadtreeList, _quadCorners);
 
     setBoundingSphere(PowerScaledScalar(5.0, 2.0));
 }
@@ -153,7 +161,7 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     const int nTimesteps = _quadtreeList->nTimesteps();
     const int currentTimestep = _timestep % nTimesteps;
 
-    _brickSelector->selectBricks(currentTimestep, _brickIndices);
+    _brickSelector->selectBricks(currentTimestep, data, _brickIndices);
     _atlasManager->updateAtlas(_brickIndices);
 
     // Activate shader program
@@ -185,6 +193,7 @@ void RenderableMultiresPlane::createPlane() {
     // ============================
     const GLfloat size = _size.value()[0];
     const GLfloat w = _size.value()[1];
+
     const GLfloat vertex_data[] = { // square of two triangles (sigh)
         //    x      y     z     w     s     t
         -size, -size, 0.0f, w, 0, 1,

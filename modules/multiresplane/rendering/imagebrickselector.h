@@ -26,28 +26,41 @@
 #define __IMAGEBRICKSELECTOR_H__
 
 #include <vector>
-#include <modules/multiresvolume/rendering/brickselection.h>
-#include <modules/multiresvolume/rendering/brickcover.h>
 
+#include <openspace/util/powerscaledcoordinate.h>
+#include <openspace/util/powerscaledscalar.h>
+#include <modules/multiresplane/rendering/imagebrickcover.h>
+
+#include <openspace/util/updatestructures.h>
 
 namespace openspace {
 
 class QuadtreeList;
-class ImageHistogramManager;
 class TransferFunction;
 
 class ImageBrickSelector{
 public:
-    ImageBrickSelector(QuadtreeList* qtl);
+    ImageBrickSelector(QuadtreeList* qtl, std::vector<glm::vec4> quadCorners);
     ~ImageBrickSelector();
 
     bool initialize();
-    void selectBricks(int timestep, std::vector<int>& bricks);
+    void selectBricks(int timestep, const RenderData& renderData, std::vector<int>& bricks);
  private:
     QuadtreeList* _quadtreeList;
+    std::vector<psc> _quadCorners;
+    glm::ivec2 _screenResolution;
 
-    //int linearCoords(int x, int y, int z);
-    //void writeSelection(BrickSelection coveredBricks, std::vector<int>& bricks);
+    bool isVisible(ImageBrickCover brickCover, const RenderData& renderData);
+    float voxelSizeInScreenSpace(ImageBrickCover brickCover, const RenderData& renderData);
+    glm::vec2 quadSizeInScreenSpace(psc c0, psc c1, psc c2, const RenderData& renderData);
+    glm::vec4 screenSpaceBoundingBox(psc c0, psc c1, psc c2, psc c3, const RenderData& renderData);
+    glm::vec2 modelToScreenSpace(psc point, const RenderData& renderData);
+    int linearCoords(int x, int y);
+    void writeSelection(int brickIndex, ImageBrickCover brickCover, std::vector<int>& bricks);
+
+    // DEBUG
+    int _prevUsedBricks;
+    glm::ivec2 _prevResolution;
 };
 
 } // namespace openspace
