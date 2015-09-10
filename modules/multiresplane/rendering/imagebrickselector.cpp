@@ -49,7 +49,9 @@ ImageBrickSelector::ImageBrickSelector(QuadtreeList* qtl, std::vector<glm::vec4>
 
 ImageBrickSelector::~ImageBrickSelector() {}
 
-bool ImageBrickSelector::initialize() {}
+bool ImageBrickSelector::initialize() {
+	return true;
+}
 
 void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData, std::vector<int>& bricks) {
     // Set largest acceptable voxel size

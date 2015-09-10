@@ -103,7 +103,7 @@ bool ImageAtlasManager::initialize() {
     }
     
     _needsReinitialization = false;
-
+	return true;
 }
 
 void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {

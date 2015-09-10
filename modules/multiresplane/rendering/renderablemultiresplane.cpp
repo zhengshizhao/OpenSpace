@@ -148,6 +148,7 @@ bool RenderableMultiresPlane::deinitialize() {
     if (_brickSelector)
         delete _brickSelector;
     _brickSelector = nullptr;
+	return true;
 }
 
 bool RenderableMultiresPlane::isReady() const {
