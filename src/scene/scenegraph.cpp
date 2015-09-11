@@ -346,8 +346,8 @@ bool SceneGraph::sortTopologically() {
             return node->name() == "Stars";
         }
         );
-        SceneGraphNode* n = *it;
         if (it != _topologicalSortedNodes.end()) {
+            SceneGraphNode* n = *it;
             _topologicalSortedNodes.erase(it);
             _topologicalSortedNodes.insert(_topologicalSortedNodes.begin() + 3, n);
         }
@@ -359,8 +359,9 @@ bool SceneGraph::sortTopologically() {
             return node->name() == "MilkyWay";
         }
         );
-        n = *it;
+
         if (it != _topologicalSortedNodes.end()) {
+            SceneGraphNode* n = *it;
             _topologicalSortedNodes.erase(it);
             _topologicalSortedNodes.insert(_topologicalSortedNodes.begin() + 2, n);
         }

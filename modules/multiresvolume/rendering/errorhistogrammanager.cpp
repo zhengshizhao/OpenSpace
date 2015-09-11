@@ -45,8 +45,6 @@ ErrorHistogramManager::ErrorHistogramManager(TSP* tsp) : _tsp(tsp) {}
 ErrorHistogramManager::~ErrorHistogramManager() {}
 
 bool ErrorHistogramManager::buildHistograms(int numBins) {
-    LINFO("Build histograms with " << numBins << " bins each");
-    std::cout << "Build histograms with " << numBins << " bins each" << std::endl;
     _numBins = numBins;
 
     _file = &(_tsp->file());
@@ -62,6 +60,7 @@ bool ErrorHistogramManager::buildHistograms(int numBins) {
 
     _numInnerNodes = _tsp->numTotalNodes() - numOtLeaves * numBstLeaves;
     _histograms = std::vector<Histogram>(_numInnerNodes);
+    LINFO("Build " << _numInnerNodes << " histograms with " << numBins << " bins each");
 
     // All TSP Leaves
     int numOtNodes = _tsp->numOTNodes();
