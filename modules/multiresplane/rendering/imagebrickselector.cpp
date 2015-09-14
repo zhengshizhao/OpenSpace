@@ -155,7 +155,7 @@ void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData
     unsigned int planeHeight = brickHeight * pow(2, usedDepth);
 
     if (planeWidth != _prevResolution.x || planeHeight != _prevResolution.y || nUsedBricks != _prevUsedBricks) {
-        LINFO("res: [" << planeWidth << ", " << planeHeight << "], bricks: " << nUsedBricks << ", invisible: " << nInvisible);
+        //LINFO("res: [" << planeWidth << ", " << planeHeight << "], bricks: " << nUsedBricks);
         _prevUsedBricks = nUsedBricks;
         _prevResolution = glm::ivec2(planeWidth, planeHeight);
     }
