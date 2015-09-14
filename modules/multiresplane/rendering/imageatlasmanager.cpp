@@ -107,16 +107,19 @@ bool ImageAtlasManager::initialize() {
 }
 
 void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
+
     if (_needsReinitialization) {
-	std::cout << "reinit!" << std::endl;
 	initialize();
     }
     
     int nBrickIndices = brickIndices.size();
-    
+
     _requiredBricks.clear();
     for (int i = 0; i < nBrickIndices; i++) {
-	_requiredBricks.insert(brickIndices[i]);
+	int requiredIndex = brickIndices[i];
+	if (requiredIndex >= 0) {
+	    _requiredBricks.insert(requiredIndex);
+	}
     }
 
     // for now: remove all previously required bricks
@@ -125,7 +128,6 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     for (unsigned int it : _prevRequiredBricks) {
 	if (!_requiredBricks.count(it)) {
 	    removeFromAtlas(it);
-	    std::cout << "removing from atlas!" << std::endl;
 	}
     }
 
@@ -157,7 +159,12 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     for (int i = 0; i < nBrickIndices; i++) {
-        _atlasMap[i] = _brickMap[brickIndices[i]];
+	int brickIndex = brickIndices[i];
+	if (brickIndex >= 0) {
+	    _atlasMap[i] = _brickMap[brickIndex];
+	} else {
+	    _atlasMap[i] = 0;
+	}
     }
 
     std::swap(_prevRequiredBricks, _requiredBricks);
@@ -182,10 +189,6 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
     while (_brickMap.count(lastBrickIndex) && lastBrickIndex >= firstBrickIndex) lastBrickIndex--;
     if (lastBrickIndex < firstBrickIndex) return;
 
-
-    std::cout << "ADDING TO ATLAS" << std::endl;
-    
-    
     int sequenceLength = lastBrickIndex - firstBrickIndex + 1;
     GLshort* sequenceBuffer = new GLshort[sequenceLength*_nBrickVals];
     size_t bufferSize = sequenceLength * _brickSize;
@@ -203,8 +206,6 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
             unsigned int atlasData = (level << 28) + atlasCoords;
             _brickMap.insert(std::pair<unsigned int, unsigned int>(brickIndex, atlasData));
             insertTile(&sequenceBuffer[_nBrickVals*(brickIndex - firstBrickIndex)], mappedBuffer, atlasCoords);
-
-	    std::cout << "inserting tile at " << atlasCoords << std::endl;
         }
     }
 
@@ -275,6 +276,7 @@ void ImageAtlasManager::insertTile(GLshort* in, GLfloat* out, unsigned int linea
 
 	    double val = in[from];
 	    out[idx] = std::log10(glm::clamp(val, 1.0, 2000.0))/3.0;
+	    //out[idx] = ((float)from)/_paddedBrickDims.x/_paddedBrickDims.y;
 	    //out[idx] = glm::clamp(val, 1.0, 2000.0)/2000.0;
 	    from++;
 	}
