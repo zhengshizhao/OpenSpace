@@ -482,8 +482,8 @@ std::vector<ghoul::opengl::Texture*> RenderableMultiresVolume::getTextures() {
     return textures;
 }
 
-std::vector<int> RenderableMultiresVolume::getBuffers() {
-    std::vector<int> buffers{_atlasManager->atlasMapBuffer()};
+std::vector<unsigned int> RenderableMultiresVolume::getBuffers() {
+    std::vector<unsigned int> buffers{_atlasManager->atlasMapBuffer()};
     return buffers;
 }
 

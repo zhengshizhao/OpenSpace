@@ -49,7 +49,9 @@ ImageBrickSelector::ImageBrickSelector(QuadtreeList* qtl, std::vector<glm::vec4>
 
 ImageBrickSelector::~ImageBrickSelector() {}
 
-bool ImageBrickSelector::initialize() {}
+bool ImageBrickSelector::initialize() {
+	return true;
+}
 
 void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData, std::vector<int>& bricks) {
     // Set largest acceptable voxel size
@@ -174,16 +176,13 @@ bool ImageBrickSelector::isVisible(ImageBrickCover brickCover, const RenderData&
 
     // Screen space axis aligned bounding box
     glm::vec4 ssaabb = screenSpaceBoundingBox(c0, c1, c2, c3, renderData);
-    int minXPos = ssaabb.x < -1.0 ? -1 : ssaabb.x > 1.0 ? 1 : 0;
-    int minYPos = ssaabb.y < -1.0 ? -1 : ssaabb.y > 1.0 ? 1 : 0;
-    int maxXPos = ssaabb.z < -1.0 ? -1 : ssaabb.z > 1.0 ? 1 : 0;
-    int maxYPos = ssaabb.w < -1.0 ? -1 : ssaabb.w > 1.0 ? 1 : 0;
 
-    if (minXPos == 0 && (minYPos == 0 || maxYPos == 0)) return true; // left side through
-    if (maxXPos == 0 && (minYPos == 0 || maxYPos == 0)) return true; // right side through
+    // Calculate corners of intersection
+    glm::vec2 topLeft = glm::vec2(std::max(-1.0f, ssaabb.x), std::max(-1.0f, ssaabb.y));
+    glm::vec2 bottomRight = glm::vec2(std::min(1.0f, ssaabb.z), std::min(1.0f, ssaabb.w));
 
-    // Corners outside
-    return (minXPos != maxXPos || minYPos != maxYPos);
+    // ssaabb is visible if intersection has positive area
+    return topLeft.x < bottomRight.x && topLeft.y < bottomRight.y;
 }
 
 float ImageBrickSelector::voxelSizeInScreenSpace(ImageBrickCover brickCover, const RenderData& renderData) {

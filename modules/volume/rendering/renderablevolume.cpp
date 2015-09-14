@@ -180,7 +180,21 @@ bool RenderableVolume::deinitialize() {
     return true;
 }
 
-    void RenderableVolume::update(const UpdateData& data){
+void RenderableVolume::update(const UpdateData& data){
+    glm::mat4 transform = glm::mat4(1);
+    glm::mat4 rot = glm::rotate(transform, 90.f, glm::vec3(1, 0, 0));
+    glm::mat4 roty = glm::rotate(transform, 90.f, glm::vec3(0, -1, 0));
+    glm::mat4 scaling = glm::scale(transform, _boxScaling);
+
+    glm::dmat3 positionRotation;
+    openspace::SpiceManager::ref().getPositionTransformMatrix("GALACTIC", "J2000", data.time, positionRotation);
+    for (int i = 0; i < 3; i++){
+        for (int j = 0; j < 3; j++){
+            transform[i][j] = static_cast<float>(positionRotation[i][j]);
+        }
+    }
+
+    _modelTransform = transform * rot * roty * scaling;
 	/*if (_modelName == "ENLIL") {
 
 	    psc earthPosition;
@@ -209,8 +223,7 @@ void RenderableVolume::preResolve(ghoul::opengl::ProgramObject* program) {
 
 
 void RenderableVolume::render(const RenderData& data) {
-    glm::mat4 transform = glm::mat4(1.0);
-    transform = glm::scale(transform, _boxScaling);
+    glm::mat4 transform = _modelTransform;
 
     // fetch data
     psc currentPosition = data.position;
@@ -262,9 +275,7 @@ glm::vec3 RenderableVolume::perspectiveToCubeSpace(const RenderData& data, glm::
 
     vector = pscVector.vec4();
 
-    glm::mat4 modelTransform = glm::mat4(1.0);
-    modelTransform = glm::scale(modelTransform, _boxScaling);
-    glm::mat3 invModelTransform = glm::mat3(glm::inverse(modelTransform));
+    glm::mat3 invModelTransform = glm::mat3(glm::inverse(_modelTransform));
     vector = glm::vec4(invModelTransform * vector.xyz(), vector.w);
     vector.w -= _w;
 
