@@ -79,6 +79,8 @@ void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData
     // DEBUG
     int nUsedBricks = 0;
 
+    int nInvisible = 0;
+
     // Split quadtree until acceptable resolution is reached
     unsigned int depth = 0;
     while (depth < nQtLevels) {
@@ -104,6 +106,7 @@ void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData
             } else {
                 // Brick is not visible, set cover to -1
                 writeSelection(-1, brick.second, bricks);
+                nInvisible++;
                 pendingBricks.erase(brick.first);
             }
         }
@@ -152,7 +155,7 @@ void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData
     unsigned int planeHeight = brickHeight * pow(2, usedDepth);
 
     if (planeWidth != _prevResolution.x || planeHeight != _prevResolution.y || nUsedBricks != _prevUsedBricks) {
-        LINFO("res: [" << planeWidth << ", " << planeHeight << "], bricks: " << nUsedBricks);
+        LINFO("res: [" << planeWidth << ", " << planeHeight << "], bricks: " << nUsedBricks << ", invisible: " << nInvisible);
         _prevUsedBricks = nUsedBricks;
         _prevResolution = glm::ivec2(planeWidth, planeHeight);
     }
@@ -177,12 +180,15 @@ bool ImageBrickSelector::isVisible(ImageBrickCover brickCover, const RenderData&
     // Screen space axis aligned bounding box
     glm::vec4 ssaabb = screenSpaceBoundingBox(c0, c1, c2, c3, renderData);
 
-    // Calculate corners of intersection
-    glm::vec2 topLeft = glm::vec2(std::max(-1.0f, ssaabb.x), std::max(-1.0f, ssaabb.y));
-    glm::vec2 bottomRight = glm::vec2(std::min(1.0f, ssaabb.z), std::min(1.0f, ssaabb.w));
+    // Calculate sides of intersection
+    float left = std::max(std::min(ssaabb.x, ssaabb.z), -1.0f);
+    float right = std::min(std::max(ssaabb.x, ssaabb.z), 1.0f);
+
+    float top = std::max(std::min(ssaabb.y, ssaabb.w), -1.0f);
+    float bottom = std::min(std::max(ssaabb.y, ssaabb.w), 1.0f);
 
     // ssaabb is visible if intersection has positive area
-    return topLeft.x < bottomRight.x && topLeft.y < bottomRight.y;
+    return left < right && top < bottom;
 }
 
 float ImageBrickSelector::voxelSizeInScreenSpace(ImageBrickCover brickCover, const RenderData& renderData) {
@@ -275,7 +281,7 @@ glm::vec2 ImageBrickSelector::modelToScreenSpace(psc point, const RenderData& re
 
     // However, we also need to do the perspective divide
     if (v_in.w != 0.0) {
-        v_in.xy = v_in.xy() / v_in.w;
+        v_in.xy = v_in.xy() / std::abs(v_in.w);
     }
 
     return v_in.xy();
