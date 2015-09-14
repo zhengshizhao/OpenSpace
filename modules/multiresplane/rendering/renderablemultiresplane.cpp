@@ -74,10 +74,10 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
     const GLfloat size = _size.value()[0];
     const GLfloat w = _size.value()[1];
     _quadCorners.resize(4);
-    _quadCorners[0] = glm::vec4(-size,  size, 0.0, w);
-    _quadCorners[1] = glm::vec4(-size, -size, 0.0, w);
-    _quadCorners[2] = glm::vec4( size,  size, 0.0, w);
-    _quadCorners[3] = glm::vec4( size, -size, 0.0, w);
+    _quadCorners[0] = glm::vec4(-size, -size, 0.0, w);
+    _quadCorners[1] = glm::vec4( size, -size, 0.0, w);
+    _quadCorners[2] = glm::vec4(-size,  size, 0.0, w);
+    _quadCorners[3] = glm::vec4( size,  size, 0.0, w);
 
     _quadtreeList = new QuadtreeList(_filename);
     _atlasManager = new ImageAtlasManager(_quadtreeList, 0);
