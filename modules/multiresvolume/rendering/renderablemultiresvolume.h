@@ -75,7 +75,7 @@ public:
     virtual std::string getHeaderPath() override;
     virtual std::string getHelperPath() override;
     virtual std::vector<ghoul::opengl::Texture*> getTextures() override;
-    virtual std::vector<int> getBuffers() override;
+    virtual std::vector<unsigned int> getBuffers() override;
 
 private:
     double _time;

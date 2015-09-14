@@ -162,7 +162,7 @@ void ABuffer::resolve(float blackoutFactor) {
             }
         }
 
-        std::vector<int> bufferIds = volume->getBuffers();
+        std::vector<unsigned int> bufferIds = volume->getBuffers();
         for (int id : bufferIds) {
             if (_bufferBindings.find(id) == _bufferBindings.end()) {
                 _bufferBindings[id] = nUsedBindings++;

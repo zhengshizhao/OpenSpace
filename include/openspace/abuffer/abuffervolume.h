@@ -70,7 +70,7 @@ public:
     /**
      * Return a vector of integers representing the opengl buffers required to render this volume.
      */
-    virtual std::vector<int> getBuffers() { return std::vector<int>(); };
+    virtual std::vector<unsigned int> getBuffers() { return std::vector<unsigned int>(); };
 
     /**
      * Return the id of this volume.

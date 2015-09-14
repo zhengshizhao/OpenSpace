@@ -45,3 +45,4 @@ dofile(openspace.absPath('${SCRIPTS}/bind_keys.lua'))   -- Load the default keyb
 
 
 -- print(openspace.time.currentTimeUTC())
+openspace.fadeIn(0.001);
