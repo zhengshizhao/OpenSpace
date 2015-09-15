@@ -31,6 +31,7 @@
 #include <sgct.h>
 #include <map>
 #include <algorithm>
+#include <queue>
 
 namespace {
     const std::string _loggerCat = "ImageBrickSelector";
@@ -50,7 +51,7 @@ ImageBrickSelector::ImageBrickSelector(QuadtreeList* qtl, std::vector<glm::vec4>
 ImageBrickSelector::~ImageBrickSelector() {}
 
 bool ImageBrickSelector::initialize() {
-	return true;
+    return true;
 }
 
 void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData, std::vector<int>& bricks) {
@@ -70,96 +71,47 @@ void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData
     unsigned int qtRootIndex = nQuadtreeNodes * timestep;
     ImageBrickCover qtRootCover = ImageBrickCover(nBricksPerDim);
 
-    // Bricks waiting to potentially be split
-    std::map<unsigned int, ImageBrickCover> pendingBricks;
+    std::queue< std::pair<unsigned int, ImageBrickCover> > brickQueue;
+    brickQueue.push(std::pair<unsigned int, ImageBrickCover>(qtRootIndex, qtRootCover));
 
-    // Start with root brick of quadtree
-    pendingBricks.insert(std::pair<unsigned int, ImageBrickCover>(qtRootIndex, qtRootCover));
-
-    // DEBUG
     int nUsedBricks = 0;
-
     int nInvisible = 0;
-
-    // Split quadtree until acceptable resolution is reached
-    unsigned int depth = 0;
-    while (depth < nQtLevels) {
-        // We can still split pending bricks
-
-        // Loop through all pending bricks and keep track of largest voxel size in screenspace
-        float largestVoxelSize = 0;
-        for(auto const &brick : pendingBricks) {
-            // brick.first is brick index
-            // brick.second is brick cover
-            if (isVisible(brick.second, renderData)) {
-                // Brick is visible
-                if (depth < nQtLevels - 1) {
-                    // Can be split, should affect resolution
-                    float voxelSize = voxelSizeInScreenSpace(brick.second, renderData);
-                    largestVoxelSize = std::max(largestVoxelSize, voxelSize);
-                } else {
-                    // Reached highest resolution, select brick
-                    writeSelection(brick.first, brick.second, bricks);
-                    pendingBricks.erase(brick.first); // Not necessary, should go out of scope
-                    nUsedBricks++;
-                }
-            } else {
-                // Brick is not visible, set cover to -1
-                writeSelection(-1, brick.second, bricks);
-                nInvisible++;
-                pendingBricks.erase(brick.first);
-            }
-        }
-        if (depth < nQtLevels - 1) {
-            // We can still split more, check if resolution is acceptable
-            if (largestVoxelSize <= acceptableVoxelSize) {
-                // Resolution is acceptable, select all pending bricks
-                for(auto const &brick : pendingBricks) {
-                    writeSelection(brick.first, brick.second, bricks);
-                    pendingBricks.erase(brick.first); // Not necessary, should go out of scope
-                    nUsedBricks++;
-                }
-                if (pendingBricks.size() > 0) {
-                    LERROR("Resolution acceptable, we still have some pending bricks!");
-                }
-                depth++; // Increase for consistency
-                break;
-            } else {
-                // Resolution is not acceptable, split pending bricks
-                std::map<unsigned int, ImageBrickCover> childBricks;
-                for(auto const &brick : pendingBricks) {
-
-                    unsigned int firstChild = _quadtreeList->getFirstChild(brick.first);
-                    ImageBrickCover brickCover = brick.second;
+    while (brickQueue.size() > 0) {
+        unsigned int brickIndex = brickQueue.front().first;
+        ImageBrickCover brickCover = brickQueue.front().second;
+        brickQueue.pop();
+        if (isVisible(brickCover, renderData)) {
+            if (!_quadtreeList->isLeaf(brickIndex)) {
+                float voxelSize = voxelSizeInScreenSpace(brickCover, renderData);
+                if (voxelSize > acceptableVoxelSize) {
+                    // Resolution not acceptable, split
+                    unsigned int firstChild = _quadtreeList->getFirstChild(brickIndex);
                     for (int c = 0; c < 4; c++) {
                         unsigned int childIndex = firstChild + c;
                         ImageBrickCover childCover = brickCover.split(c % 2, c / 2);
-                        childBricks.insert(std::pair<unsigned int, ImageBrickCover>(childIndex, childCover));
+                        brickQueue.push(std::pair<unsigned int, ImageBrickCover>(childIndex, childCover));
                     }
+                } else {
+                    // Resolution is acceptable, select brick
+                    writeSelection(brickIndex, brickCover, bricks);
+                    nUsedBricks++;
                 }
-                pendingBricks = childBricks;
+            } else {
+                // Brick is leaf, select brick
+                writeSelection(brickIndex, brickCover, bricks);
+                nUsedBricks++;
             }
-        } else if (pendingBricks.size() > 0) {
-            LERROR("Reached highest resolution, we still have some pending bricks!");
+        } else {
+            // Brick not visible, set cover to -1
+            writeSelection(-1, brickCover, bricks);
+            nInvisible++;
         }
-
-        depth++;
     }
 
-    // DEBUG, Calculate resulting resolution
-    unsigned int brickWidth = _quadtreeList->brickWidth();
-    unsigned int brickHeight = _quadtreeList->brickHeight();
-    unsigned int usedDepth = depth - 1;
-
-    unsigned int planeWidth = brickWidth * pow(2, usedDepth);
-    unsigned int planeHeight = brickHeight * pow(2, usedDepth);
-
-    if (planeWidth != _prevResolution.x || planeHeight != _prevResolution.y || nUsedBricks != _prevUsedBricks) {
-        //LINFO("res: [" << planeWidth << ", " << planeHeight << "], bricks: " << nUsedBricks);
+    if (nUsedBricks != _prevUsedBricks) {
+        LINFO("used bricks: " << nUsedBricks);
         _prevUsedBricks = nUsedBricks;
-        _prevResolution = glm::ivec2(planeWidth, planeHeight);
     }
-
 }
 
 bool ImageBrickSelector::isVisible(ImageBrickCover brickCover, const RenderData& renderData) {

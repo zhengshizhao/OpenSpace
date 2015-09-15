@@ -48,6 +48,7 @@ namespace openspace {
 
 RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dictionary)
     : Renderable(dictionary)
+    , _transferFunction(nullptr)
     , _quadtreeList(nullptr)
     , _atlasManager(nullptr)
     , _brickSelector(nullptr)
@@ -71,12 +72,23 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
         return;
     }
 
+    _transferFunction = nullptr;
+    _transferFunctionPath = "";
+    success = dictionary.getValue(KeyTransferFunction, _transferFunctionPath);
+    if (!success) {
+        LERROR("Node '" << name << "' did not contain a valid '" <<
+            KeyTransferFunction << "'");
+        return;
+    }
+    _transferFunctionPath = absPath(_transferFunctionPath);
+    _transferFunction = new TransferFunction(_transferFunctionPath);
+
     const GLfloat size = _size.value()[0];
     const GLfloat w = _size.value()[1];
     _quadCorners.resize(4);
     _quadCorners[0] = glm::vec4(-size,  size, 0.0, w);
-    _quadCorners[1] = glm::vec4( size,  size, 0.0, w);
-    _quadCorners[2] = glm::vec4(-size, -size, 0.0, w);
+    _quadCorners[1] = glm::vec4(-size, -size, 0.0, w);
+    _quadCorners[2] = glm::vec4( size,  size, 0.0, w);
     _quadCorners[3] = glm::vec4( size, -size, 0.0, w);
 
     _quadtreeList = new QuadtreeList(_filename);
@@ -93,6 +105,8 @@ RenderableMultiresPlane::~RenderableMultiresPlane() {
         delete _atlasManager;
     if (_brickSelector)
         delete _brickSelector;
+    if (_transferFunction)
+        delete _transferFunction;
 }
 
 bool RenderableMultiresPlane::initialize() {
@@ -109,7 +123,7 @@ bool RenderableMultiresPlane::initialize() {
 
 
     auto shaderCallback = [this](ghoul::opengl::ProgramObject* program) {
-	_validShader = false;
+        _validShader = false;
     };
 
     if (_shader == nullptr) {
@@ -120,10 +134,11 @@ bool RenderableMultiresPlane::initialize() {
     }
     _shader->setProgramObjectCallback(shaderCallback);
 
+    _transferFunction->update();
 
     if (success = _atlasManager) {
-	_atlasManager->setAtlasCapacity(_quadtreeList->nBricksPerDim() * _quadtreeList->nBricksPerDim());
-	success &= _atlasManager->initialize();
+        _atlasManager->setAtlasCapacity(_quadtreeList->nBricksPerDim() * _quadtreeList->nBricksPerDim());
+        success &= _atlasManager->initialize();
     }
 
 
@@ -148,7 +163,12 @@ bool RenderableMultiresPlane::deinitialize() {
     if (_brickSelector)
         delete _brickSelector;
     _brickSelector = nullptr;
-	return true;
+
+    if (_transferFunction)
+        delete _transferFunction;
+    _transferFunction = nullptr;
+
+    return true;
 }
 
 bool RenderableMultiresPlane::isReady() const {
@@ -191,6 +211,10 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssboBinding, atlasMapBuffer);
     _shader->setSsboBinding("atlasMap", ssboBinding);
 
+    ghoul::opengl::TextureUnit tfUnit;
+    tfUnit.activate();
+    _transferFunction->getTexture()->bind();
+    _shader->setUniform("transferFunction", tfUnit);
 
     glBindVertexArray(_quad);
     glDrawArrays(GL_TRIANGLES, 0, 6);
