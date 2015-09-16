@@ -140,6 +140,7 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     }
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, _pboHandle);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, _atlasSize, 0, GL_STREAM_DRAW);
     GLfloat* mappedBuffer = reinterpret_cast<GLfloat*>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
     
     if (!mappedBuffer) {
@@ -178,6 +179,7 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     pboToAtlas();
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, _atlasMapBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*_atlasMap.size(), 0, GL_STREAM_DRAW);
     GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
     if (!to) {
         LERROR("Failed to map SSBO.");
