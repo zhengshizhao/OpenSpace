@@ -26,6 +26,7 @@
 #define __RENDERABLEMULTIRESPLANE_H__
 
 #include <openspace/rendering/renderable.h>
+#include <modules/base/rendering/transferfunction.h>
 #include <openspace/properties/vectorproperty.h>
 #include <ghoul/misc/dictionary.h>
 
@@ -65,6 +66,9 @@ private:
 
     std::string _filename;
     ghoul::opengl::ProgramObject* _shader;
+
+    std::string _transferFunctionPath;
+    TransferFunction* _transferFunction;
 
     QuadtreeList* _quadtreeList;
     ImageAtlasManager* _atlasManager;

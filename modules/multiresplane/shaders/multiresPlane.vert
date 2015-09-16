@@ -31,19 +31,17 @@ uniform sampler2D atlas;
 layout(location = 0) in vec4 inPosition;
 layout(location = 1) in vec2 inUv;
 
-out vec4 vPosition;
+out vec4 worldPosition;
 out vec2 vUv;
 
 #include "PowerScaling/powerScaling_vs.hglsl"
 
 void main()
 {
-    vPosition = inPosition;
+    worldPosition = inPosition;
     vec4 tmp = inPosition;
 
-
     vec4 position = pscTransform(tmp, modelTransform);
-    vPosition = tmp;
     position = viewProjection * position;
     gl_Position =  nearPlaneProjection(position);
 

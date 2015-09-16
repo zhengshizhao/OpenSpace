@@ -30,15 +30,18 @@ uniform ivec2 bricksInAtlas = ivec2(8, 8);
 uniform ivec2 padding = ivec2(1, 1);
 
 uniform sampler2D atlas;
+uniform sampler1D transferFunction;
 
 layout (shared) buffer atlasMapBlock {
     uint atlasMap[];
 };
 
+in vec4 worldPosition;
 in vec2 vUv;
-in vec2 vPosition;
-out vec4 color;
 
+#include "ABuffer/abufferStruct.hglsl"
+#include "ABuffer/abufferAddToBuffer.hglsl"
+#include "PowerScaling/powerScaling_fs.hglsl"
 
 int intCoord(ivec2 vec2Coords, ivec2 spaceDim) {
     return vec2Coords.x + spaceDim.x*vec2Coords.y;
@@ -50,7 +53,6 @@ vec2 vec2Coords(uint intCoord, ivec2 spaceDim) {
     coords.y = intCoord / spaceDim.x;
     return coords;
 }
-
 
 void main() {
     // look up things in atlas map
@@ -72,5 +74,18 @@ void main() {
     vec2 atlasCoords = (atlasOffset + paddedInBrickCoords) / bricksInAtlas;
 
     float intensity = texture(atlas, atlasCoords).r;
-    color = vec4(intensity, 0.0, 0.0, 1.0);
+    vec4 fragColor = texture(transferFunction, intensity);
+    //fragColor = 0.5 * fragColor + 0.5 * vec4(atlasCoords, vec2(0.0, 1.0));
+
+    vec4 position = worldPosition;
+    float depth = pscDepth(position);
+
+    gl_FragDepth = depth;
+
+    ABufferStruct_t frag;
+    _col_(frag, fragColor);
+    _z_(frag, depth);
+    _type_(frag, 0);
+    _pos_(frag, position);
+    addToBuffer(frag);
 }
