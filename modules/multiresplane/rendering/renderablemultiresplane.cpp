@@ -211,6 +211,10 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     // Set uniforms
     _shader->setUniform("viewProjection", data.camera.viewProjectionMatrix());
     _shader->setUniform("modelTransform", transform);
+    _shader->setUniform("bricksInAtlas", _atlasManager->getBricksInAtlas());
+    _shader->setUniform("padding", glm::ivec2(_quadtreeList->paddingWidth(), _quadtreeList->paddingHeight()));
+    _shader->setUniform("paddedBrickDim", glm::ivec2(_quadtreeList->paddedBrickWidth(), _quadtreeList->paddedBrickHeight()));
+
     setPscUniforms(_shader, &data.camera, data.position);
 
     // Bind texture atlas

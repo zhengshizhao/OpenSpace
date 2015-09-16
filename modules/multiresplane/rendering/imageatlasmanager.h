@@ -60,6 +60,8 @@ public:
     //glm::size2_t textureSize();
     
     void setAtlasCapacity(unsigned int atlasCapacity);
+    glm::ivec2 getAtlasDimensions();
+    glm::ivec2 getBricksInAtlas();
 private:
     const unsigned int NOT_USED = UINT_MAX;
     QuadtreeList* _quadtreeList;
