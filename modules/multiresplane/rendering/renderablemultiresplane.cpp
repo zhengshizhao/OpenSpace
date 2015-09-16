@@ -41,6 +41,7 @@
 namespace {
     const std::string _loggerCat = "RenderableMultiresPlane";
     const std::string KeyDataSource = "Source";
+    const std::string KeySize = "Size";
     const std::string KeyTransferFunction = "TransferFunction";
 }
 
@@ -52,7 +53,7 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
     , _quadtreeList(nullptr)
     , _atlasManager(nullptr)
     , _brickSelector(nullptr)
-    , _size("size", "Size", glm::vec2(1,1), glm::vec2(0.f), glm::vec2(1.f, 25.f))
+    , _size("size", "Size", glm::vec3(1,1,0), glm::vec3(0,0,0), glm::vec3(1.f, 1.f, 25.f))
     , _shader(nullptr)
     , _quad(0)
     , _vertexPositionBuffer(0)
@@ -83,19 +84,31 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
     _transferFunctionPath = absPath(_transferFunctionPath);
     _transferFunction = new TransferFunction(_transferFunctionPath);
 
-    const GLfloat size = _size.value()[0];
-    const GLfloat w = _size.value()[1];
+    glm::vec3 size;
+    success &= dictionary.getValue(KeySize, size);
+    if (!success) {
+        LERROR("Node '" << name << "' did not contain a valid '" <<
+            KeySize << "'");
+        return;
+    }
+
+    _size = size;
+
+
+    const GLfloat width = _size.value()[0];
+    const GLfloat height = _size.value()[1];
+    const GLfloat w = _size.value()[2];
     _quadCorners.resize(4);
-    _quadCorners[0] = glm::vec4(-size,  size, 0.0, w);
-    _quadCorners[1] = glm::vec4( size,  size, 0.0, w);
-    _quadCorners[2] = glm::vec4(-size, -size, 0.0, w);
-    _quadCorners[3] = glm::vec4( size, -size, 0.0, w);
+    _quadCorners[0] = glm::vec4(-width,  height, 0.0, w);
+    _quadCorners[1] = glm::vec4( width,  height, 0.0, w);
+    _quadCorners[2] = glm::vec4(-width, -height, 0.0, w);
+    _quadCorners[3] = glm::vec4( width, -height, 0.0, w);
 
     _quadtreeList = new QuadtreeList(_filename);
     _atlasManager = new ImageAtlasManager(_quadtreeList, 0);
     _brickSelector = new ImageBrickSelector(_quadtreeList, _quadCorners);
 
-    setBoundingSphere(PowerScaledScalar(5.0, 2.0));
+    setBoundingSphere(PowerScaledScalar(std::sqrt(width*width + height*height), w));
 }
 
 RenderableMultiresPlane::~RenderableMultiresPlane() {
@@ -226,17 +239,18 @@ void RenderableMultiresPlane::createPlane() {
     // ============================
     //      GEOMETRY (quad)
     // ============================
-    const GLfloat size = _size.value()[0];
-    const GLfloat w = _size.value()[1];
+    const GLfloat width = _size.value()[0];
+    const GLfloat height = _size.value()[1];
+    const GLfloat w = _size.value()[2];
 
     const GLfloat vertex_data[] = { // square of two triangles (sigh)
         //    x      y     z     w     s     t
-        -size, -size, 0.0f, w, 0, 1,
-        size, size, 0.0f, w, 1, 0,
-        -size, size, 0.0f, w, 0, 0,
-        -size, -size, 0.0f, w, 0, 1,
-        size, -size, 0.0f, w, 1, 1,
-        size, size, 0.0f, w, 1, 0,
+        -width, -height, 0.0f, w, 0, 1,
+        width, height, 0.0f, w, 1, 0,
+        -width, height, 0.0f, w, 0, 0,
+        -width, -height, 0.0f, w, 0, 1,
+        width, -height, 0.0f, w, 1, 1,
+        width, height, 0.0f, w, 1, 0,
     };
 
     glBindVertexArray(_quad); // bind array

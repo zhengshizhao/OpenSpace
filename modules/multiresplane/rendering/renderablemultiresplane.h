@@ -62,7 +62,7 @@ private:
 
     int _timestep;
     int _brickBudget;
-    properties::Vec2Property _size;
+    properties::Vec3Property _size;
 
     std::string _filename;
     ghoul::opengl::ProgramObject* _shader;

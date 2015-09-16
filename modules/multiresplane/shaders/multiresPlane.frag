@@ -36,7 +36,7 @@ layout (shared) buffer atlasMapBlock {
     uint atlasMap[];
 };
 
-in vec4 worldPosition;
+in vec4 vs_position;
 in vec2 vUv;
 
 #include "ABuffer/abufferStruct.hglsl"
@@ -77,7 +77,7 @@ void main() {
     vec4 fragColor = texture(transferFunction, intensity);
     //fragColor = 0.5 * fragColor + 0.5 * vec4(atlasCoords, vec2(0.0, 1.0));
 
-    vec4 position = worldPosition;
+    vec4 position = vs_position;
     float depth = pscDepth(position);
 
     gl_FragDepth = depth;
