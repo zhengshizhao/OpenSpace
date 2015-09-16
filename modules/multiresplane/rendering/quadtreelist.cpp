@@ -46,13 +46,17 @@ QuadtreeList::QuadtreeList(const std::string& filename)
     , _paddedBrickHeight(0)
     , _nQtLevels(0)
     , _nQtNodes(0)
-    , _nTotalNodes(0) {
+    , _nTotalNodes(0)
+    , _imageMetaData(nullptr) {
     _file.open(_filename, std::ios::in | std::ios::binary);
 }
 
 QuadtreeList::~QuadtreeList() {
     if (_file.is_open())
         _file.close();
+    if (_imageMetaData) {
+	delete _imageMetaData;
+    }
 }
 
 bool QuadtreeList::load() {
@@ -68,55 +72,94 @@ bool QuadtreeList::readHeader() {
         return false;
 
     _file.seekg(_file.beg);
+    char commonMeta[_commonMetaDataSize];
 
-    _file.read(reinterpret_cast<char*>(&_header), sizeof(Header));
+    _file.read(reinterpret_cast<char*>(commonMeta), _commonMetaDataSize);
+    char* ptr = commonMeta;
+    _commonMetaData.nTimesteps = *reinterpret_cast<unsigned int*>(ptr);
+    ptr += sizeof(unsigned int);
+    _commonMetaData.nBricksPerDim = *reinterpret_cast<unsigned int*>(ptr);
+    ptr += sizeof(unsigned int);
+    _commonMetaData.brickWidth = *reinterpret_cast<unsigned int*>(ptr);
+    ptr += sizeof(unsigned int);
+    _commonMetaData.brickHeight = *reinterpret_cast<unsigned int*>(ptr);
+    ptr += sizeof(unsigned int);
+    _commonMetaData.paddingWidth = *reinterpret_cast<unsigned int*>(ptr);
+    ptr += sizeof(unsigned int);
+    _commonMetaData.paddingHeight = *reinterpret_cast<unsigned int*>(ptr);
+    ptr += sizeof(unsigned int);
+    _commonMetaData.minEnergy = *reinterpret_cast<int16_t*>(ptr);
+    ptr += sizeof(int16_t);
+    _commonMetaData.maxEnergy = *reinterpret_cast<int16_t*>(ptr);
+    ptr += sizeof(int16_t);
+    _commonMetaData.minFlux = *reinterpret_cast<double*>(ptr);
+    ptr += sizeof(double);
+    _commonMetaData.maxFlux = *reinterpret_cast<double*>(ptr);
+    ptr += sizeof(double);
+    _commonMetaData.minExpTime = *reinterpret_cast<double*>(ptr);
+    ptr += sizeof(double);
+    _commonMetaData.maxExpTime = *reinterpret_cast<double*>(ptr);
+    ptr += sizeof(double);
 
-    LDEBUG("Number of timesteps: " << _header.nTimesteps);
-    LDEBUG("Number of bricks: " << _header.nBricksPerDim << " x " << _header.nBricksPerDim);
-    LDEBUG("Brick dimensions: " << _header.brickWidth << " x " << _header.brickHeight);
 
-    _paddedBrickWidth = _header.brickWidth + 2 * _header.paddingWidth;
-    _paddedBrickHeight = _header.brickHeight + 2 * _header.paddingHeight;
+    LDEBUG("Number of timesteps: " << _commonMetaData.nTimesteps);
+    LDEBUG("Number of bricks: " << _commonMetaData.nBricksPerDim << " x " << _commonMetaData.nBricksPerDim);
+    LDEBUG("Brick dimensions: " << _commonMetaData.brickWidth << " x " << _commonMetaData.brickHeight);
+
+    _paddedBrickWidth = _commonMetaData.brickWidth + 2 * _commonMetaData.paddingWidth;
+    _paddedBrickHeight = _commonMetaData.brickHeight + 2 * _commonMetaData.paddingHeight;
 
     LDEBUG("Padded brick dimensions: " << _paddedBrickWidth << " x " << _paddedBrickHeight);
 
-    _nQtLevels = static_cast<unsigned int>(log((int)_header.nBricksPerDim) / log(2) + 1);
+    _nQtLevels = static_cast<unsigned int>(log((int)_commonMetaData.nBricksPerDim) / log(2) + 1);
     _nQtNodes = static_cast<unsigned int>((pow(4, _nQtLevels) - 1) / 3);
-    _nTotalNodes = _nQtNodes * _header.nTimesteps;
+    _nTotalNodes = _nQtNodes * _commonMetaData.nTimesteps;
 
     LDEBUG("Number of QT levels: " << _nQtLevels);
     LDEBUG("Number of QT nodes: " << _nQtNodes);
     LDEBUG("Total number of nodes: " << _nTotalNodes);
 
+    unsigned int nTimesteps = _commonMetaData.nTimesteps;
+    char* imageMeta = new char[_commonMetaDataSize * nTimesteps];
+    _imageMetaData = new ImageMetaData[nTimesteps];
+    _file.read(imageMeta, _imageMetaDataSize*nTimesteps);
+
+    for (int i = 0; i < nTimesteps; ++i) {
+	unsigned int offset = i*_imageMetaDataSize;
+	_imageMetaData[i].exposureTime = *reinterpret_cast<double*>(imageMeta + offset);
+    }
+
+    delete[] imageMeta;
+
     return true;
 }
 
 long long QuadtreeList::dataPosition() {
-    return sizeof(Header);
+    return _commonMetaDataSize + _imageMetaDataSize*_commonMetaData.nTimesteps;
 }
 
 unsigned int QuadtreeList::nTimesteps() {
-    return _header.nTimesteps;
+    return _commonMetaData.nTimesteps;
 }
 
 unsigned int QuadtreeList::nBricksPerDim() {
-    return _header.nBricksPerDim;
+    return _commonMetaData.nBricksPerDim;
 }
 
 unsigned int QuadtreeList::brickWidth() {
-    return _header.brickWidth;
+    return _commonMetaData.brickWidth;
 }
 
 unsigned int QuadtreeList::brickHeight() {
-    return _header.brickHeight;
+    return _commonMetaData.brickHeight;
 }
 
 unsigned int QuadtreeList::paddingWidth() {
-    return _header.paddingWidth;
+    return _commonMetaData.paddingWidth;
 }
 
 unsigned int QuadtreeList::paddingHeight() {
-    return _header.paddingHeight;
+    return _commonMetaData.paddingHeight;
 }
 
 unsigned int QuadtreeList::paddedBrickWidth() {
@@ -141,6 +184,18 @@ unsigned int QuadtreeList::nTotalNodes() {
 
 std::ifstream& QuadtreeList::file() {
 	return _file;
+}
+
+double QuadtreeList::minFlux() {
+    return _commonMetaData.minFlux;
+}
+
+double QuadtreeList::maxFlux() {
+    return _commonMetaData.maxFlux;
+}
+
+double QuadtreeList::exposureTime(unsigned int brickIndex) {
+    return _imageMetaData[brickIndex/_nQtNodes].exposureTime;
 }
 
 unsigned int QuadtreeList::getFirstChild(unsigned int brickIndex) {

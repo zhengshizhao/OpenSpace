@@ -93,7 +93,7 @@ private:
     
     bool _needsReinitialization;
 
-    void insertTile(GLshort* in, GLfloat* out, unsigned int linearAtlasCoords);
+    void insertTile(GLshort* in, GLfloat* out, unsigned int linearAtlasCoords, unsigned int brickIndex);
 };
 
 } // namespace openspace

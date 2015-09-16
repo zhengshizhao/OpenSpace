@@ -193,7 +193,7 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
     GLshort* sequenceBuffer = new GLshort[sequenceLength*_nBrickVals];
     size_t bufferSize = sequenceLength * _brickSize;
 
-    long offset = QuadtreeList::dataPosition() + static_cast<long>(firstBrickIndex) * static_cast<long>(_brickSize);
+    long offset = _quadtreeList->dataPosition() + static_cast<long>(firstBrickIndex) * static_cast<long>(_brickSize);
     _quadtreeList->file().seekg(offset);
     _quadtreeList->file().read(reinterpret_cast<char*>(sequenceBuffer), bufferSize);
 
@@ -205,7 +205,7 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
             assert(atlasCoords <= 0x0FFFFFFF);
             unsigned int atlasData = (level << 28) + atlasCoords;
             _brickMap.insert(std::pair<unsigned int, unsigned int>(brickIndex, atlasData));
-            insertTile(&sequenceBuffer[_nBrickVals*(brickIndex - firstBrickIndex)], mappedBuffer, atlasCoords);
+            insertTile(&sequenceBuffer[_nBrickVals*(brickIndex - firstBrickIndex)], mappedBuffer, atlasCoords, brickIndex);
         }
     }
 
@@ -257,7 +257,7 @@ ghoul::opengl::Texture* ImageAtlasManager::textureAtlas() {
     return _textureAtlas->dimensions();
     }*/
 
-void ImageAtlasManager::insertTile(GLshort* in, GLfloat* out, unsigned int linearAtlasCoords) {
+void ImageAtlasManager::insertTile(GLshort* in, GLfloat* out, unsigned int linearAtlasCoords, unsigned int brickIndex) {
     int x = linearAtlasCoords % _atlasBricksPerDim;
     int y = linearAtlasCoords / _atlasBricksPerDim;
 
@@ -268,18 +268,18 @@ void ImageAtlasManager::insertTile(GLshort* in, GLfloat* out, unsigned int linea
 
     unsigned int from = 0;
 
-    for (unsigned int yValCoord = yMin; yValCoord<yMax; ++yValCoord) {
-	for (unsigned int xValCoord = xMin; xValCoord<xMax; ++xValCoord) {
-	    unsigned int idx =
-		xValCoord +
-		yValCoord*_atlasWidth;
+    double expTime = _quadtreeList->exposureTime(brickIndex);
+    double maxFlux = _quadtreeList->maxFlux();
+    double lgMaxFlux = std::log10(_quadtreeList->maxFlux());
 
-	    double val = in[from];
-	    out[idx] = std::log10(glm::clamp(val, 1.0, 2000.0))/3.0;
-	    //out[idx] = ((float)from)/_paddedBrickDims.x/_paddedBrickDims.y;
-	    //out[idx] = glm::clamp(val, 1.0, 2000.0)/2000.0;
-	    from++;
-	}
+    for (unsigned int yValCoord = yMin; yValCoord<yMax; ++yValCoord) {
+        for (unsigned int xValCoord = xMin; xValCoord<xMax; ++xValCoord) {
+            unsigned int idx = xValCoord + yValCoord*_atlasWidth;
+            double energy = in[from];
+            double flux = energy /= expTime;
+            out[idx] = std::log10(glm::clamp(flux, 1.0, maxFlux))/lgMaxFlux;
+            from++;
+        }
     }
 }
     
