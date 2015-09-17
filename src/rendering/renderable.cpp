@@ -167,4 +167,8 @@ bool Renderable::isEnabled() const {
 	return _enabled;
 }
 
+bool Renderable::isPenetrable() const {
+    return false;
+}
+
 }  // namespace openspace
