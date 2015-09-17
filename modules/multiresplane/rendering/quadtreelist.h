@@ -39,18 +39,35 @@ namespace openspace {
 class QuadtreeList {
 public:
 
-    struct Header {
+    struct CommonMetaData {
         unsigned int nTimesteps;
         unsigned int nBricksPerDim;
         unsigned int brickWidth;
         unsigned int brickHeight;
         unsigned int paddingWidth;
         unsigned int paddingHeight;
+        int16_t minEnergy;
+        int16_t maxEnergy;
+        double minFlux;
+        double maxFlux;
+        double minExpTime;
+        double maxExpTime;
     };
 
-    struct ImageBrick {
-        unsigned int brickIndex;
+    // Compiler may choose to align values in the struct
+    // so that the size becomes larger than
+    // the sum of its contained member's sizes.
+    static constexpr int _commonMetaDataSize =
+        sizeof(unsigned int) * 6 +
+        sizeof(int16_t) * 2 +
+        sizeof(double) * 4;
+
+    struct ImageMetaData {
+        double exposureTime;
     };
+
+    static constexpr int _imageMetaDataSize =
+        sizeof(double);
 
     QuadtreeList(const std::string& filename);
     ~QuadtreeList();
@@ -58,7 +75,7 @@ public:
     bool load();
     bool readHeader();
 
-    static long long dataPosition();
+    long long dataPosition();
 
     unsigned int nTimesteps();
     unsigned int nBricksPerDim();
@@ -71,6 +88,9 @@ public:
     unsigned int nQuadtreeLevels();
     unsigned int nQuadtreeNodes();
     unsigned int nTotalNodes();
+    double exposureTime(unsigned int brickIndex);
+    double minFlux();
+    double maxFlux();
 
     std::ifstream& file();
 
@@ -82,7 +102,8 @@ private:
     std::ifstream _file;
 
     // Data from file
-    Header _header;
+    CommonMetaData _commonMetaData;
+    ImageMetaData* _imageMetaData;
 
     // Additional metadata
     unsigned int _paddedBrickWidth;

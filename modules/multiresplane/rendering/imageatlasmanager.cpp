@@ -49,15 +49,23 @@ void ImageAtlasManager::setAtlasCapacity(unsigned int atlasCapacity) {
     _needsReinitialization = true;
 }
 
+glm::ivec2 ImageAtlasManager::getAtlasDimensions() {
+    return glm::ivec2(_atlasWidth, _atlasHeight);
+}
+
+glm::ivec2 ImageAtlasManager::getBricksInAtlas() {
+    return glm::ivec2(_atlasBricksPerDim, _atlasBricksPerDim);
+}
+
 bool ImageAtlasManager::initialize() {
     if (_textureAtlas) {
-	delete _textureAtlas;
+        delete _textureAtlas;
     }
     if (_pboHandle) {
-	glDeleteBuffers(1, &_pboHandle);
+        glDeleteBuffers(1, &_pboHandle);
     }
     if (_atlasMapBuffer) {
-	glDeleteBuffers(1, &_atlasMapBuffer);
+        glDeleteBuffers(1, &_atlasMapBuffer);
     }
 
     _nBricksPerDim = _quadtreeList->nBricksPerDim();
@@ -77,9 +85,9 @@ bool ImageAtlasManager::initialize() {
     _nQtLevels = _quadtreeList->nQuadtreeLevels();
     _nQtNodes = _quadtreeList->nQuadtreeNodes();
     _textureAtlas = new ghoul::opengl::Texture(glm::size3_t(_atlasWidth, _atlasHeight, 1), 
-					       ghoul::opengl::Texture::Format::RGB,
-					       GL_RGBA,
-					       GL_FLOAT);
+                                               ghoul::opengl::Texture::Format::RGB,
+                                               GL_RGBA,
+                                               GL_FLOAT);
     _textureAtlas->uploadTexture();
 
     glGenBuffers(1, &_pboHandle);
@@ -103,55 +111,54 @@ bool ImageAtlasManager::initialize() {
     }
     
     _needsReinitialization = false;
-	return true;
+    return true;
 }
 
 void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
 
     if (_needsReinitialization) {
-	initialize();
+        initialize();
     }
     
     int nBrickIndices = brickIndices.size();
 
     _requiredBricks.clear();
     for (int i = 0; i < nBrickIndices; i++) {
-	int requiredIndex = brickIndices[i];
-	if (requiredIndex >= 0) {
-	    _requiredBricks.insert(requiredIndex);
-	}
+        int requiredIndex = brickIndices[i];
+        if (requiredIndex >= 0) {
+            _requiredBricks.insert(requiredIndex);
+        }
     }
 
     // for now: remove all previously required bricks
     // possibly put them in a queue for possible removal
     // (keeping things in cache as long as possible)
     for (unsigned int it : _prevRequiredBricks) {
-	if (!_requiredBricks.count(it)) {
-	    removeFromAtlas(it);
-	}
+        if (!_requiredBricks.count(it)) {
+            removeFromAtlas(it);
+        }
     }
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, _pboHandle);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, _atlasSize, 0, GL_STREAM_DRAW);
     GLfloat* mappedBuffer = reinterpret_cast<GLfloat*>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
     
     if (!mappedBuffer) {
-	LERROR("Failed to map PBO.");
-	LERROR(glGetError());
-	assert(false);
-	return;
+        LERROR("Failed to map PBO.");
+        LERROR(glGetError());
+        assert(false);
+        return;
     }
     
     for (auto itStart = _requiredBricks.begin(); itStart != _requiredBricks.end();) {
-	int firstBrick = *itStart;
-	int lastBrick = firstBrick;
-	
-	auto itEnd = itStart;
+        int firstBrick = *itStart;
+        int lastBrick = firstBrick;
+
+        auto itEnd = itStart;
         for (itEnd++; itEnd != _requiredBricks.end() && *itEnd == lastBrick + 1; itEnd++) {
             lastBrick = *itEnd;
         }
-
         addToAtlas(firstBrick, lastBrick, mappedBuffer);
-	
         itStart = itEnd;
     }
 
@@ -159,12 +166,12 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     for (int i = 0; i < nBrickIndices; i++) {
-	int brickIndex = brickIndices[i];
-	if (brickIndex >= 0) {
-	    _atlasMap[i] = _brickMap[brickIndex];
-	} else {
-	    _atlasMap[i] = 0;
-	}
+        int brickIndex = brickIndices[i];
+        if (brickIndex >= 0) {
+            _atlasMap[i] = _brickMap[brickIndex];
+        } else {
+            _atlasMap[i] = 0;
+        }
     }
 
     std::swap(_prevRequiredBricks, _requiredBricks);
@@ -172,12 +179,13 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     pboToAtlas();
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, _atlasMapBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLint)*_atlasMap.size(), 0, GL_STREAM_DRAW);
     GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
     if (!to) {
-	LERROR("Failed to map SSBO.");
-	LERROR(glGetError());
-	assert(false);
-	return;
+        LERROR("Failed to map SSBO.");
+        LERROR(glGetError());
+        assert(false);
+        return;
     }
     memcpy(to, _atlasMap.data(), sizeof(GLint)*_atlasMap.size());
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
@@ -193,7 +201,7 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
     GLshort* sequenceBuffer = new GLshort[sequenceLength*_nBrickVals];
     size_t bufferSize = sequenceLength * _brickSize;
 
-    long offset = QuadtreeList::dataPosition() + static_cast<long>(firstBrickIndex) * static_cast<long>(_brickSize);
+    long offset = _quadtreeList->dataPosition() + static_cast<long>(firstBrickIndex) * static_cast<long>(_brickSize);
     _quadtreeList->file().seekg(offset);
     _quadtreeList->file().read(reinterpret_cast<char*>(sequenceBuffer), bufferSize);
 
@@ -205,7 +213,7 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
             assert(atlasCoords <= 0x0FFFFFFF);
             unsigned int atlasData = (level << 28) + atlasCoords;
             _brickMap.insert(std::pair<unsigned int, unsigned int>(brickIndex, atlasData));
-            insertTile(&sequenceBuffer[_nBrickVals*(brickIndex - firstBrickIndex)], mappedBuffer, atlasCoords);
+            insertTile(&sequenceBuffer[_nBrickVals*(brickIndex - firstBrickIndex)], mappedBuffer, atlasCoords, brickIndex);
         }
     }
 
@@ -237,14 +245,14 @@ void ImageAtlasManager::pboToAtlas() {
     glBindTexture(GL_TEXTURE_2D, *_textureAtlas);
 
     glTexSubImage2D(GL_TEXTURE_2D,
-		    0,
-		    0,
-		    0,
-		    dim[0],
-		    dim[1],
-		    GL_RED,
-		    GL_FLOAT,
-		    NULL);
+                    0,
+                    0,
+                    0,
+                    dim[0],
+                    dim[1],
+                    GL_RED,
+                    GL_FLOAT,
+                    NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
@@ -257,7 +265,7 @@ ghoul::opengl::Texture* ImageAtlasManager::textureAtlas() {
     return _textureAtlas->dimensions();
     }*/
 
-void ImageAtlasManager::insertTile(GLshort* in, GLfloat* out, unsigned int linearAtlasCoords) {
+void ImageAtlasManager::insertTile(GLshort* in, GLfloat* out, unsigned int linearAtlasCoords, unsigned int brickIndex) {
     int x = linearAtlasCoords % _atlasBricksPerDim;
     int y = linearAtlasCoords / _atlasBricksPerDim;
 
@@ -268,18 +276,18 @@ void ImageAtlasManager::insertTile(GLshort* in, GLfloat* out, unsigned int linea
 
     unsigned int from = 0;
 
-    for (unsigned int yValCoord = yMin; yValCoord<yMax; ++yValCoord) {
-	for (unsigned int xValCoord = xMin; xValCoord<xMax; ++xValCoord) {
-	    unsigned int idx =
-		xValCoord +
-		yValCoord*_atlasWidth;
+    double expTime = _quadtreeList->exposureTime(brickIndex);
+    double maxFlux = _quadtreeList->maxFlux();
+    double lgMaxFlux = std::log10(_quadtreeList->maxFlux());
 
-	    double val = in[from];
-	    out[idx] = std::log10(glm::clamp(val, 1.0, 2000.0))/3.0;
-	    //out[idx] = ((float)from)/_paddedBrickDims.x/_paddedBrickDims.y;
-	    //out[idx] = glm::clamp(val, 1.0, 2000.0)/2000.0;
-	    from++;
-	}
+    for (unsigned int yValCoord = yMin; yValCoord<yMax; ++yValCoord) {
+        for (unsigned int xValCoord = xMin; xValCoord<xMax; ++xValCoord) {
+            unsigned int idx = xValCoord + yValCoord*_atlasWidth;
+            double energy = in[from];
+            double flux = energy /= expTime;
+            out[idx] = std::log10(glm::clamp(flux, 1.0, maxFlux))/lgMaxFlux;
+            from++;
+        }
     }
 }
     
