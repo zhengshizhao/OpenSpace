@@ -348,9 +348,11 @@ void ScriptEngine::initializeLuaState(lua_State* state) {
     lua_newtable(state);
     lua_setglobal(state, _openspaceLibraryName.c_str());
 
-	LDEBUG("Add OpenSpace modules");
-	for (const LuaLibrary& lib : _registeredLibraries)
-		registerLuaLibrary(state, lib);
+    LDEBUG("Add OpenSpace modules");
+    for (const LuaLibrary& lib : _registeredLibraries)
+        registerLuaLibrary(state, lib);
+
+    runScriptFile("${SCRIPTS}/base.lua");
 }
 
 bool ScriptEngine::registerLuaLibrary(lua_State* state, const LuaLibrary& library) {
@@ -512,6 +514,8 @@ void ScriptEngine::postSynchronizationPreDraw(){
 void ScriptEngine::preSynchronization(){
 	
 	_mutex.lock();
+
+	runScript("__tickFrameTimeouts()");
 	
 	if (!_queuedScripts.empty()){
 		_currentSyncedScript = _queuedScripts.back();
