@@ -31,7 +31,7 @@
 #include <ghoul/lua/lua_helper.h>
 #include <fstream>
 #include <iomanip>
-
+#include <cassert>
 #include "scriptengine_lua.inl"
 
 namespace openspace {
@@ -352,7 +352,7 @@ void ScriptEngine::initializeLuaState(lua_State* state) {
     for (const LuaLibrary& lib : _registeredLibraries)
         registerLuaLibrary(state, lib);
 
-    runScriptFile("${SCRIPTS}/base.lua");
+    runScriptFile(absPath("${SCRIPTS}/base.lua"));
 }
 
 bool ScriptEngine::registerLuaLibrary(lua_State* state, const LuaLibrary& library) {
