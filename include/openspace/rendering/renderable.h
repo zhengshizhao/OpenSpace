@@ -69,6 +69,7 @@ public:
     virtual void update(const UpdateData& data);
 
 	bool isVisible() const;
+    virtual bool isPenetrable() const;
 	
 	bool hasTimeInterval();
 	bool getInterval(double& start, double& end);

@@ -59,6 +59,8 @@ public:
     virtual void update(const UpdateData& data) override;
     virtual void render(const RenderData& data) override;
 
+    virtual bool isPenetrable() const override;
+
 protected:
     ghoul::opengl::Texture* loadVolume(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);
     glm::vec3 getVolumeOffset(const std::string& filepath, const ghoul::Dictionary& hintsDictionary);

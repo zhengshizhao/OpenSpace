@@ -577,6 +577,9 @@ ghoul::RawVolumeReader::ReadHints RenderableVolume::readHints(const ghoul::Dicti
     }
     return hints;
 }
-    
+
+bool RenderableVolume::isPenetrable() const {
+    return true;
+}
 
 } // namespace openspace
