@@ -43,5 +43,5 @@ void main() {
 
     // project the position to view space
     gl_Position =  viewProjection * position;
-    gl_Position.zw = vec2(0.0, 1.0);
+    gl_Position.zw = vec2(0.0, 0.0);
 }
