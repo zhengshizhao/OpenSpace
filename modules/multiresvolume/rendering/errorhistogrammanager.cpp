@@ -176,19 +176,18 @@ bool ErrorHistogramManager::loadFromFile(const std::string& filename) {
         return false;
     }
 
-    int numHistograms;
-    file.read(reinterpret_cast<char*>(&numHistograms), sizeof(int));
+    file.read(reinterpret_cast<char*>(&_numInnerNodes), sizeof(int));
     file.read(reinterpret_cast<char*>(&_numBins), sizeof(int));
     file.read(reinterpret_cast<char*>(&_minBin), sizeof(float));
     file.read(reinterpret_cast<char*>(&_maxBin), sizeof(float));
 
-    int nFloats = numHistograms * _numBins;
+    int nFloats = _numInnerNodes * _numBins;
     float* histogramData = new float[nFloats];
     file.read(reinterpret_cast<char*>(histogramData), sizeof(float) * nFloats);
 
-    _histograms = std::vector<Histogram>(numHistograms);
+    _histograms = std::vector<Histogram>(_numInnerNodes);
 
-    for (int i = 0; i < numHistograms; ++i) {
+    for (int i = 0; i < _numInnerNodes; ++i) {
         int offset = i*_numBins;
         float* data = new float[_numBins];
         memcpy(data, &histogramData[offset], sizeof(float) * _numBins);
@@ -208,16 +207,15 @@ bool ErrorHistogramManager::saveToFile(const std::string& filename) {
         return false;
     }
 
-    int numHistograms = _histograms.size();
-    file.write(reinterpret_cast<char*>(&numHistograms), sizeof(int));
+    file.write(reinterpret_cast<char*>(&_numInnerNodes), sizeof(int));
     file.write(reinterpret_cast<char*>(&_numBins), sizeof(int));
     file.write(reinterpret_cast<char*>(&_minBin), sizeof(float));
     file.write(reinterpret_cast<char*>(&_maxBin), sizeof(float));
 
-    int nFloats = numHistograms * _numBins;
+    int nFloats = _numInnerNodes * _numBins;
     float* histogramData = new float[nFloats];
 
-    for (int i = 0; i < numHistograms; ++i) {
+    for (int i = 0; i < _numInnerNodes; ++i) {
         int offset = i*_numBins;
         memcpy(&histogramData[offset], _histograms[i].data(), sizeof(float) * _numBins);
     }
