@@ -272,4 +272,8 @@ void RenderableMultiresPlane::createPlane() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 6, reinterpret_cast<void*>(sizeof(GLfloat) * 4));
 }
 
+bool RenderableMultiresPlane::isPenetrable() const {
+    return true;
+}
+
 } // namespace openspace

@@ -57,6 +57,8 @@ public:
     bool isReady() const override;
     void render(const RenderData& data) override;
 
+    virtual bool isPenetrable() const override;
+
 private:
     void createPlane();
 
