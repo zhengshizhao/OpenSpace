@@ -109,7 +109,7 @@ void ImageBrickSelector::selectBricks(int timestep, const RenderData& renderData
     }
 
     if (nUsedBricks != _prevUsedBricks) {
-        LINFO("used bricks: " << nUsedBricks);
+        //LINFO("used bricks: " << nUsedBricks);
         _prevUsedBricks = nUsedBricks;
     }
 }
