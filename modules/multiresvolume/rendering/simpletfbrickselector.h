@@ -39,12 +39,14 @@ class TransferFunction;
 
 class SimpleTfBrickSelector : public BrickSelector {
 public:
-    SimpleTfBrickSelector(TSP* tsp, HistogramManager* hm, TransferFunction* tf, int brickBudget);
+    SimpleTfBrickSelector(TSP* tsp, HistogramManager* hm, TransferFunction* tf, int memoryBudget, int streamingBudget);
     ~SimpleTfBrickSelector();
 
     virtual bool initialize();
+
     void selectBricks(int timestep, std::vector<int>& bricks);
-    void setBrickBudget(int brickBudget);
+    void setMemoryBudget(int memoryBudget);
+    void setStreamingBudget(int streamingBudget);
     bool calculateBrickImportances();
  private:
 
@@ -59,7 +61,8 @@ public:
     int linearCoords(int x, int y, int z);
     void writeSelection(BrickSelection coveredBricks, std::vector<int>& bricks);
 
-    int _brickBudget;
+    int _memoryBudget;
+    int _streamingBudget;
 };
 
 } // namespace openspace

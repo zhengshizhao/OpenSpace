@@ -56,6 +56,8 @@
 
 #include <algorithm>
 #include <iterator>
+#include <fstream>
+#include <algorithm>
 
 namespace {
     const std::string _loggerCat = "RenderableMultiresVolume";
@@ -92,11 +94,15 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     , _histogramManager(nullptr)
     , _localErrorHistogramManager(nullptr)
     , _stepSizeCoefficient("stepSizeCoefficient", "Stepsize Coefficient", 1.f, 0.01f, 10.f)
-    , _currentTime("currentTime", "Current Time", 0.f, 0.f, 1.f)
-    , _memoryBudget("memoryBudget", "Memory Budget", 0.f, 0.f, 2048.f)
-    , _streamingBudget("streamingBudget", "Streaming Budget", 0.f, 0.f, 2048.f)
+    , _currentTime("currentTime", "Current Time", 0, 0, 0)
+    , _memoryBudget("memoryBudget", "Memory Budget", 0, 0, 0)
+    , _streamingBudget("streamingBudget", "Streaming Budget", 0, 0, 0)
     , _useGlobalTime("useGlobalTime", "Global Time", false)
     , _loop("loop", "Loop", false)
+    , _selectorName("selector", "Brick Selector")
+    , _gatheringStats(false)
+    , _statsToFile("printStats", "Print Stats", false)
+    , _statsToFileName("printStatsFileName", "Stats Filename")
 {
     std::string name;
     bool success = dictionary.getValue(constants::scenegraphnode::keyName, name);
@@ -172,29 +178,45 @@ RenderableMultiresVolume::RenderableMultiresVolume (const ghoul::Dictionary& dic
     _tsp = new TSP(_filename);
     _atlasManager = new AtlasManager(_tsp);
 
-
+    _selectorName = "tf";
     std::string brickSelectorType;
-    Selector selector = Selector::TF;
     if (dictionary.hasKey(KeyBrickSelector)) {
         success = dictionary.getValue(KeyBrickSelector, brickSelectorType);
         if (success) {
-            if (brickSelectorType == "tf") {
-                selector = Selector::TF;
-            } else if (brickSelectorType == "simple") {
-                selector = Selector::SIMPLE;
-            } else if (brickSelectorType == "local") {
-                selector = Selector::LOCAL;
-            }
+            _selectorName = brickSelectorType;
         }
     }
-    _selector = selector;
+
+    std::string selectorName = _selectorName;
+    if (selectorName == "simple") {
+        _selector = Selector::SIMPLE;
+    } else if (selectorName == "local") {
+        _selector = Selector::LOCAL;
+    } else {
+        _selector = Selector::TF;
+    }
+
+    addProperty(_selectorName);
+    _selectorName.onChange([&] {
+        Selector s;
+        std::string newSelectorName = _selectorName;
+        if (newSelectorName == "simple") {
+            s = Selector::SIMPLE;
+        } else if (newSelectorName == "local") {
+            s = Selector::LOCAL;
+        } else if (newSelectorName == "tf") {
+            s = Selector::TF;
+        } else {
+            return;
+        }
+        setSelectorType(s);
+    });
 
     addProperty(_stepSizeCoefficient);
     addProperty(_useGlobalTime);
     addProperty(_loop);
-    addProperty(_currentTime);
-    addProperty(_memoryBudget);
-    addProperty(_streamingBudget);
+    addProperty(_statsToFile);
+    addProperty(_statsToFileName);
 
     //_brickSelector = new ShenBrickSelector(_tsp, -1, -1);
 }
@@ -235,7 +257,10 @@ bool RenderableMultiresVolume::setSelectorType(Selector selector) {
                 _transferFunction->setCallback([tbs](const TransferFunction &tf) {
                     tbs->calculateBrickErrors();
                 });
-                return initializeSelector();
+                if (initializeSelector()) {
+                    tbs->calculateBrickErrors();
+                    return true;
+                }
             }
             break;
 
@@ -243,11 +268,14 @@ bool RenderableMultiresVolume::setSelectorType(Selector selector) {
             if (!_simpleTfBrickSelector) {
                 SimpleTfBrickSelector *stbs;
                 _histogramManager = new HistogramManager();
-                _simpleTfBrickSelector = stbs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _memoryBudget);
+                _simpleTfBrickSelector = stbs = new SimpleTfBrickSelector(_tsp, _histogramManager, _transferFunction, _memoryBudget, _streamingBudget);
                 _transferFunction->setCallback([stbs](const TransferFunction &tf) {
                     stbs->calculateBrickImportances();
                 });
-                return initializeSelector();
+                if (initializeSelector()) {
+                    stbs->calculateBrickImportances();
+                    return true;
+                }
             }
             break;
 
@@ -255,11 +283,14 @@ bool RenderableMultiresVolume::setSelectorType(Selector selector) {
             if (!_localTfBrickSelector) {
                 LocalTfBrickSelector* ltbs;
                 _localErrorHistogramManager = new LocalErrorHistogramManager(_tsp);
-                _localTfBrickSelector = ltbs = new LocalTfBrickSelector(_tsp, _localErrorHistogramManager, _transferFunction, _memoryBudget);
+                _localTfBrickSelector = ltbs = new LocalTfBrickSelector(_tsp, _localErrorHistogramManager, _transferFunction, _memoryBudget, _streamingBudget);
                 _transferFunction->setCallback([ltbs](const TransferFunction &tf) {
                     ltbs->calculateBrickErrors();
                 });
-                return initializeSelector();
+                if (initializeSelector()) {
+                    ltbs->calculateBrickErrors();
+                    return true;
+                }
             }
             break;
     }
@@ -270,11 +301,21 @@ bool RenderableMultiresVolume::initialize() {
     bool success = RenderableVolume::initialize();
 
     success &= _tsp && _tsp->load();
-    _memoryBudget = 2048;
-    _streamingBudget = 2048;
+
+    unsigned int maxNumBricks = _tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_;
+
+    unsigned int maxInitialBudget = 2048;
+    int initialBudget = std::min(maxInitialBudget, maxNumBricks);
+
+    _currentTime = properties::IntProperty("currentTime", "Current Time", 0, 0, _tsp->header().numTimesteps_ - 1);
+    _memoryBudget = properties::IntProperty("memoryBudget", "Memory Budget", initialBudget, 0, maxNumBricks);
+    _streamingBudget = properties::IntProperty("streamingBudget", "Streaming Budget", initialBudget, 0, maxNumBricks);
+    addProperty(_currentTime);
+    addProperty(_memoryBudget);
+    addProperty(_streamingBudget);
 
     if (success) {
-        _brickIndices.resize(_tsp->header().xNumBricks_ * _tsp->header().yNumBricks_ * _tsp->header().zNumBricks_, 0);
+        _brickIndices.resize(maxNumBricks, 0);
         success &= setSelectorType(_selector);
     }
 
@@ -304,7 +345,7 @@ bool RenderableMultiresVolume::isReady() const {
 
 
 bool RenderableMultiresVolume::initializeSelector() {
-    int nHistograms = 500;
+    int nHistograms = 50;
     bool success = true;
 
     switch (_selector) {
@@ -400,10 +441,16 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
         currentTimestep = t * numTimesteps;
         visible = currentTimestep >= 0 && currentTimestep < numTimesteps;
     } else {
-	currentTimestep = _currentTime * numTimesteps;
+        currentTimestep = _currentTime;
     }
 
     if (visible) {
+
+        TimePoint selectionStart;
+        if (_gatheringStats) {
+            selectionStart = std::chrono::system_clock::now();
+        }
+
         switch (_selector) {
         case Selector::TF:
             if (_tfBrickSelector) {
@@ -414,18 +461,36 @@ void RenderableMultiresVolume::preResolve(ghoul::opengl::ProgramObject* program)
             break;
         case Selector::SIMPLE:
             if (_simpleTfBrickSelector) {
-                _simpleTfBrickSelector->setBrickBudget(_memoryBudget);
+                _simpleTfBrickSelector->setMemoryBudget(_memoryBudget);
+                _simpleTfBrickSelector->setStreamingBudget(_streamingBudget);
                 _simpleTfBrickSelector->selectBricks(currentTimestep, _brickIndices);
             }
             break;
         case Selector::LOCAL:
             if (_localTfBrickSelector) {
-                _localTfBrickSelector->setBrickBudget(_memoryBudget);
+                _localTfBrickSelector->setMemoryBudget(_memoryBudget);
+                _localTfBrickSelector->setStreamingBudget(_streamingBudget);
                 _localTfBrickSelector->selectBricks(currentTimestep, _brickIndices);
             }
             break;
         }
+
+        TimePoint uploadStart;
+        if (_gatheringStats) {
+            TimePoint selectionEnd = std::chrono::system_clock::now();
+            _selectionDuration = selectionEnd - selectionStart;
+            uploadStart = selectionEnd;
+        }
+
         _atlasManager->updateAtlas(AtlasManager::EVEN, _brickIndices);
+
+        if (_gatheringStats) {
+            TimePoint uploadEnd = std::chrono::system_clock::now();
+            _uploadDuration = uploadEnd - uploadStart;
+            _nDiskReads = _atlasManager->getNumDiskReads();
+            _nUsedBricks = _atlasManager->getNumUsedBricks();
+            _nStreamedBricks = _atlasManager->getNumStreamedBricks();
+        }
     }
 
     std::stringstream ss;
@@ -490,6 +555,37 @@ std::vector<unsigned int> RenderableMultiresVolume::getBuffers() {
 void RenderableMultiresVolume::update(const UpdateData& data) {
     _time = data.time;
     RenderableVolume::update(data);
+
+    if (_gatheringStats) {
+        TimePoint frameEnd = std::chrono::system_clock::now();
+        Duration frameDuration = frameEnd - _frameStart;
+
+        // Make sure that the directory exists
+        ghoul::filesystem::File file(_statsFileName);
+        ghoul::filesystem::Directory directory(file.directoryName());
+        FileSys.createDirectory(directory, true);
+
+        std::ofstream ofs(_statsFileName, std::ofstream::out);
+
+        ofs << frameDuration.count() << " "
+            << _selectionDuration.count() << " "
+            << _uploadDuration.count() << " "
+            << _nUsedBricks << " "
+            << _nStreamedBricks << " "
+            << _nDiskReads;
+
+        ofs.close();
+
+        _gatheringStats = false;
+    }
+    if (_statsToFile) {
+        // Start frame timer
+        _frameStart = std::chrono::system_clock::now();
+        _statsFileName = _statsToFileName;
+
+        _gatheringStats = true;
+        _statsToFile = false;
+    }
 }
 
 } // namespace openspace

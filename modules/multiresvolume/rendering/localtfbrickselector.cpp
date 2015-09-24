@@ -36,11 +36,12 @@ namespace {
 
 namespace openspace {
 
-LocalTfBrickSelector::LocalTfBrickSelector(TSP* tsp, LocalErrorHistogramManager* hm, TransferFunction* tf, int brickBudget)
+LocalTfBrickSelector::LocalTfBrickSelector(TSP* tsp, LocalErrorHistogramManager* hm, TransferFunction* tf, int memoryBudget, int streamingBudget)
     : _tsp(tsp)
     , _histogramManager(hm)
     , _transferFunction(tf)
-    , _brickBudget(brickBudget) {}
+    , _memoryBudget(memoryBudget)
+    , _streamingBudget(streamingBudget) {}
 
 LocalTfBrickSelector::~LocalTfBrickSelector() {}
 
@@ -48,8 +49,12 @@ bool LocalTfBrickSelector::initialize() {
     return calculateBrickErrors();
 }
 
-void LocalTfBrickSelector::setBrickBudget(int brickBudget) {
-    _brickBudget = brickBudget;
+void LocalTfBrickSelector::setMemoryBudget(int memoryBudget) {
+    _memoryBudget = memoryBudget;
+}
+
+void LocalTfBrickSelector::setStreamingBudget(int streamingBudget) {
+    _streamingBudget = streamingBudget;
 }
 
 void LocalTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) {
@@ -63,6 +68,8 @@ void LocalTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) 
 
     std::vector<BrickSelection> priorityQueue;
     std::vector<BrickSelection> leafSelections;
+    std::vector<BrickSelection> temporalSplitQueue;
+    std::vector<BrickSelection> deadEnds;
 
     if (splitType != BrickSelection::SplitType::None) {
         priorityQueue.push_back(brickSelection);
@@ -70,9 +77,12 @@ void LocalTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) 
         leafSelections.push_back(brickSelection);
     }
 
-    int brickBudget = _brickBudget;
-    int nSelectedBricks = 1;
-    while (nSelectedBricks < brickBudget && priorityQueue.size() > 0) {
+    int memoryBudget = _memoryBudget;
+    int totalStreamingBudget = _streamingBudget * numTimeSteps;
+    int nBricksInMemory = 1;
+    int nStreamedBricks = 1;
+
+    while (nBricksInMemory <= memoryBudget - 7 && priorityQueue.size() > 0) {
         std::pop_heap(priorityQueue.begin(), priorityQueue.end(), BrickSelection::compareSplitPoints);
         BrickSelection bs = priorityQueue.back();
 
@@ -84,6 +94,17 @@ void LocalTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) 
             int timeSpanCenter = bs.centerT();
             unsigned int childBrickIndex;
             bool pickRightTimeChild = bs.timestepInRightChild(timestep);
+
+            // On average on the whole time period, splitting this spatial brick in two time steps
+            // would generate twice as much streaming. Current number of streams of this spatial brick
+            // is 2^nTemporalSplits over the whole time period.
+            int newStreams = std::pow(2, bs.nTemporalSplits);
+            if (nStreamedBricks + newStreams > totalStreamingBudget) {
+                // Reached dead end (streaming budget would be exceeded)
+                deadEnds.push_back(bs);
+                break;
+            }
+            nStreamedBricks += newStreams;
 
             if (pickRightTimeChild) {
                 childBrickIndex = _tsp->getBstRight(brickIndex);
@@ -102,8 +123,28 @@ void LocalTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) 
                 leafSelections.push_back(childSelection);
             }
         } else if (bs.splitType == BrickSelection::SplitType::Spatial) {
-            nSelectedBricks += 7; // Remove one and add eight.
+            nBricksInMemory += 7; // Remove one and add eight.
             unsigned int firstChild = _tsp->getFirstOctreeChild(brickIndex);
+
+            // On average on the whole time period, splitting this spatial brick into eight spatial bricks
+            // would generate eight times as much streaming. Current number of streams of this spatial brick
+            // is 2^nTemporalStreams over the whole time period.
+            int newStreams = 7*std::pow(2, bs.nTemporalSplits);
+            if (nStreamedBricks + newStreams > totalStreamingBudget) {
+                // Reached dead end (streaming budget would be exceeded)
+                // However, temporal split might be possible
+                if (bs.splitType != BrickSelection::SplitType::Temporal) {
+                    bs.splitType = BrickSelection::SplitType::Temporal;
+                    bs.splitPoints = temporalSplitPoints(bs.brickIndex);
+                }
+                if (bs.splitPoints > -1) {
+                    temporalSplitQueue.push_back(bs);
+                } else {
+                    deadEnds.push_back(bs);
+                }
+                break;
+            }
+            nStreamedBricks += newStreams;
 
             for (unsigned int i = 0; i < 8; i++) {
                 unsigned int childBrickIndex = firstChild + i;
@@ -122,34 +163,79 @@ void LocalTfBrickSelector::selectBricks(int timestep, std::vector<int>& bricks) 
         }
     }
 
-    std::cout << "Bricks used: " << nSelectedBricks << " / " << brickBudget << "     \r" << std::flush;
+    // Is it possible that we may stream more bricks?
+    if (nStreamedBricks < totalStreamingBudget) {
+        while (priorityQueue.size() > 0) {
+            BrickSelection bs = priorityQueue.back();
+            if (bs.splitType != BrickSelection::SplitType::Temporal) {
+                bs.splitType = BrickSelection::SplitType::Temporal;
+                bs.splitPoints = temporalSplitPoints(bs.brickIndex);
+            }
+            priorityQueue.pop_back();
+            if (bs.splitPoints > -1) {
+                temporalSplitQueue.push_back(bs);
+                std::push_heap(temporalSplitQueue.begin(), temporalSplitQueue.end(), BrickSelection::compareSplitPoints);
+            } else {
+                deadEnds.push_back(bs);
+            }
+        }
 
-    unsigned int selectedTime = -1;
-    bool sameTime = true;
+        while (nStreamedBricks < totalStreamingBudget - 1 && temporalSplitQueue.size() > 0) {
+            std::pop_heap(temporalSplitQueue.begin(), temporalSplitQueue.end(), BrickSelection::compareSplitPoints);
+            BrickSelection bs = temporalSplitQueue.back();
+            temporalSplitQueue.pop_back();
+
+            unsigned int brickIndex = bs.brickIndex;
+            int newStreams = std::pow(2, bs.nTemporalSplits);
+            if (nStreamedBricks + newStreams > totalStreamingBudget) {
+                // The current best choice would make us exceed the streaming budget, try next instead.
+                deadEnds.push_back(bs);
+                continue;
+            }
+
+            nStreamedBricks += newStreams;
+            unsigned int childBrickIndex;
+            bool pickRightTimeChild = bs.timestepInRightChild(timestep);
+
+            if (pickRightTimeChild) {
+                childBrickIndex = _tsp->getBstRight(brickIndex);
+            } else {
+                childBrickIndex = _tsp->getBstLeft(brickIndex);
+            }
+
+            float childSplitPoints = temporalSplitPoints(childBrickIndex);
+
+            if (childSplitPoints > -1) {
+                BrickSelection childSelection = bs.splitTemporally(pickRightTimeChild, childBrickIndex, BrickSelection::SplitType::Temporal, childSplitPoints);
+                temporalSplitQueue.push_back(childSelection);
+                std::push_heap(temporalSplitQueue.begin(), temporalSplitQueue.end(), BrickSelection::compareSplitPoints);
+            } else {
+                BrickSelection childSelection = bs.splitTemporally(pickRightTimeChild, childBrickIndex, BrickSelection::SplitType::None, -1);
+                deadEnds.push_back(childSelection);
+            }
+        }
+    } else {
+        // Write selected inner nodes to brickSelection vector
+        for (const BrickSelection& bs : priorityQueue) {
+            writeSelection(bs, bricks);
+        } 
+    }
 
     // Write selected inner nodes to brickSelection vector
-    for (const BrickSelection& bs : priorityQueue) {
-        unsigned int thisTime = bs.brickIndex / _tsp->numOTNodes();
-        if (selectedTime > -1) {
-            sameTime &= selectedTime == thisTime;
-        }
-        selectedTime = thisTime;
+    for (const BrickSelection& bs : temporalSplitQueue) {
         writeSelection(bs, bricks);
     }
-
+    // Write dead end nodes to brickSelection vector
+    for (const BrickSelection& bs : deadEnds) {
+        writeSelection(bs, bricks);
+    }
     // Write selected leaf nodes to brickSelection vector
     for (const BrickSelection& bs : leafSelections) {
-        unsigned int thisTime = bs.brickIndex / _tsp->numOTNodes();
-        if (selectedTime > -1) {
-            sameTime &= selectedTime == thisTime;
-        }
-        selectedTime = thisTime;
         writeSelection(bs, bricks);
     }
 
-    if (!sameTime) {
-        std::cout << std::endl << "NOT SAME TIME!!!" << std::endl;
-    }
+    //std::cout << "Bricks in memory: " << nBricksInMemory << "/" << _memoryBudget << "___\t\t"
+    //          << "Streamed bricks:  " << nStreamedBricks << "/" << totalStreamingBudget << std::flush << "___\r";
 }
 
 float LocalTfBrickSelector::temporalSplitPoints(unsigned int brickIndex) {

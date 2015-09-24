@@ -25,6 +25,7 @@
 #ifndef __CAMERA_H__
 #define __CAMERA_H__
 
+#include <openspace/scripting/scriptengine.h>
 #include <mutex>
 
 // open space includes
@@ -148,6 +149,15 @@ public:
 	void preSynchronization();
 	void serialize(SyncBuffer* syncBuffer);
 	void deserialize(SyncBuffer* syncBuffer);
+
+    /**
+     * Returns the Lua library that contains all Lua functions available to change the
+     * position of the camera and the rotation of the camera. The functions contained are
+     * - openspace::luascriptfunctions::camera_setPosition
+     * \return The Lua library that contains all Lua functions available to change the
+     * Camera position and rotation
+     */
+    static scripting::ScriptEngine::LuaLibrary luaLibrary();
 
 private:
     float _maxFov;

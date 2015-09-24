@@ -44,14 +44,15 @@ public:
         float temporal;
     };
 
-    LocalTfBrickSelector(TSP* tsp, LocalErrorHistogramManager* hm, TransferFunction* tf, int brickBudget);
+    LocalTfBrickSelector(TSP* tsp, LocalErrorHistogramManager* hm, TransferFunction* tf, int memoryBudget, int streamingBudget);
     ~LocalTfBrickSelector();
 
     virtual bool initialize();
 
-    bool calculateBrickErrors();
     void selectBricks(int timestep, std::vector<int>& bricks);
-    void setBrickBudget(int brickBudget);
+    void setMemoryBudget(int memoryBudget);
+    void setStreamingBudget(int streamingBudget);
+    bool calculateBrickErrors();
  private:
 
     TSP* _tsp;
@@ -66,7 +67,8 @@ public:
     int linearCoords(int x, int y, int z);
     void writeSelection(BrickSelection coveredBricks, std::vector<int>& bricks);
 
-    int _brickBudget;
+    int _memoryBudget;
+    int _streamingBudget;
     
 };
 

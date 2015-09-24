@@ -60,6 +60,10 @@ public:
     void pboToAtlas(BUFFER_INDEX bufferIndex);
     ghoul::opengl::Texture* textureAtlas();
     glm::size3_t textureSize();
+
+    unsigned int getNumDiskReads();
+    unsigned int getNumUsedBricks();
+    unsigned int getNumStreamedBricks();
 private:
     const unsigned int NOT_USED = UINT_MAX;
     TSP* _tsp;
@@ -73,6 +77,11 @@ private:
     std::set<unsigned int> _prevRequiredBricks;
 
     ghoul::opengl::Texture* _textureAtlas;
+
+    // Stats
+    unsigned int _nUsedBricks;
+    unsigned int _nStreamedBricks;
+    unsigned int _nDiskReads;
 
     unsigned int _nBricksPerDim,
                  _nOtLeaves,

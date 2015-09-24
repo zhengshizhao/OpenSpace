@@ -32,6 +32,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
+#include "camera_lua.inl"
+
 namespace openspace {
 
     
@@ -269,6 +271,22 @@ void Camera::preSynchronization(){
 	_sharedScaling = _localScaling;
 
 	_syncMutex.unlock();
+}
+
+scripting::ScriptEngine::LuaLibrary Camera::luaLibrary() {
+    scripting::ScriptEngine::LuaLibrary cameraLibrary = {
+        "camera",
+        {
+            {
+                "setPosition",
+                &luascriptfunctions::camera_setPosition,
+                "number, number, number, number",
+                "Sets the position of the Camera "
+                "in powerscaled coordinates"
+            },
+        }
+    };
+    return cameraLibrary;
 }
 
 //

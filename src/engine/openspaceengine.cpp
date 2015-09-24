@@ -40,6 +40,7 @@
 #include <openspace/rendering/renderengine.h>
 #include <openspace/scripting/scriptengine.h>
 #include <openspace/scene/scene.h>
+#include <openspace/util/camera.h>
 #include <openspace/util/time.h>
 #include <openspace/util/spicemanager.h>
 #include <openspace/util/factorymanager.h>
@@ -321,6 +322,7 @@ bool OpenSpaceEngine::initialize() {
 	_scriptEngine->addLibrary(Scene::luaLibrary());
 	_scriptEngine->addLibrary(Time::luaLibrary());
 	_scriptEngine->addLibrary(interaction::InteractionHandler::luaLibrary());
+    _scriptEngine->addLibrary(Camera::luaLibrary());
 	_scriptEngine->addLibrary(LuaConsole::luaLibrary());
 	_scriptEngine->addLibrary(gui::GUI::luaLibrary());
 

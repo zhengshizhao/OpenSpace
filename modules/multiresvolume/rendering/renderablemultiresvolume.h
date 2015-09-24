@@ -26,11 +26,13 @@
 #define __RENDERABLEMULTIRESVOLUME_H__
 
 #include <vector>
+#include <chrono>
 #include <modules/volume/rendering/renderablevolume.h>
 #include <modules/base/rendering/transferfunction.h>
 #include <openspace/util/powerscaledcoordinate.h>
 #include <ghoul/misc/dictionary.h>
 #include <openspace/properties/scalarproperty.h>
+#include <openspace/properties/stringproperty.h>
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -56,6 +58,10 @@ class ErrorHistogramManager;
 class LocalErrorHistogramManager;
 
 class RenderableMultiresVolume: public RenderableVolume {
+
+    typedef std::chrono::system_clock::time_point TimePoint;
+    typedef std::chrono::duration<double> Duration;
+
 public:
     RenderableMultiresVolume(const ghoul::Dictionary& dictionary);
     ~RenderableMultiresVolume();
@@ -84,10 +90,23 @@ private:
 
     properties::BoolProperty _useGlobalTime;
     properties::BoolProperty _loop;
-    properties::FloatProperty _currentTime; // used to vary time, if not using global time nor looping
-    properties::FloatProperty _memoryBudget;
-    properties::FloatProperty _streamingBudget;
+    properties::IntProperty _currentTime; // used to vary time, if not using global time nor looping
+    properties::IntProperty _memoryBudget;
+    properties::IntProperty _streamingBudget;
     properties::FloatProperty _stepSizeCoefficient;
+    properties::StringProperty _selectorName;
+    properties::BoolProperty _statsToFile;
+    properties::StringProperty _statsToFileName;
+
+    // Stats timers
+    std::string _statsFileName;
+    bool _gatheringStats;
+    TimePoint _frameStart;
+    Duration _selectionDuration;
+    Duration _uploadDuration;
+    unsigned int _nDiskReads;
+    unsigned int _nUsedBricks;
+    unsigned int _nStreamedBricks;
 
     int _timestep;
 
