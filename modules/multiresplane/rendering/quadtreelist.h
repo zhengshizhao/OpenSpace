@@ -39,8 +39,15 @@ namespace openspace {
 class QuadtreeList {
 public:
 
+    enum class CompressionType : unsigned int {
+	NONE = 0,
+	LZ4_2D_PRED = 1
+    };
+
     struct CommonMetaData {
         unsigned int nTimesteps;
+        unsigned int nBricks;
+        CompressionType compressionType;
         unsigned int nBricksPerDim;
         unsigned int brickWidth;
         unsigned int brickHeight;
@@ -58,7 +65,7 @@ public:
     // so that the size becomes larger than
     // the sum of its contained member's sizes.
     static constexpr int _commonMetaDataSize =
-        sizeof(unsigned int) * 6 +
+        sizeof(unsigned int) * 8 +
         sizeof(int16_t) * 2 +
         sizeof(double) * 4;
 
@@ -69,14 +76,22 @@ public:
     static constexpr int _imageMetaDataSize =
         sizeof(double);
 
+    struct BrickMetaData {
+        unsigned int dataPosition;
+    };
+
+    static constexpr int _brickMetaDataSize =
+        sizeof(unsigned int);
+
     QuadtreeList(const std::string& filename);
     ~QuadtreeList();
 
     bool load();
     bool readHeader();
 
-    long long dataPosition();
+    long long dataPosition(unsigned int brickIndex);
 
+    CompressionType compressionType();
     unsigned int nTimesteps();
     unsigned int nBricksPerDim();
     unsigned int brickWidth();
@@ -104,6 +119,7 @@ private:
     // Data from file
     CommonMetaData _commonMetaData;
     ImageMetaData* _imageMetaData;
+    BrickMetaData* _brickMetaData;
 
     // Additional metadata
     unsigned int _paddedBrickWidth;
@@ -111,6 +127,7 @@ private:
     unsigned int _nQtLevels;
     unsigned int _nQtNodes;
     unsigned int _nTotalNodes;
+    long long _fileSize;
 
 }; // class QuadtreeList
 

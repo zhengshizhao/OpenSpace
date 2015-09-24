@@ -47,6 +47,7 @@ QuadtreeList::QuadtreeList(const std::string& filename)
     , _nQtLevels(0)
     , _nQtNodes(0)
     , _nTotalNodes(0)
+    , _fileSize(0)
     , _imageMetaData(nullptr) {
     _file.open(_filename, std::ios::in | std::ios::binary);
 }
@@ -56,6 +57,9 @@ QuadtreeList::~QuadtreeList() {
         _file.close();
     if (_imageMetaData) {
 	delete _imageMetaData;
+    }
+    if (_brickMetaData) {
+	delete _brickMetaData;
     }
 }
 
@@ -71,13 +75,17 @@ bool QuadtreeList::readHeader() {
     if (!_file.good())
         return false;
 
-    _file.seekg(_file.beg);
+    _file.seekg(0, _file.beg);
     char commonMeta[_commonMetaDataSize];
 
     _file.read(reinterpret_cast<char*>(commonMeta), _commonMetaDataSize);
     char* ptr = commonMeta;
     _commonMetaData.nTimesteps = *reinterpret_cast<unsigned int*>(ptr);
     ptr += sizeof(unsigned int);
+    _commonMetaData.nBricks = *reinterpret_cast<unsigned int*>(ptr);
+    ptr += sizeof(unsigned int);
+    _commonMetaData.compressionType = *reinterpret_cast<QuadtreeList::CompressionType*>(ptr);
+    ptr += sizeof(QuadtreeList::CompressionType);
     _commonMetaData.nBricksPerDim = *reinterpret_cast<unsigned int*>(ptr);
     ptr += sizeof(unsigned int);
     _commonMetaData.brickWidth = *reinterpret_cast<unsigned int*>(ptr);
@@ -104,6 +112,8 @@ bool QuadtreeList::readHeader() {
 
     LDEBUG("Number of timesteps: " << _commonMetaData.nTimesteps);
     LDEBUG("Number of bricks: " << _commonMetaData.nBricksPerDim << " x " << _commonMetaData.nBricksPerDim);
+    LDEBUG("Compression type: " << static_cast<unsigned int>(_commonMetaData.compressionType));
+
     LDEBUG("Brick dimensions: " << _commonMetaData.brickWidth << " x " << _commonMetaData.brickHeight);
 
     _paddedBrickWidth = _commonMetaData.brickWidth + 2 * _commonMetaData.paddingWidth;
@@ -120,7 +130,7 @@ bool QuadtreeList::readHeader() {
     LDEBUG("Total number of nodes: " << _nTotalNodes);
 
     unsigned int nTimesteps = _commonMetaData.nTimesteps;
-    char* imageMeta = new char[_commonMetaDataSize * nTimesteps];
+    char* imageMeta = new char[_imageMetaDataSize * nTimesteps];
     _imageMetaData = new ImageMetaData[nTimesteps];
     _file.read(imageMeta, _imageMetaDataSize*nTimesteps);
 
@@ -128,18 +138,42 @@ bool QuadtreeList::readHeader() {
 	unsigned int offset = i*_imageMetaDataSize;
 	_imageMetaData[i].exposureTime = *reinterpret_cast<double*>(imageMeta + offset);
     }
-
     delete[] imageMeta;
+
+    unsigned int nBricks = _commonMetaData.nBricks;
+    char* brickMeta = new char[_brickMetaDataSize * nBricks];
+    _brickMetaData = new BrickMetaData[nBricks];
+    _file.read(brickMeta, _brickMetaDataSize*nBricks);
+
+    for (int i = 0; i < nBricks; ++i) {
+	unsigned int offset = i*_brickMetaDataSize;
+	_brickMetaData[i].dataPosition = *reinterpret_cast<unsigned int*>(brickMeta + offset);
+    }
+    delete[] brickMeta;
+
+    _file.seekg(0, _file.end);
+    _fileSize = _file.tellg();
 
     return true;
 }
 
-long long QuadtreeList::dataPosition() {
-    return _commonMetaDataSize + _imageMetaDataSize*_commonMetaData.nTimesteps;
+long long QuadtreeList::dataPosition(unsigned int brickIndex) {
+    unsigned int nBricks = nTotalNodes();
+    if (brickIndex < nBricks) {
+	return _brickMetaData[brickIndex].dataPosition;
+    } else if (brickIndex == nBricks) {
+	return _fileSize;
+    } else {
+	LERROR("Trying to get brick data position for index " << brickIndex << " which is outside bounds.");
+    }
 }
 
 unsigned int QuadtreeList::nTimesteps() {
     return _commonMetaData.nTimesteps;
+}
+
+QuadtreeList::CompressionType QuadtreeList::compressionType() {
+    return _commonMetaData.compressionType;
 }
 
 unsigned int QuadtreeList::nBricksPerDim() {
