@@ -55,8 +55,15 @@ RenderableMultiresPlane::RenderableMultiresPlane (const ghoul::Dictionary& dicti
     , _brickSelector(nullptr)
     , _size("size", "Size", glm::vec3(1,1,0), glm::vec3(0,0,0), glm::vec3(1.f, 1.f, 25.f))
     , _shader(nullptr)
+    , _quadCorners(0)
     , _quad(0)
     , _vertexPositionBuffer(0)
+    , _brickIndices(0)
+    , _validShader(false)
+    , _timestep(0)
+    , _brickBudget(0)
+    , _filename("")
+    , _transferFunctionPath("")
 {
     std::string name;
     bool success = dictionary.getValue(constants::scenegraphnode::keyName, name);
@@ -134,7 +141,6 @@ bool RenderableMultiresPlane::initialize() {
         success &= _brickSelector->initialize();
     }
 
-
     auto shaderCallback = [this](ghoul::opengl::ProgramObject* program) {
         _validShader = false;
     };
@@ -153,7 +159,6 @@ bool RenderableMultiresPlane::initialize() {
         _atlasManager->setAtlasCapacity(_quadtreeList->nBricksPerDim() * _quadtreeList->nBricksPerDim());
         success &= _atlasManager->initialize();
     }
-
 
     return success;
 }
@@ -214,6 +219,7 @@ void RenderableMultiresPlane::render(const RenderData& data) {
     _shader->setUniform("bricksInAtlas", _atlasManager->getBricksInAtlas());
     _shader->setUniform("padding", glm::ivec2(_quadtreeList->paddingWidth(), _quadtreeList->paddingHeight()));
     _shader->setUniform("paddedBrickDim", glm::ivec2(_quadtreeList->paddedBrickWidth(), _quadtreeList->paddedBrickHeight()));
+    _shader->setUniform("maxNumBricksPerAxis", _quadtreeList->nBricksPerDim());
 
     setPscUniforms(_shader, &data.camera, data.position);
 

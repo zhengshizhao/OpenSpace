@@ -39,13 +39,13 @@ namespace {
 
 namespace openspace {
 
-ImageBrickSelector::ImageBrickSelector(QuadtreeList* qtl, std::vector<glm::vec4> quadCorners) {
+ImageBrickSelector::ImageBrickSelector(QuadtreeList* qtl, std::vector<glm::vec4> quadCorners)
+    : _prevResolution(0,0)
+    , _prevUsedBricks(0) {
     _quadtreeList = qtl;
     for (auto& corner : quadCorners) {
         _quadCorners.push_back(psc(corner));
     }
-    _prevResolution = glm::ivec2(0,0);
-    _prevUsedBricks = 0;
 }
 
 ImageBrickSelector::~ImageBrickSelector() {}

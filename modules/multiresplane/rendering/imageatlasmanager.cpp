@@ -28,6 +28,8 @@
 #include <ghoul/logging/logmanager.h>
 #include <string>
 #include <cstring>
+#include <lz4/lz4.h>
+#include <chrono>
 
 namespace {
     const std::string _loggerCat = "ImageAtlasManager";
@@ -35,12 +37,13 @@ namespace {
 
 namespace openspace {
 
-ImageAtlasManager::ImageAtlasManager(QuadtreeList* qtl, unsigned int atlasCapacity) 
+ImageAtlasManager::ImageAtlasManager(QuadtreeList* qtl, unsigned int atlasCapacity)
     : _quadtreeList(qtl)
     , _atlasCapacity(atlasCapacity)
     , _needsReinitialization(true)
     , _pboHandle(0)
-    , _atlasMapBuffer(0) {}
+    , _atlasMapBuffer(0)
+    , _textureAtlas(0) {}
 
 ImageAtlasManager::~ImageAtlasManager() {}
 
@@ -84,7 +87,7 @@ bool ImageAtlasManager::initialize() {
     _nQtLeaves = _nBricksPerDim * _nBricksPerDim;
     _nQtLevels = _quadtreeList->nQuadtreeLevels();
     _nQtNodes = _quadtreeList->nQuadtreeNodes();
-    _textureAtlas = new ghoul::opengl::Texture(glm::size3_t(_atlasWidth, _atlasHeight, 1), 
+    _textureAtlas = new ghoul::opengl::Texture(glm::size3_t(_atlasWidth, _atlasHeight, 1),
                                                ghoul::opengl::Texture::Format::RGB,
                                                GL_RGBA,
                                                GL_FLOAT);
@@ -109,7 +112,7 @@ bool ImageAtlasManager::initialize() {
     for (unsigned int i = 0; i < _atlasCapacity; i++) {
         _freeAtlasCoords[i] = i;
     }
-    
+
     _needsReinitialization = false;
     return true;
 }
@@ -119,7 +122,7 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     if (_needsReinitialization) {
         initialize();
     }
-    
+
     int nBrickIndices = brickIndices.size();
 
     _requiredBricks.clear();
@@ -142,14 +145,14 @@ void ImageAtlasManager::updateAtlas(std::vector<int>& brickIndices) {
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, _pboHandle);
     glBufferData(GL_PIXEL_UNPACK_BUFFER, _atlasSize, 0, GL_STREAM_DRAW);
     GLfloat* mappedBuffer = reinterpret_cast<GLfloat*>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
-    
+
     if (!mappedBuffer) {
         LERROR("Failed to map PBO.");
         LERROR(glGetError());
         assert(false);
         return;
     }
-    
+
     for (auto itStart = _requiredBricks.begin(); itStart != _requiredBricks.end();) {
         int firstBrick = *itStart;
         int lastBrick = firstBrick;
@@ -198,12 +201,20 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
     if (lastBrickIndex < firstBrickIndex) return;
 
     int sequenceLength = lastBrickIndex - firstBrickIndex + 1;
-    GLshort* sequenceBuffer = new GLshort[sequenceLength*_nBrickVals];
-    size_t bufferSize = sequenceLength * _brickSize;
+    long fromDataPosition = _quadtreeList->dataPosition(firstBrickIndex);
+    long toDataPosition = _quadtreeList->dataPosition(lastBrickIndex + 1);
+    long dataSize = toDataPosition - fromDataPosition;
+    char* dataBuffer = new char[dataSize];
 
-    long offset = _quadtreeList->dataPosition() + static_cast<long>(firstBrickIndex) * static_cast<long>(_brickSize);
-    _quadtreeList->file().seekg(offset);
-    _quadtreeList->file().read(reinterpret_cast<char*>(sequenceBuffer), bufferSize);
+    auto startRead = std::chrono::system_clock::now();
+    _quadtreeList->file().seekg(fromDataPosition);
+    _quadtreeList->file().read(dataBuffer, dataSize);
+    auto endRead = std::chrono::system_clock::now();
+
+    //std::chrono::duration<double> duration = endRead - startRead;
+    //std::cout << "read " << (sequenceLength) << " bricks took " << (duration.count()*1000.0) << " ms" << std::endl;
+
+    GLshort* brickData = new int16_t[_nBrickVals];
 
     for (int brickIndex = firstBrickIndex; brickIndex <= lastBrickIndex; brickIndex++) {
         if (!_brickMap.count(brickIndex)) {
@@ -213,13 +224,47 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
             assert(atlasCoords <= 0x0FFFFFFF);
             unsigned int atlasData = (level << 28) + atlasCoords;
             _brickMap.insert(std::pair<unsigned int, unsigned int>(brickIndex, atlasData));
-            insertTile(&sequenceBuffer[_nBrickVals*(brickIndex - firstBrickIndex)], mappedBuffer, atlasCoords, brickIndex);
+
+            unsigned int brickStart = _quadtreeList->dataPosition(brickIndex) - fromDataPosition;
+            unsigned int brickEnd = _quadtreeList->dataPosition(brickIndex + 1) - fromDataPosition;
+
+            if (_quadtreeList->compressionType() == QuadtreeList::CompressionType::LZ4_2D_PRED) {
+                //auto startDecode = std::chrono::system_clock::now();
+                LZ4_decompress_fast(dataBuffer + brickStart, reinterpret_cast<char*>(brickData), _nBrickVals * sizeof(int16_t));
+                //auto endDecode = std::chrono::system_clock::now();
+                //std::chrono::duration<double> duration = endDecode - startDecode;
+
+                for (unsigned int y = 0; y < _paddedBrickDims.y; ++y) {
+                    for (unsigned int x = 0; x < _paddedBrickDims.x; ++x) {
+                        unsigned int left = y * _paddedBrickDims.x + x - 1;
+                        unsigned int top = (y - 1) * _paddedBrickDims.x + x;
+                        unsigned int topLeft = (y - 1) * _paddedBrickDims.x + x - 1;
+                        unsigned int here = y * _paddedBrickDims.x + x;
+
+                        int16_t prediction = 0;
+                        if (x > 0) {
+                            if (y > 0) {
+                                prediction = brickData[left] + brickData[top] - brickData[topLeft];
+                            } else {
+                                prediction = brickData[left];
+                            }
+                        } else if (y > 0) {
+                            prediction = brickData[top];
+                        }
+                        brickData[here] = prediction + brickData[here];
+                    }
+                }
+                insertTile(brickData, mappedBuffer, atlasCoords, brickIndex);
+            } else {
+                // No compression
+                unsigned int brickOffset = (brickIndex - firstBrickIndex)*_nBrickVals;
+                insertTile(reinterpret_cast<int16_t*>(dataBuffer) + brickOffset, mappedBuffer, atlasCoords, brickIndex);
+            }
         }
     }
 
-    delete[] sequenceBuffer;
-
-    
+    delete[] dataBuffer;
+    delete[] brickData;
 }
 
 void ImageAtlasManager::removeFromAtlas(int brickIndex) {
@@ -229,7 +274,7 @@ void ImageAtlasManager::removeFromAtlas(int brickIndex) {
     _freeAtlasCoords.push_back(atlasCoords);
     //_freeAtlasCoords.insert(_freeAtlasCoords.begin(), atlasCoords);
 }
-    
+
 std::vector<unsigned int> ImageAtlasManager::atlasMap() {
     return _atlasMap;
 }
