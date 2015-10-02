@@ -1,8 +1,27 @@
 -- Change these settings to match the .mod-file
 __manualSettings = {
     enlilModel = "nh_8_256_8",
-    transferFunction = "colorful",
+    nTimesteps = 8,
+    volumeRes = 256,
+    brickSize = 8,
+    transferFunction = "fire",
 };
+
+-- Simple pre-calculations
+nBricksPerDim = __manualSettings.volumeRes / __manualSettings.brickSize;
+nOtNodes = nBricksPerDim * nBricksPerDim * nBricksPerDim;
+expToOtNodes = {};
+exp = 0;
+while true do
+    if 2^exp > nOtNodes then break; end
+    expToOtNodes[exp] = 2^exp;
+    exp = exp + 1;
+end
+
+allTimeSteps = {};
+for i = 0, __manualSettings.nTimesteps - 1 do
+    allTimeSteps[i] = i;
+end
 
 ----------------------------- Tests -----------------------------
 
@@ -15,8 +34,8 @@ function testBrickSelectors()
 
     local referenceSettings = {
         brickSelector = "tf",
-        memoryBudget = 32768,
-        streamingBudget = 32768,
+        memoryBudget = nOtNodes,
+        streamingBudget = nOtNodes
     };
 
     local variableSettings = {
@@ -28,13 +47,13 @@ function testBrickSelectors()
             values = {"regular", "top", "side", "inside"}
         }, {
             property = "memoryBudget",
-            values = {64, 512, 2048, 4096, 8192, 16384, 32768}
+            values = expToOtNodes
         }, {
             property = "streamingBudget",
-            values = {64, 512, 2048, 4096, 8192, 16384, 32768}
+            values = expToOtNodes
         }, {
             property = "timestep",
-            values = {0, 1, 2, 3, 4, 5, 6, 7}
+            values = allTimeSteps
         }
     };
 
@@ -47,11 +66,12 @@ function testMemoryBudget()
         testName = "memoryBudget",
         brickSelector = "tf",
         timestep = 0,
-        streamingBudget = 32768,
+        streamingBudget = nOtNodes,
     };
 
     local referenceSettings = {
-        memoryBudget = 32768,
+        memoryBudget = nOtNodes,
+        stepSizeCoefficient = 1
     };
 
     local variableSettings = {
@@ -60,10 +80,13 @@ function testMemoryBudget()
             values = {"regular", "top", "side", "inside"}
         }, {
             property = "memoryBudget",
-            values = {0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768}
+            values = expToOtNodes
+        }, {
+            property = "stepSizeCoefficient",
+            values = {1, 10000} -- 10000 => "no rendering time"
         }, {
             property = "timestep",
-            values = {0, 1, 2, 3, 4, 5, 6, 7}
+            values = allTimeSteps
         }
     };
 
@@ -76,11 +99,12 @@ function testStreamingBudget()
         testName = "streamingBudget",
         brickSelector = "tf",
         timestep = 0,
-        memoryBudget = 32768,
+        memoryBudget = nOtNodes,
     };
 
     local referenceSettings = {
-        streamingBudget = 32768,
+        streamingBudget = nOtNodes,
+        stepSizeCoefficient = 1
     };
 
     local variableSettings = {
@@ -89,10 +113,13 @@ function testStreamingBudget()
             values = {"regular", "top", "side", "inside"}
         }, {
             property = "streamingBudget",
-            values = {0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768}
+            values = expToOtNodes
+        }, {
+            property = "stepSizeCoefficient",
+            values = {1, 10000} -- 10000 => "no rendering time"
         }, {
             property = "timestep",
-            values = {0, 1, 2, 3, 4, 5, 6, 7}
+            values = allTimeSteps
         }
     };
 
@@ -104,13 +131,18 @@ function testStepSize()
     local commonSettings = {
         testName = "stepSizeCoefficient",
         brickSelector = "tf",
-        memoryBudget = 32768,
-        streamingBudget = 32768,
+        memoryBudget = nOtNodes,
+        streamingBudget = nOtNodes,
     };
 
     local referenceSettings = {
         stepSizeCoefficient = 0.1
     };
+
+    stepSizeCoefficients = {};
+    for i = 1, 20 do
+        stepSizeCoefficients[i - 1] = i / 2;
+    end
 
     local variableSettings = {
         {
@@ -118,10 +150,10 @@ function testStepSize()
             values = {"regular", "top", "side", "inside"}
         }, {
             property = "stepSizeCoefficient",
-            values = {0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10}
+            values = stepSizeCoefficients
         }, {
             property = "timestep",
-            values = {0, 1, 2, 3, 4, 5, 6, 7}
+            values = allTimeSteps
         }
     };
 
