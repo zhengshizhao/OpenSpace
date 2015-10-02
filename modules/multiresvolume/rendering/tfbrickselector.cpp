@@ -318,10 +318,10 @@ float TfBrickSelector::splitPoints(unsigned int brickIndex, BrickSelection::Spli
     float spatialPoints = spatialSplitPoints(brickIndex);
     float splitPoints;
 
-    if (spatialPoints > -1 && spatialPoints > temporalPoints) {
+    if (spatialPoints > 0 && spatialPoints > temporalPoints) {
         splitPoints = spatialPoints;
         splitType = BrickSelection::SplitType::Spatial;
-    } else if (temporalPoints > -1) {
+    } else if (temporalPoints > 0) {
         splitPoints = temporalPoints;
         splitType = BrickSelection::SplitType::Temporal;
     } else {
