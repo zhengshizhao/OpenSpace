@@ -92,6 +92,7 @@ void sort_fragments_list(uint frag_count) {
 	int ii, jj;
 	for(ii = 0; ii < MAX_VOLUMES; ++ii) {
 		bool start = true;
+		int end = -1;
 		vec3 startColor;
 		vec4 startPos;
 		for(jj = 0; jj < frag_count; ++jj) {
@@ -102,6 +103,11 @@ void sort_fragments_list(uint frag_count) {
 					startPos = _pos_(fragments[jj]);
 					start = false;
 				} else {
+					if (end > -1) {
+						_col_(fragments[end], vec4(0.0,0.0,0.0,0.0));
+						_type_(fragments[end], 0);
+					}
+
 					volumes_in_fragment[volume_count++] = ii;
 					vec3 dir = _col_(fragments[jj]).rgb - startColor;
 					volume_position[ii] = startColor;
@@ -115,7 +121,7 @@ void sort_fragments_list(uint frag_count) {
 
 					volume_scale[ii] = length(startColor - endColor) / dist;
 
-					break;
+					end = jj;
 				}
 			}
 		}
