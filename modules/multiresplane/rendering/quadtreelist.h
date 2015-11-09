@@ -53,8 +53,8 @@ public:
         unsigned int brickHeight;
         unsigned int paddingWidth;
         unsigned int paddingHeight;
-        int16_t minEnergy;
-        int16_t maxEnergy;
+        short minEnergy;
+        short maxEnergy;
         double minFlux;
         double maxFlux;
         double minExpTime;
@@ -64,24 +64,22 @@ public:
     // Compiler may choose to align values in the struct
     // so that the size becomes larger than
     // the sum of its contained member's sizes.
-    static constexpr int _commonMetaDataSize =
-        sizeof(unsigned int) * 8 +
-        sizeof(int16_t) * 2 +
-        sizeof(double) * 4;
+    static const int _commonMetaDataSize =
+      4 * 8 + // Eight 32 bit integer values
+      2 * 2 + // Two 16 bit integer values
+      8 * 4; // Four 64 bit floating point values
 
     struct ImageMetaData {
         double exposureTime;
     };
 
-    static constexpr int _imageMetaDataSize =
-        sizeof(double);
+    static const int _imageMetaDataSize = 8; // One 64 bit floating point value
 
     struct BrickMetaData {
         unsigned int dataPosition;
     };
 
-    static constexpr int _brickMetaDataSize =
-        sizeof(unsigned int);
+    static const int _brickMetaDataSize = 4; // One 32 bit integer value
 
     QuadtreeList(const std::string& filename);
     ~QuadtreeList();

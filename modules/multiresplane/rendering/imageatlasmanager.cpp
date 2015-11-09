@@ -83,7 +83,6 @@ bool ImageAtlasManager::initialize() {
     _atlasHeight = _atlasBricksPerDim * paddedBrickHeight;
     _atlasSize = _atlasWidth * _atlasHeight * sizeof(GLfloat);
 
-
     _nQtLeaves = _nBricksPerDim * _nBricksPerDim;
     _nQtLevels = _quadtreeList->nQuadtreeLevels();
     _nQtNodes = _quadtreeList->nQuadtreeNodes();
@@ -201,9 +200,9 @@ void ImageAtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, GLfl
     if (lastBrickIndex < firstBrickIndex) return;
 
     int sequenceLength = lastBrickIndex - firstBrickIndex + 1;
-    long fromDataPosition = _quadtreeList->dataPosition(firstBrickIndex);
-    long toDataPosition = _quadtreeList->dataPosition(lastBrickIndex + 1);
-    long dataSize = toDataPosition - fromDataPosition;
+    long long fromDataPosition = _quadtreeList->dataPosition(firstBrickIndex);
+    long long toDataPosition = _quadtreeList->dataPosition(lastBrickIndex + 1);
+    long long dataSize = toDataPosition - fromDataPosition;
     char* dataBuffer = new char[dataSize];
 
     auto startRead = std::chrono::system_clock::now();

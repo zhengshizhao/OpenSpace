@@ -161,7 +161,7 @@ void AtlasManager::addToAtlas(int firstBrickIndex, int lastBrickIndex, float* ma
     float* sequenceBuffer = new float[sequenceLength*_nBrickVals];
     size_t bufferSize = sequenceLength * _brickSize;
 
-    long offset = TSP::dataPosition() + static_cast<long>(firstBrickIndex) * static_cast<long>(_brickSize);
+    long long offset = TSP::dataPosition() + static_cast<long long>(firstBrickIndex) * static_cast<long long>(_brickSize);
     _tsp->file().seekg(offset);
     _tsp->file().read(reinterpret_cast<char*>(sequenceBuffer), bufferSize);
     _nDiskReads++;
