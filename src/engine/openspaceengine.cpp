@@ -71,6 +71,8 @@
 #endif
 #endif
 
+#include <openspace/interaction/interaction_mui.h>
+
 using namespace openspace::scripting;
 using namespace ghoul::filesystem;
 using namespace ghoul::logging;
@@ -386,6 +388,7 @@ bool OpenSpaceEngine::initialize() {
 
 	_interactionHandler->setKeyboardController(new interaction::KeyboardControllerFixed);
 	_interactionHandler->setMouseController(new interaction::OrbitalMouseController);
+    _interactionHandler->setMuiController(new interaction::InteractionMui);
 
 	// Run start up scripts
 	runStartupScripts();

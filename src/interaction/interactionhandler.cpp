@@ -122,6 +122,7 @@ InteractionHandler::InteractionHandler()
     , _invertRotation(false)
 	, _keyboardController(nullptr)
 	, _mouseController(nullptr)
+    , _muiController(nullptr)
     , _origin("origin", "Origin", "")
     , _coordinateSystem("coordinateSystem", "Coordinate System", "")
 	, _currentKeyframeTime(-1.0)
@@ -147,6 +148,7 @@ InteractionHandler::InteractionHandler()
 InteractionHandler::~InteractionHandler() {
 	delete _keyboardController;
 	delete _mouseController;
+	delete _muiController;
 	for (size_t i = 0; i < _controllers.size(); ++i)
 		delete _controllers[i];
 }
@@ -163,6 +165,13 @@ void InteractionHandler::setMouseController(MouseController* controller) {
 	delete _mouseController;
 	_mouseController = controller;
 	_mouseController->setHandler(this);
+}
+
+void InteractionHandler::setMuiController(InteractionMui* controller) {
+	assert(controller);
+	delete _muiController;
+	_muiController = controller;
+    _muiController->setHandler(this);
 }
 
 void InteractionHandler::addController(Controller* controller) {
@@ -234,8 +243,13 @@ void InteractionHandler::unlockControls() {
 //=======
 void InteractionHandler::update(double deltaTime) {
 	_deltaTime = deltaTime;
-	_mouseController->update(deltaTime);
-    
+    if (_mouseController) {
+        _mouseController->update(deltaTime);
+    }
+    if (_muiController) {
+        _muiController->handleInput(deltaTime);
+    }
+
     bool hasKeys = false;
     psc pos;
     glm::quat q;

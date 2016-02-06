@@ -38,6 +38,7 @@ set(OPENSPACE_SOURCE
     ${OPENSPACE_BASE_DIR}/src/engine/wrapper/windowwrapper.cpp
     ${OPENSPACE_BASE_DIR}/src/interaction/controller.cpp
     ${OPENSPACE_BASE_DIR}/src/interaction/deviceidentifier.cpp
+    ${OPENSPACE_BASE_DIR}/src/interaction/interaction_mui.cpp
     ${OPENSPACE_BASE_DIR}/src/interaction/interactionhandler.cpp
     ${OPENSPACE_BASE_DIR}/src/interaction/interactionhandler_lua.inl
     ${OPENSPACE_BASE_DIR}/src/interaction/keyboardcontroller.cpp
@@ -102,6 +103,7 @@ set(OPENSPACE_HEADER
     ${OPENSPACE_BASE_DIR}/include/openspace/engine/openspaceengine.h
     ${OPENSPACE_BASE_DIR}/include/openspace/engine/wrapper/sgctwindowwrapper.h
     ${OPENSPACE_BASE_DIR}/include/openspace/engine/wrapper/windowwrapper.h
+    ${OPENSPACE_BASE_DIR}/include/openspace/interaction/interaction_mui.h
     ${OPENSPACE_BASE_DIR}/include/openspace/interaction/controller.h
     ${OPENSPACE_BASE_DIR}/include/openspace/interaction/deviceidentifier.h
     ${OPENSPACE_BASE_DIR}/include/openspace/interaction/interactionhandler.h

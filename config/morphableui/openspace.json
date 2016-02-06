@@ -1,0 +1,19 @@
+{
+	"id" : "openspace",
+	"imagePath" : "openspace.png",
+	"requirements" :
+	[
+		{
+			"id" : "move",
+			"type" : "Continuous2D"
+		},
+		{
+			"id" : "rotate",
+			"type" : "Continuous2D"
+		},
+		{
+			"id" : "zoom",
+			"type" : "Continuous1D"
+		}
+	]
+}

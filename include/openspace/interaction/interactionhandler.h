@@ -76,10 +76,10 @@
 
 #include <openspace/interaction/keyboardcontroller.h>
 #include <openspace/interaction/mousecontroller.h>
+#include <openspace/interaction/interaction_mui.h>
 #include <openspace/network/parallelconnection.h>
 #include <openspace/properties/propertyowner.h>
 #include <openspace/properties/stringproperty.h>
-#include <openspace/util/keys.h>
 
 #include <mutex>
 
@@ -98,6 +98,7 @@ public:
 
 	void setKeyboardController(KeyboardController* controller);
 	void setMouseController(MouseController* controller);
+	void setMuiController(InteractionMui* controller);
 	void addController(Controller* controller);
 
 	void lockControls();
@@ -179,6 +180,7 @@ private:
 
 	KeyboardController* _keyboardController;
 	MouseController* _mouseController;
+	InteractionMui* _muiController;
 	std::vector<Controller*> _controllers;
 
     properties::StringProperty _origin;
