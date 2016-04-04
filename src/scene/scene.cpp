@@ -68,12 +68,13 @@ namespace {
     const std::string KeyFocusObject = "Focus";
     const std::string KeyPositionObject = "Position";
     const std::string KeyViewOffset = "Offset";
+	const std::string KeyParent = "Parent";
+
 }
 
 namespace openspace {
 
 Scene::Scene() : _focus(SceneGraphNode::RootNodeName) {}
-
 Scene::~Scene() {
     deinitialize();
 }
@@ -171,7 +172,6 @@ void Scene::render(const RenderData& data) {
 	}
 	_programsToUpdate.erase(_programsToUpdate.begin(), _programsToUpdate.end());
 	_programUpdateLock.unlock();
-
 	if (!emptyProgramsToUpdate) {
 		LDEBUG("Setting uniforms");
 		// Ignore attribute locations
@@ -215,6 +215,7 @@ bool Scene::loadSceneInternal(const std::string& sceneDescriptionFilePath) {
     if (dictionary.getValue(KeyCamera, cameraDictionary)) {
         LDEBUG("Camera dictionary found");
         std::string focus;
+		std::string parent;
 
         if (cameraDictionary.hasKey(KeyFocusObject)
             && cameraDictionary.getValue(KeyFocusObject, focus))
@@ -236,6 +237,19 @@ bool Scene::loadSceneInternal(const std::string& sceneDescriptionFilePath) {
                 _focus = "Root";
             }
         }
+		//This does not actually do anything at the moment.
+		if (cameraDictionary.hasKey(KeyParent)
+			&& cameraDictionary.getValue(KeyParent, parent))
+		{
+			LDEBUG("Setting camera parent to '" << parent << "'"); 
+			}
+		else {
+			LERROR("Could not find parent for camera, parent set to Root");
+			parent = "Root";
+
+
+		}
+
     }
 
     // Initialize all nodes

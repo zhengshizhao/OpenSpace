@@ -52,6 +52,7 @@
 #include <openspace/engine/configurationmanager.h>
 #include <ghoul/systemcapabilities/systemcapabilities.h>
 #include <ghoul/systemcapabilities/openglcapabilitiescomponent.h>
+#include <openspace/util/setOverrideViewMatrix.h>//test
 
 #include <ghoul/io/texture/texturereader.h>
 #ifdef GHOUL_USE_DEVIL
@@ -181,6 +182,7 @@ bool RenderEngine::initialize() {
 	_mainCamera = new Camera();
 	_mainCamera->setScaling(glm::vec2(1.0, -8.0));
 	_mainCamera->setPosition(psc(0.f, 0.f, 1.499823f, 11.f));
+	
 	OsEng.interactionHandler()->setCamera(_mainCamera);
 
 #ifdef GHOUL_USE_DEVIL
@@ -356,6 +358,7 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 	if (w->isUsingFisheyeRendering())
 		_abuffer->clear();
 
+
 	// SGCT resets certain settings
     
     if (_abufferImplementation == ABufferImplementation::FrameBuffer) {
@@ -372,9 +375,9 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
         glDisable(GL_BLEND);
     }
 	// setup the camera for the current frame
-
-	_mainCamera->setViewMatrix(
-		viewMatrix );
+	
+	_mainCamera->setViewMatrix(viewMatrix);
+		//setNewViewMatrix(_mainCamera, scene()));
 	_mainCamera->setProjectionMatrix(
 		projectionMatrix);
 	//Is this really necessary to store? @JK
@@ -406,7 +409,7 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 #define PrintText(__i__, __format__, ...) Freetype::print(font, 10.f, static_cast<float>(startY - font_size_mono * __i__ * 2), __format__, __VA_ARGS__);
 #define PrintColorTextArg(__i__, __format__, __size__, __color__, ...) Freetype::print(font, __size__, static_cast<float>(startY - font_size_mono * __i__ * 2), __color__, __format__, __VA_ARGS__);
 #define PrintColorText(__i__, __format__, __size__, __color__) Freetype::print(font, __size__, static_cast<float>(startY - font_size_mono * __i__ * 2), __color__, __format__);
-
+	
     if (_onScreenInformation._node != -1) {
         //int thisId = sgct_core::ClusterManager::instance()->getThisNodeId();
 
@@ -422,7 +425,7 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 	// Print some useful information on the master viewport
 	if (OsEng.ref().isMaster() && !w->isUsingFisheyeRendering()) {
 
-		// TODO: Adjust font_size properly when using retina screen
+		// TODO: Adjust font_siz114e properly when using retina screen
 		const int font_size_mono = 10;
         const int font_size_time = 15;
 		const int font_size_light = 8;
@@ -523,7 +526,7 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 			
 			
 			
-
+		
 			//const int numberOfNodes = static_cast<int>(scene()->allSceneGraphNodes().size());
 			
 			
@@ -568,23 +571,69 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 			
 			//double previousDistance = 1000000.0;
 
-			//remove once distance function is done, nh. 
+			
 			//_mainCamera->position()
-			//checkScene(scene());
+			// test for finding radius: 
 			/*
-			for (int i = 0; i < 60; i++)
+			psc objpos = scene()->allSceneGraphNodes()[44]->position();
+			psc objposWP = scene()->allSceneGraphNodes()[44]->worldPosition();
+			float sceneRadiusTmp = scene()->allSceneGraphNodes()[44]->sceneRadius();
+			psc campos = _mainCamera->position();
+			
+			PrintText(line++, "Name of jupiterBC: (%s)", scene()->allSceneGraphNodes()[44]->name().c_str());
+			
+			PrintText(line++, "dist to: (%f)", distance);
+			//PrintText(line++, "position for tmpnode   =   (% .5f, % .5f, % .5f% .5f)", objpos[0], objpos[1], objpos[2], objpos[3]);
+			PrintText(line++, "position for tmpnodeWP =   (% .5f, % .5f, % .5f% .5f)", objposWP[0], objposWP[1], objposWP[2], objposWP[3]);
+			PrintText(line++, "Radius for tmpnodeWP =   (% .5f)", sceneRadiusTmp);
+			PrintText(line++, "position for camera =         (% .5f, % .5f, % .5f% .5f)", campos[0], campos[1], campos[2], campos[3]);
+			*/
+	
+
+			double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
+			PrintText(line++, "Distance to target: (% .5f)", distance);
+			_nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
+			
+			//PrintText(line++, "Name of Current scene: (%s)", _nameOfScene.c_str());
+			_mainCamera->setParent(_nameOfScene);
+			std::string testParent = _mainCamera->getParent();
+			PrintText(line++, "Cammera parent: (%s)", testParent.c_str());
+			//mat4 viewMatrix = _sgctEngine->getActiveViewMatrix() * userMatrix;
+			glm::mat4 VM = _mainCamera->viewMatrix();
+			
+			glm::mat4 MM = _mainCamera->viewRotationMatrix(); // _mainCamera->modelMatrix();
+			
+			
+			glm::mat4 PM = _mainCamera->viewProjectionMatrix();
+			PrintText(line++, "basicTest(1): (% .5f)", basicTest(2.0f));
+			//glm::mat4 PM = _mainCamera->projectionMatrix();
+		
+//			glm::mat4 current_matrix =
+		
+			
+			/*
+			PrintText(line++, "View Matrix 1 =         (% .5f, % .5f, % .5f% .5f)", viewMatrix[0], viewMatrix[1], viewMatrix[2], viewMatrix[3]);
+			
+			PrintText(line++, "View Matrix 1 =         (% .5f, % .5f, % .5f% .5f)", viewMatrix[0], viewMatrix[1], viewMatrix[2], viewMatrix[3]);
+			PrintText(line++, "View Matrix =         (% .5f, % .5f, % .5f% .5f)", VM[0][0], VM[1], VM[2], VM[3]);
+			PrintText(line++, "Model Matrix =         (% .5f, % .5f, % .5f% .5f)", MM[0], MM[1], MM[2], MM[3]);
+			PrintText(line++, "Projection Matrix =         (% .5f, % .5f, % .5f% .5f)", PM[0], PM[1], PM[2], PM[3]);
+			*/
+			
+			/*
+			for (int i = 0; i < 105; i++)
 				{
 					SceneGraphNode* tmpnode = scene()->allSceneGraphNodes()[i];
-					_nameOfScene = tmpnode->name();
+					std::string _nameOfSceneTmp = tmpnode->name();
 
 					std::vector<SceneGraphNode*> childrenScene = tmpnode->children();
-					int nrOfChildren = static_cast<int>(childrenScene.size());
-					LINFO("Name of Scene: " << _nameOfScene);
-					LINFO("Nr of children: " << nrOfChildren);
+					//int nrOfChildren = static_cast<int>(childrenScene.size());
+					LINFO("Scene nr: "<<i<<" " << _nameOfSceneTmp);
+					//LINFO("Nr of children: " << nrOfChildren);
 						
 				}
 				*/
-			/*
+						/*
 			for (int i = 29; i < 60; i++)
 			{
 				//LINFO(i);
@@ -718,6 +767,7 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 #endif
 
 #undef PrintText
+			
 		}
 
 		if (_showScreenLog)
@@ -976,134 +1026,59 @@ bool RenderEngine::doesPerformanceMeasurements() const {
 	return _doPerformanceMeasurements;
 }
 
-void RenderEngine::checkScene(Scene* scene) {
+void findCommonParent(){
+	 
 
-	//const psc& cameraPosition = _mainCamera->position();
-	//PrintText(line++, "Cam pos:        (% .5f, % .5f, % .5f, % .5f)", cameraPosition[0], cameraPosition[1], cameraPosition[2], cameraPosition[3]);
-	//const int nrOfNodes = static_cast<int>(scene->allSceneGraphNodes().size()); //dont need?
+}
 
-	psc cameraPos = _mainCamera->position();
-	//sets the current node to the the node with the previous name. 
-	SceneGraphNode* node = scene->sceneGraphNode(_nameOfScene);
+void RenderEngine::camerRigTesting() {
+	LINFO("CameraRig");
+//Write for psc and without
+//Check camera what matrixes it gets and from where.
+	//Traversal fetching from all parents:
+	//need to traverse the scene tree for all the viewMatrices.
+	glm::mat4 VM = _mainCamera->viewMatrix();
+	//SceneGraphNode(_mainCamera->ParentName)
 
-	//Starts in the last scene we kow we were in, checks if we are still inside, if not check parent, continue until we are inside a scene
-	_distance = (DistanceToObject::ref().distanceCalc(_mainCamera->position(), node->position()));
+	//How to find matrix of parent?
+	//Create dummyCam instance, move to parent with current ofset and collect matrices?
+
+	//need to traverse the scene tree for all the modelMatrices.
+	glm::mat4 MM = _mainCamera->modelMatrix();
+	glm::mat4 newViewMatrix = VM;
 
 
-	//traverses the scenetree to find a scene we are within. 
-	while (_distance > node->sceneRadius())
-	{
-		
-		
-		//LINFO("Check parent current scene whileloop");
-		if ((node->parent() != NULL) && node->parent()->name() != "SolarSystem")
-		{
-			node = node->parent();
-			//LINFO("Switching to parent node named: " << node->name());
-			_distance = (DistanceToObject::ref().distanceCalc(_mainCamera->position(), node->position()));
-			_nameOfScene = node->name();
 
-		}
-		
-		
-		else if (node->parent()->name() == "SolarSystem")
-		{
-			//We have reached the root, solarsystem as scene is the scene. 
-			node = scene->allSceneGraphNodes()[3];
-			_nameOfScene = node->name();
-			//renderenginge::PrintText(line++, "Name of Scene: (%s)", _nameOfScene.c_str()); 
-			//LINFO("Reached root node. _nameOfScene = " << _nameOfScene.c_str());
-			break;
-		}
-		
+	//Scaling, a float value, collects the scale between all 
 
-	}
-	//Now we know we are inside a scene. 
-	//Check if we are inside a child scene of the current scene. 
+//Only need one
+	//fetch proj matrix (only need one?) 
+	glm::mat4 PM = _mainCamera->projectionMatrix();
 
-	node = scene->allSceneGraphNodes()[44];
-	_nameOfScene = node->name();
+// find out whos the common parent
 	
-	std::vector<SceneGraphNode*> childrenScene = node->children();
-	int nrOfChildren = static_cast<int>(childrenScene.size());
-	LINFO("Nr of children for current scene: " << nrOfChildren);
-	//nrOfChildren = 1;
-	
-	bool outsideAllChildScenes = false;
-	//child->evaluate(camera, psc());
-	while (!childrenScene.empty() && !outsideAllChildScenes)
-	{
-		LINFO("Check childscene while loop");
-		for (size_t i = 0; i < childrenScene.size(); ++i)
-		{
-			
-			//SceneGraphNode* tempChild = childrenScene.at(i);
-			_distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), childrenScene.at(i)->position());
-
-			if (_distance < childrenScene.at(i)->sceneRadius())
-			{
-				//set new current scene
-				node = childrenScene.at(i);
-				childrenScene = node->children();
-			}
-
-			if (childrenScene.size() == i)
-				outsideAllChildScenes = true;
-
-
-
-		}
-	}
-	
-
 
 	/*
-	else
-	{
-	for (int i = 1; i <= nrOfNodes - 1; i++)
-		{
-			node = scene->allSceneGraphNodes()[i];
-			float sceneRadius = node->sceneRadius();
-			
-			if (sceneRadius != 0.0) 
-			{
-				
-				_distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), objpos);
-
-				if ((_distance < sceneRadius) && (_nameOfScene != node->name()))
-				{
-					_nameOfScene = node->name();
-					_sceneNumber = i;
-					LINFO("Changing scene to: " << _nameOfScene);
-				}
-			}
-
-			//nameOfScene = _sceneGraph->allSceneGraphNodes()[i]->name;
+//				   Root
+					
+					||
+				Solarsystem
+					||
+					/\
+				   /  \
+				  /\
+				 / /\
+				/	 \
+			   /	  Obj
+			 Cam
 
 
-		}
-	}
-	*/
 
-	
-	//PrintText(line++, "Name of Scene, radius of scene: (%s .% .5f)", nameOfScene.c_str(), sceneRadius);
-	//PrintText(line++, "Inside IF (%s .% .i)", nameOfScene.c_str(), i);
-
-
-	//float targetDist = DistanceToObject::ref().distanceCalc(cameraPosition, _mainCamera->focusPosition());
-	//PrintText(line++, "Distance to current target: (% .5f)", targetDist); }
-
-/*
-bool RenderEngine::insideScene(SceneGraphNode* tmpNode){
-
-	if ();
-		return true;
-	
-	return false;
-}
 
 */
 }
+
+
 void RenderEngine::storePerformanceMeasurements() {
 	const int8_t Version = 0;
 	const int nValues = 250;

@@ -66,3 +66,4 @@ void FactoryManager::addFactory(ghoul::TemplateFactoryBase* factory) {
 }
 
 }  // namespace openspace
+

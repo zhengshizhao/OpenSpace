@@ -420,6 +420,7 @@ void InteractionHandler::update(double deltaTime) {
     if(hasKeys){
 		_camera->setPosition(pos);
 		_camera->setViewRotationMatrix(glm::mat4_cast(q));
+		
     }
 
 		

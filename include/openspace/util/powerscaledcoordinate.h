@@ -12,9 +12,7 @@
 
 
 //Removin psc, rewriting. Better naming should be done. 
-
-
-
+/*
 #ifndef __POWERSCALEDCOORDINATE_H__
 #define __POWERSCALEDCOORDINATE_H__
 
@@ -121,13 +119,13 @@ typedef PowerScaledCoordinate psc;
 
 
 
-
+*/
 
 
 
 
 //Old psc code:
-/*
+
 #ifndef __POWERSCALEDCOORDINATE_H__
 #define __POWERSCALEDCOORDINATE_H__
 
@@ -226,4 +224,3 @@ typedef PowerScaledCoordinate psc;
 } // namespace openspace
 
 #endif // __POWERSCALEDCOORDINATE_H__
-*/

@@ -94,6 +94,8 @@ namespace openspace {
 
 class Camera {
 public:
+	static std::string ParentName;
+
     Camera();
     ~Camera();
 
@@ -128,6 +130,9 @@ public:
     void setRotation(glm::quat rotation);
    // const glm::quat& rotation() const;
 	void setRotation(glm::mat4 rotation);
+
+	void setParent(std::string parent);
+	std::string getParent();
 
 	const glm::vec3& viewDirection() const;
 
@@ -175,6 +180,9 @@ private:
 	glm::vec2 _syncedScaling;
 	psc _syncedPosition;
 	glm::mat4 _syncedViewRotationMatrix;
+	
+	//variable to latch onto scenegraph node. 
+	std::string _parent;
 	
 };
 

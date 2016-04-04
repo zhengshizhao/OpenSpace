@@ -252,6 +252,8 @@ bool SceneGraph::loadFromFile(const std::string& sceneDescription) {
         }
 
         node->node->setParent(parentNode);
+        parentNode->addChild(node->node);
+        
     }
 
     // Setup dependencies

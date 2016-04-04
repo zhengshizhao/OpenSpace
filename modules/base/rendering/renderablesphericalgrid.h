@@ -67,7 +67,7 @@ protected:
 	bool staticGrid;
 	std::string _parentsRotation;
 	glm::dmat3 _parentMatrix;
-	PowerScaledScalar _radius;
+	PowerScaledScalar _sceneRadius;
 
 	GLuint _vaoID = 3;
 	GLuint _vBufferID = 4;

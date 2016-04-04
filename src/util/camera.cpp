@@ -56,6 +56,7 @@ Camera::Camera()
 	, _syncedScaling(1.f, 0.f)
     , _syncedPosition()
 	, _syncedViewRotationMatrix(1.f)
+	, _parent("SolarSystemBarycenter")
 {
 }
 
@@ -177,6 +178,15 @@ void Camera::setRotation(glm::mat4 rotation)
 //{
   //  return _viewRotation;
 //}
+void Camera::setParent(std::string parent)
+{
+	_parent = parent;
+}
+
+std::string Camera::getParent()
+{
+	return _parent;
+}
 
 void Camera::setFocusPosition(psc pos){
     std::lock_guard<std::mutex> _lock(_mutex);

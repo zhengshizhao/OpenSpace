@@ -114,7 +114,7 @@ private:
     void writePropertyDocumentation(const std::string& filename, const std::string& type);
 
     std::string _focus;
-
+	
     // actual scenegraph
     SceneGraph _graph;
     //SceneGraphNode* _root;

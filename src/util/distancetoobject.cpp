@@ -84,14 +84,18 @@ static bool isInitialized(){
 
 
 
-float DistanceToObject::distanceCalc(const psc& position, psc targetPos) //psc& camerapos
+float DistanceToObject::distanceCalc(const psc& positionPSC, psc targetPosPSC) //psc& camerapos
 	{
 		//assert(_distInstance);
 		//sceneNr++;
 		//objpos = _tmpnode->position();
-		
+		// ***fix to work with psc*** (remove PSC from input when PSC gone)
+		glm::dvec3 targetPos = targetPosPSC.dvec3();
+		glm::dvec3 position = positionPSC.dvec3();
 		
 		distance = sqrt(pow(position[0] - targetPos[0], 2) + pow(position[1] - targetPos[1], 2) + pow(position[2] - targetPos[2], 2));
+		
+		
 		//*_distInstance = &distance;
 		//if (distance < distToScene) {}
 		//sceneNrPub = sceneNr;

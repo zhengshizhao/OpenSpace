@@ -215,13 +215,15 @@ void mainRenderFunc() {
     mat4 userMatrix = translate(mat4(1.f), _sgctEngine->getDefaultUserPtr()->getPos());
     mat4 sceneMatrix = _sgctEngine->getModelMatrix();
     mat4 viewMatrix = _sgctEngine->getActiveViewMatrix() * userMatrix;
-    
+
     //dont shift nav-direction on master, makes it very tricky to navigate @JK
     if (!OsEng.ref().isMaster())
         viewMatrix = viewMatrix * sceneMatrix;
 
     mat4 projectionMatrix = _sgctEngine->getActiveProjectionMatrix();
     OsEng.render(projectionMatrix, viewMatrix);
+
+	
 }
 
 void mainPostDrawFunc() {

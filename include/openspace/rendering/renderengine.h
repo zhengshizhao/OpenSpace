@@ -92,7 +92,7 @@ public:
     void setSGCTRenderStatistics(bool visible);
 
     void setDisableRenderingOnMaster(bool enabled);
-	
+	void RenderEngine::camerRigTesting();
 	/**
 	 * Returns the Lua library that contains all Lua functions available to affect the
 	 * rendering. The functions contained are
@@ -121,8 +121,7 @@ private:
     ABufferImplementation aBufferFromString(const std::string& impl);
 
 	void storePerformanceMeasurements();
-	void checkScene(Scene* scene);
-	//bool insideScene(SceneGraphNode* tmpNode);
+	
 	
 	std::string _nameOfScene;
 	Camera* _mainCamera;

@@ -72,6 +72,7 @@ public:
 
     //void addNode(SceneGraphNode* child);
 
+    void addChild(SceneGraphNode* child);
     void setParent(SceneGraphNode* parent);
 	//bool abandonChild(SceneGraphNode* child);
 
@@ -97,7 +98,7 @@ public:
         delete _ephemeris;
         _ephemeris = eph;
     }
-	void SceneGraphNode::setSceneRadius(float radius);
+	void SceneGraphNode::setSceneRadius(float SceneRadius);
 
 
 	/**
@@ -111,7 +112,7 @@ private:
 	std::vector<SceneGraphNode*> _children;
     SceneGraphNode* _parent;
     Ephemeris* _ephemeris;
-	float _radius;
+	float _sceneRadius;
 	PerformanceRecord _performanceRecord;
 
     Renderable* _renderable;

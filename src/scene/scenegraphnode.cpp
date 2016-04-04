@@ -56,8 +56,9 @@ namespace openspace {
 std::string SceneGraphNode::RootNodeName = "Root";
 const std::string SceneGraphNode::KeyName = "Name";
 const std::string SceneGraphNode::KeyParentName = "Parent";
+const std::string SceneGraphNode::KeySceneRadius = "SceneRadius";
 const std::string SceneGraphNode::KeyDependencies = "Dependencies";
-const std::string SceneGraphNode::KeySceneRadius = "Radius";
+
 
 SceneGraphNode* SceneGraphNode::createFromDictionary(const ghoul::Dictionary& dictionary)
 {
@@ -72,9 +73,9 @@ SceneGraphNode* SceneGraphNode::createFromDictionary(const ghoul::Dictionary& di
     dictionary.getValue(KeyName, name);
     result->setName(name);
 
-	float radius;
-	dictionary.getValue(KeySceneRadius, radius);
-	result->setSceneRadius(radius);
+	float sceneRadius;
+	dictionary.getValue(KeySceneRadius, sceneRadius);
+	result->setSceneRadius(sceneRadius);
 
     if (dictionary.hasValue<ghoul::Dictionary>(KeyRenderable)) {
         ghoul::Dictionary renderableDictionary;
@@ -112,9 +113,9 @@ SceneGraphNode* SceneGraphNode::createFromDictionary(const ghoul::Dictionary& di
 	if (dictionary.hasKey(KeySceneScale)) {
 		ghoul::Dictionary sceneScaleDictionary;
 		dictionary.getValue(KeySceneScale, sceneScaleDictionary);
-		delete result->_radius;
-		result->_radius = Ephemeris::createFromDictionary(sceneScaleDictionary);
-		if (result->_radius == nullptr) {
+		delete result->_sceneRadius;
+		result->_sceneRadius = Ephemeris::createFromDictionary(sceneScaleDictionary);
+		if (result->_sceneRadius == nullptr) {
 			LERROR("Failed to create ephemeris for SceneGraphNode '"
 				<< result->name() << "'");
 			delete result;
@@ -152,7 +153,7 @@ SceneGraphNode::SceneGraphNode()
     , _renderable(nullptr)
     , _renderableVisible(false)
     , _boundingSphereVisible(false)
-	, _radius(0)
+	, _sceneRadius(0.0)
 {
 }
 
@@ -182,10 +183,10 @@ bool SceneGraphNode::deinitialize() {
     delete _ephemeris;
     _ephemeris = nullptr;
 
-    for (SceneGraphNode* child : _children) {
-		child->deinitialize();
-		delete child;
-	}
+ //   for (SceneGraphNode* child : _children) {
+	//	child->deinitialize();
+	//	delete child;
+	//}
     _children.clear();
 
     // reset variables
@@ -193,7 +194,7 @@ bool SceneGraphNode::deinitialize() {
     _renderableVisible = false;
     _boundingSphereVisible = false;
     _boundingSphere = PowerScaledScalar(0.0, 0.0);
-	_radius = 0.0;
+	_sceneRadius = 0.0;
     return true;
 }
 
@@ -309,6 +310,11 @@ void SceneGraphNode::setParent(SceneGraphNode* parent)
     _parent = parent;
 }
 
+void SceneGraphNode::addChild(SceneGraphNode* child) {
+    _children.push_back(child);
+}
+
+
 //not used anymore @AA
 //bool SceneGraphNode::abandonChild(SceneGraphNode* child) {
 //	std::vector < SceneGraphNode* >::iterator it = std::find(_children.begin(), _children.end(), child);
@@ -320,9 +326,9 @@ void SceneGraphNode::setParent(SceneGraphNode* parent)
 //
 //	return false;
 //}
-void SceneGraphNode::setSceneRadius(float radius) {
+void SceneGraphNode::setSceneRadius(float sceneRadius) {
 	
-	_radius = std::move(radius);
+	_sceneRadius = std::move(sceneRadius);
 	
 }
 
@@ -449,9 +455,15 @@ SceneGraphNode* SceneGraphNode::childNode(const std::string& name)
 
 void SceneGraphNode::updateCamera(Camera* camera) const{
 
-	psc origin = worldPosition();
+	//psc origin = worldPosition();
+	 //scalegraph change, origin for the camera is now set to the parent
+	// of the camera. 
+	psc origin = Scene().sceneGraphNode(camera->getParent())->position();
+	//
+
 	//int i = 0;
 	// the camera position
+	//psc org  = //camera->getParent();
 	
 	psc relative = camera->position();
 	psc focus = camera->focusPosition();
@@ -467,7 +479,7 @@ void SceneGraphNode::updateCamera(Camera* camera) const{
 }
 
 const float& SceneGraphNode::sceneRadius() const {
-	return _radius;
+	return _sceneRadius;
 }
 
 }  // namespace openspace
