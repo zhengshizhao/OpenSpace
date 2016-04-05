@@ -117,10 +117,14 @@ public:
     } _onScreenInformation;
 
 private:
+
     ABufferImplementation aBufferFromString(const std::string& impl);
 
 	void storePerformanceMeasurements();
-
+	void checkScene(Scene* scene);
+	//bool insideScene(SceneGraphNode* tmpNode);
+	
+	std::string _nameOfScene;
 	Camera* _mainCamera;
 	Scene* _sceneGraph;
 	ABuffer* _abuffer;
@@ -139,12 +143,13 @@ private:
 	float _globalBlackOutFactor;
 	float _fadeDuration;
 	float _currentFadeTime;
+	float _distance;
 	int _fadeDirection;
+	int _sceneNumber;
     bool _sgctRenderStatisticsVisible;
 
 	bool _visualizeABuffer;
 	ABufferVisualizer* _visualizer;
-
     bool _disableMasterRendering = false;
 };
 

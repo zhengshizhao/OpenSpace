@@ -55,7 +55,8 @@ public:
     static const std::string KeyName;
     static const std::string KeyParentName;
     static const std::string KeyDependencies;
-    
+	static const std::string KeySceneRadius;
+
     SceneGraphNode();
     ~SceneGraphNode();
 
@@ -96,6 +97,13 @@ public:
         delete _ephemeris;
         _ephemeris = eph;
     }
+	void SceneGraphNode::setSceneRadius(float radius);
+
+
+	/**
+	 * Returns the radius of the scene for this PropertyOwner.
+	 */
+	const float& sceneRadius() const;
 
 private:
     bool sphereInsideFrustum(const psc& s_pos, const PowerScaledScalar& s_rad, const Camera* camera);
@@ -103,7 +111,7 @@ private:
 	std::vector<SceneGraphNode*> _children;
     SceneGraphNode* _parent;
     Ephemeris* _ephemeris;
-
+	float _radius;
 	PerformanceRecord _performanceRecord;
 
     Renderable* _renderable;

@@ -165,7 +165,7 @@ bool SceneGraph::loadFromFile(const std::string& sceneDescription) {
     for (const std::string& key : keys) {
         std::string moduleName = moduleDictionary.value<std::string>(key);
         std::string modulePath = FileSys.pathByAppendingComponent(sceneDirectory, moduleName);
-
+		
         if (!FileSys.directoryExists(modulePath)) {
             LERROR("Could not load module '" << moduleName << "'. Directory did not exist");
             continue;
@@ -203,7 +203,7 @@ bool SceneGraph::loadFromFile(const std::string& sceneDescription) {
 
             element.getValue(SceneGraphNode::KeyName, nodeName);
             element.getValue(SceneGraphNode::KeyParentName, parentName);
-
+			
             FileSys.setCurrentDirectory(modulePath);
             SceneGraphNode* node = SceneGraphNode::createFromDictionary(element);
             if (node == nullptr) {

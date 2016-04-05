@@ -38,6 +38,8 @@
 #include <openspace/interaction/interactionhandler.h>
 #include <openspace/scene/scene.h>
 #include <openspace/util/camera.h>
+#include <openspace/util/DistanceToObject.h>
+#include <openspace/util/setscene.h>
 #include <openspace/util/constants.h>
 #include <openspace/util/time.h>
 #include <openspace/util/screenlog.h>
@@ -106,6 +108,9 @@ RenderEngine::RenderEngine()
     , _sgctRenderStatisticsVisible(false)
     , _visualizeABuffer(false)
     , _visualizer(nullptr)
+	, _sceneNumber(0)
+	, _distance(0.f)
+	,_nameOfScene("SolarSystemBarycenter")
 {
     _onScreenInformation = {
         glm::vec2(0.f),
@@ -468,7 +473,156 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 			PrintText(line++, "Distance to Pluto: % .1f (KM)", distToSurf);
 
 			PrintText(line++, "Avg. Frametime: %.5f", sgct::Engine::instance()->getAvgDt());
-		
+			
+
+			
+			//
+			//psc objpos;
+			//double lt2;
+			//SpiceManager::ref().getTargetPosition("EARTH", "JUPITER", "GALACTIC", "NONE", currentTime, objpos, lt2);
+
+
+			//---
+			/* plocka ut namn ur sceneGraph, ta bort när det är gjort. 
+			struct PerformanceLayoutEntry {
+				char name[lengthName];
+				float renderTime[nValues];
+				float updateRenderable[nValues];
+				float updateEphemeris[nValues];
+
+				int32_t currentRenderTime;
+				int32_t currentUpdateRenderable;
+				int32_t currentUpdateEphemeris;
+			};
+
+			PerformanceLayoutEntry entries[maxValues];
+
+			const int moduleNodes = static_cast<int>(scene()->allSceneGraphNodes().size());
+
+			for (int i = 0; i < moduleNodes; ++i) {
+				SceneGraphNode* node = scene()->allSceneGraphNodes()[i];
+
+				memset(layout->entries[i].name, 0, lengthName);
+
+				strcpy_s(layout->entries[i].name, node->name().length() + 1, node->name().c_str());
+
+				strcpy(layout->entries[i].name, node->name().c_str());
+
+
+				layout->entries[i].currentRenderTime = 0;
+				layout->entries[i].currentUpdateRenderable = 0;
+				layout->entries[i].currentUpdateEphemeris = 0;
+			}
+			*/
+
+
+			// get names from sceneGraph:
+			
+			
+			
+			
+			
+			
+
+			//const int numberOfNodes = static_cast<int>(scene()->allSceneGraphNodes().size());
+			
+			
+			
+			/*
+			for (int i = 0; i < numberOfNodes; ++i) {
+				SceneGraphNode* node = scene()->allSceneGraphNodes()[i];
+
+				memset(layout->entries[i].name, 0, lengthName);
+
+				strcpy_s(layout->entries[i].name, node->name().length() + 1, node->name().c_str());
+
+				strcpy(layout->entries[i].name, node->name().c_str());
+
+
+				layout->entries[i].currentRenderTime = 0;
+				layout->entries[i].currentUpdateRenderable = 0;
+				layout->entries[i].currentUpdateEphemeris = 0;
+			}*/
+
+
+
+			
+			
+			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[DistanceToObject::sceneNr];
+			//psc objpos = _tmpnode->position();
+				//calculate distance to current object
+			//SceneGraphNode* _tmpnode = scene()->sceneGraphNode(currentScene.c_str());
+			
+			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[NextValue];
+			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[NextValue];
+			//	SetScene::update(_sceneGraph);			_sceneGraph->position
+			//SceneGraphNode* test =
+			//test->position();
+
+
+			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[1];
+			
+			//fuckit loopa här
+			
+			//function of this:
+			
+			//double previousDistance = 1000000.0;
+
+			//remove once distance function is done, nh. 
+			//_mainCamera->position()
+			//checkScene(scene());
+			/*
+			for (int i = 0; i < 60; i++)
+				{
+					SceneGraphNode* tmpnode = scene()->allSceneGraphNodes()[i];
+					_nameOfScene = tmpnode->name();
+
+					std::vector<SceneGraphNode*> childrenScene = tmpnode->children();
+					int nrOfChildren = static_cast<int>(childrenScene.size());
+					LINFO("Name of Scene: " << _nameOfScene);
+					LINFO("Nr of children: " << nrOfChildren);
+						
+				}
+				*/
+			/*
+			for (int i = 29; i < 60; i++)
+			{
+				//LINFO(i);
+				LINFO("Scene nr: "<< i <<" "<< scene()->allSceneGraphNodes()[i]->name());
+			}
+			*/
+			/*
+			PrintText(line++, "Name of Scene 0: (%s)", scene()->allSceneGraphNodes()[0]->name().c_str());
+			PrintText(line++, "Name of Scene 1: (%s)", scene()->allSceneGraphNodes()[1]->name().c_str());
+			PrintText(line++, "Name of Scene 2: (%s)", scene()->allSceneGraphNodes()[2]->name().c_str());
+			PrintText(line++, "Name of Scene 3: (%s)", scene()->allSceneGraphNodes()[3]->name().c_str());
+			PrintText(line++, "Name of Scene 4: (%s)", scene()->allSceneGraphNodes()[4]->name().c_str());
+			PrintText(line++, "Name of Scene 17: (%s)", scene()->allSceneGraphNodes()[17]->name().c_str());
+			PrintText(line++, "Name of Scene 18: (%s)", scene()->allSceneGraphNodes()[18]->name().c_str());
+			PrintText(line++, "Name of Scene 19: (%s)", scene()->allSceneGraphNodes()[19]->name().c_str());
+			*/
+			//PrintText(line++, "Name of Scene 5: (%s)", scene()->allSceneGraphNodes()[5]->name().c_str());
+			
+			//objpos = _tmpnode->position();
+			//double distance = DistanceToObject::ref().distanceCalc(cameraPosition, objpos);
+			
+			/*if (distance < distToScene) {
+				//currentScene = "Sun";
+				NextValue++;
+				
+				
+				_tmpnode = scene()->allSceneGraphNodes()[NextValue];
+				currentScene = _tmpnode->name().c_str();
+				objpos = _tmpnode->position();
+				PrintText(line++, "Changing scene to !!!!!!!!! : %s", currentScene.c_str());
+			}*/
+			
+			//if (distance < 10000.0)
+			//PrintText(line++, "Distance to (% .5f) ", distance);
+			//PrintText(line++, "position for tmpnode =         (% .5f, % .5f, % .5f)", objpos[0], objpos[1], objpos[2]);
+			//PrintText(line++,"%s", currentScene);
+
+
 			//PrintText(line++, "Drawtime:       %.5f", sgct::Engine::instance()->getDrawTime());
 			//PrintText(line++, "Frametime:      %.5f", sgct::Engine::instance()->getDt());
 			//PrintText(i++, "Origin:         (% .5f, % .5f, % .5f, % .5f)", origin[0], origin[1], origin[2], origin[3]);
@@ -822,6 +976,134 @@ bool RenderEngine::doesPerformanceMeasurements() const {
 	return _doPerformanceMeasurements;
 }
 
+void RenderEngine::checkScene(Scene* scene) {
+
+	//const psc& cameraPosition = _mainCamera->position();
+	//PrintText(line++, "Cam pos:        (% .5f, % .5f, % .5f, % .5f)", cameraPosition[0], cameraPosition[1], cameraPosition[2], cameraPosition[3]);
+	//const int nrOfNodes = static_cast<int>(scene->allSceneGraphNodes().size()); //dont need?
+
+	psc cameraPos = _mainCamera->position();
+	//sets the current node to the the node with the previous name. 
+	SceneGraphNode* node = scene->sceneGraphNode(_nameOfScene);
+
+	//Starts in the last scene we kow we were in, checks if we are still inside, if not check parent, continue until we are inside a scene
+	_distance = (DistanceToObject::ref().distanceCalc(_mainCamera->position(), node->position()));
+
+
+	//traverses the scenetree to find a scene we are within. 
+	while (_distance > node->sceneRadius())
+	{
+		
+		
+		//LINFO("Check parent current scene whileloop");
+		if ((node->parent() != NULL) && node->parent()->name() != "SolarSystem")
+		{
+			node = node->parent();
+			//LINFO("Switching to parent node named: " << node->name());
+			_distance = (DistanceToObject::ref().distanceCalc(_mainCamera->position(), node->position()));
+			_nameOfScene = node->name();
+
+		}
+		
+		
+		else if (node->parent()->name() == "SolarSystem")
+		{
+			//We have reached the root, solarsystem as scene is the scene. 
+			node = scene->allSceneGraphNodes()[3];
+			_nameOfScene = node->name();
+			//renderenginge::PrintText(line++, "Name of Scene: (%s)", _nameOfScene.c_str()); 
+			//LINFO("Reached root node. _nameOfScene = " << _nameOfScene.c_str());
+			break;
+		}
+		
+
+	}
+	//Now we know we are inside a scene. 
+	//Check if we are inside a child scene of the current scene. 
+
+	node = scene->allSceneGraphNodes()[44];
+	_nameOfScene = node->name();
+	
+	std::vector<SceneGraphNode*> childrenScene = node->children();
+	int nrOfChildren = static_cast<int>(childrenScene.size());
+	LINFO("Nr of children for current scene: " << nrOfChildren);
+	//nrOfChildren = 1;
+	
+	bool outsideAllChildScenes = false;
+	//child->evaluate(camera, psc());
+	while (!childrenScene.empty() && !outsideAllChildScenes)
+	{
+		LINFO("Check childscene while loop");
+		for (size_t i = 0; i < childrenScene.size(); ++i)
+		{
+			
+			//SceneGraphNode* tempChild = childrenScene.at(i);
+			_distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), childrenScene.at(i)->position());
+
+			if (_distance < childrenScene.at(i)->sceneRadius())
+			{
+				//set new current scene
+				node = childrenScene.at(i);
+				childrenScene = node->children();
+			}
+
+			if (childrenScene.size() == i)
+				outsideAllChildScenes = true;
+
+
+
+		}
+	}
+	
+
+
+	/*
+	else
+	{
+	for (int i = 1; i <= nrOfNodes - 1; i++)
+		{
+			node = scene->allSceneGraphNodes()[i];
+			float sceneRadius = node->sceneRadius();
+			
+			if (sceneRadius != 0.0) 
+			{
+				
+				_distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), objpos);
+
+				if ((_distance < sceneRadius) && (_nameOfScene != node->name()))
+				{
+					_nameOfScene = node->name();
+					_sceneNumber = i;
+					LINFO("Changing scene to: " << _nameOfScene);
+				}
+			}
+
+			//nameOfScene = _sceneGraph->allSceneGraphNodes()[i]->name;
+
+
+		}
+	}
+	*/
+
+	
+	//PrintText(line++, "Name of Scene, radius of scene: (%s .% .5f)", nameOfScene.c_str(), sceneRadius);
+	//PrintText(line++, "Inside IF (%s .% .i)", nameOfScene.c_str(), i);
+
+
+	//float targetDist = DistanceToObject::ref().distanceCalc(cameraPosition, _mainCamera->focusPosition());
+	//PrintText(line++, "Distance to current target: (% .5f)", targetDist); }
+
+/*
+bool RenderEngine::insideScene(SceneGraphNode* tmpNode){
+
+	if ();
+		return true;
+	
+	return false;
+}
+
+*/
+}
 void RenderEngine::storePerformanceMeasurements() {
 	const int8_t Version = 0;
 	const int nValues = 250;
@@ -946,6 +1228,9 @@ void RenderEngine::changeViewPoint(std::string origin) {
 		//vestaNode->setParent(plutoBarycenterNode);
 
 		//newHorizonsTrailNode->setParent(plutoBarycenterNode);
+
+	
+
 		ghoul::Dictionary solarDictionary =
 		{
 			{ std::string("Type"), std::string("Spice") },

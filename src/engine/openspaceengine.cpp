@@ -60,6 +60,7 @@
 #include <ghoul/lua/lua_helper.h>
 #include <ghoul/systemcapabilities/systemcapabilities.h>
 
+#include <openspace/util/DistanceToObject.h> 
 // std
 #include <iostream>
 #include <fstream>
@@ -122,6 +123,7 @@ OpenSpaceEngine::OpenSpaceEngine(std::string programName)
     FactoryManager::initialize();
     SpiceManager::initialize();
     Time::initialize();
+	DistanceToObject::initialize();
     ghoul::systemcapabilities::SystemCapabilities::initialize();
 }
 
@@ -280,6 +282,7 @@ void OpenSpaceEngine::destroy() {
 	ghoul::systemcapabilities::SystemCapabilities::deinitialize();
 	FactoryManager::deinitialize();
 	Time::deinitialize();
+	DistanceToObject::deinitialize();
 	SpiceManager::deinitialize();
 
 	FileSystem::deinitialize();

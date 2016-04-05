@@ -47,7 +47,7 @@ if(WIN32)
     elseif (MSVC12)
         set(SGCT_LIBRARY_FOLDER "${SGCT_ROOT_DIR}/lib/msvc12")
     endif (MSVC10)
-    
+    set(SGCT_LIBRARY_FOLDER "${SGCT_ROOT_DIR}/lib/msvc12")
     if (CMAKE_CL_64)
         set(SGCT_LIBRARY_FOLDER "${SGCT_LIBRARY_FOLDER}_x64")
     endif (CMAKE_CL_64)
@@ -147,7 +147,7 @@ find_package_handle_standard_args(SGCT  DEFAULT_MSG
 mark_as_advanced(SGCT_INCLUDE_DIR SGCT_LIBRARY )
 
 if(SGCT_FOUND) 
-    MESSAGE(STATUS "SGCT found: ${SGCT_INCLUDES}/sgct.h")
+    MESSAGE(STATUS "SGCT found: ${SGCT_INCLUDES}/sgct.h, ${SGCT_LIBRARIES}")
 else()
     MESSAGE(FATAL_ERROR "SGCT not found!")
 endif(SGCT_FOUND)
