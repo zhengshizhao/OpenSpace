@@ -26,7 +26,8 @@
 #define __SCENEGRAPH_H__
 
 #include <vector>
-
+#include <string>
+ 
 namespace openspace {
 
 class SceneGraphNode;
