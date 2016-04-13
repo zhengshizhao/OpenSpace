@@ -73,7 +73,7 @@ SpiceEphemeris::SpiceEphemeris(const ghoul::Dictionary& dictionary)
 	}
 }
     
-const psc& SpiceEphemeris::position() const {
+const glm::vec3& SpiceEphemeris::position() const {
     return _position;
 }
 
@@ -91,8 +91,7 @@ void SpiceEphemeris::update(const UpdateData& data) {
 	//		"GALACTIC", "NONE", _time, position, lightTime);
 	//}
 	//
-	_position = psc::CreatePowerScaledCoordinate(position.x, position.y, position.z);
-	_position[3] += 3;
+    _position = position * std::pow(10, 3);
 }
 
 } // namespace openspace

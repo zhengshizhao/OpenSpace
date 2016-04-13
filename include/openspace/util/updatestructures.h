@@ -26,7 +26,7 @@
 #define __UPDATESTRUCTURES_H__
 
 #include <openspace/util/camera.h>
-#include <openspace/util/powerscaledcoordinate.h>
+#include <glm/glm.hpp>
 
 namespace openspace {
 
@@ -45,7 +45,7 @@ struct UpdateData {
 
 struct RenderData {
 	const Camera& camera;
-	psc position;
+    glm::vec3 position;
 	bool doPerformanceMeasurement;
 };
 

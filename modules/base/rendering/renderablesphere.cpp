@@ -56,7 +56,7 @@ RenderableSphere::RenderableSphere(const ghoul::Dictionary& dictionary)
 	: Renderable(dictionary)
 	, _texturePath("texture", "Texture")
     , _orientation("orientation", "Orientation")
-    , _size("size", "Size", glm::vec2(1.f, 1.f), glm::vec2(0.f), glm::vec2(100.f))
+    , _size("size", "Size", 1.f, 0.f, std::pow(10, 27))
     , _segments("segments", "Segments", 8, 4, 100)
     , _transparency("transparency", "Transparency", 1.f, 0.f, 1.f)
 	, _shader(nullptr)
@@ -67,7 +67,7 @@ RenderableSphere::RenderableSphere(const ghoul::Dictionary& dictionary)
     if (dictionary.hasKeyAndValue<glm::vec2>(keySize)) {
         glm::vec2 size;
         dictionary.getValue(keySize, size);
-        _size = size;
+        _size = size[0] * std::pow(10, size[1]);
     }
 
     if (dictionary.hasKeyAndValue<glm::vec2>(keySegments)) {
@@ -115,7 +115,7 @@ bool RenderableSphere::isReady() const {
 
 bool RenderableSphere::initialize() {
     delete _sphere;
-    _sphere = new PowerScaledSphere(_size.value(), _segments);
+    _sphere = new PowerScaledSphere(_size, _segments);
     _sphere->initialize();
 
     // pscstandard

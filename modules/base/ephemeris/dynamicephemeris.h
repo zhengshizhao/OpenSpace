@@ -34,11 +34,11 @@ public:
     DynamicEphemeris(const ghoul::Dictionary& dictionary
                                 = ghoul::Dictionary());
     virtual ~DynamicEphemeris();
-    virtual const psc& position() const;
+    virtual const glm::vec3& position() const;
 	virtual void update(const UpdateData& data) override;
-	void setPosition(psc pos);
+	void setPosition(const glm::vec3& pos);
 private:
-    psc _position;
+    glm::vec3 _position;
 };
     
 } // namespace openspace

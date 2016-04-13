@@ -1,7 +1,6 @@
 #ifndef EXTERNALCONTROL_H
 #define EXTERNALCONTROL_H
 
-#include <openspace/util/powerscaledscalar.h>
 #include <ghoul/glm.h>
 #include <glm/gtc/quaternion.hpp>
 
@@ -18,7 +17,7 @@ public:
 	
 	void rotate(const glm::quat &rotation);
 	void orbit(const glm::quat &rotation);
-	void distance(const PowerScaledScalar &distance);
+	void distance(float distance);
 
 	
 protected:

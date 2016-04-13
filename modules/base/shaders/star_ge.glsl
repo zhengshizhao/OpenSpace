@@ -40,7 +40,6 @@ in vec4 psc_position[];
 in vec3 vs_brightness[];
 in vec3 vs_velocity[];
 in float vs_speed[];
-in vec4 cam_position[];
 
 out vec4 vs_position;
 out vec3 ge_brightness;

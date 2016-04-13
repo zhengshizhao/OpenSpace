@@ -43,90 +43,74 @@ namespace openspace {
 namespace interaction {
 
 void KeyboardControllerFixed::keyPressed(KeyAction action, Key key, KeyModifier modifier) {
-	// TODO package in script
-	const float dt = static_cast<float>( _handler->deltaTime());
-	if(action == KeyAction::Press|| action == KeyAction::Repeat) {
+    // TODO package in script
+    const float dt = static_cast<float>( _handler->deltaTime());
+    if(action == KeyAction::Press|| action == KeyAction::Repeat) {
         const float speed = 2.75;
-		if (key == Key::S) {
-		    glm::vec3 euler(speed * dt, 0.0, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->orbitDelta(rot);
-		}
-		if (key == Key::W) {
-		    glm::vec3 euler(-speed * dt, 0.0, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->orbitDelta(rot);
-		}
-		if (key == Key::A) {
-		    glm::vec3 euler(0.0, -speed * dt, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->orbitDelta(rot);
-		}
-		if (key == Key::D) {
-		    glm::vec3 euler(0.0, speed * dt, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->orbitDelta(rot);
-		}
-		if (key == Key::Q) {
-			Time::ref().advanceTime(dt);
-		}
-		if (key == Key::Right) {
-		    glm::vec3 euler(0.0, speed * dt, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->rotateDelta(rot);
-		}
-		if (key == Key::Left) {
-		    glm::vec3 euler(0.0, -speed * dt, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->rotateDelta(rot);
-		}
-		if (key == Key::Down) {
-		    glm::vec3 euler(speed * dt, 0.0, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->rotateDelta(rot);
-		}
-		if (key == Key::Up) {
-		    glm::vec3 euler(-speed * dt, 0.0, 0.0);
-		    glm::quat rot = glm::quat(euler);
-		    _handler->rotateDelta(rot);
-		}
-		if (key == Key::R) {
-		    PowerScaledScalar dist(-speed * dt, 0.0);
-		    _handler->distanceDelta(dist);
-		}
-		if (key == Key::F) {
-		    PowerScaledScalar dist(speed * dt, 0.0);
-		    _handler->distanceDelta(dist);
-		}
-		if (key == Key::T) {
-			PowerScaledScalar dist(-speed * pow(10.0f, 11.0f) * dt, 0.0f);
-			_handler->distanceDelta(dist);
-		}
-		//if (key == Keys::G) {
-		//	acc += 0.001;
-		//	PowerScaledScalar dist(speed * pow(10, 8 * acc) * dt, 0.0);
-		//	distanceDelta(dist);
-		//}
-		if (key == Key::Y) {
-			PowerScaledScalar dist(-speed * 100.0f * dt, 6.0f);
-			_handler->distanceDelta(dist);
-		}
-		if (key == Key::H) {
-			PowerScaledScalar dist(speed * 100.0f * dt, 6.0f);
-			_handler->distanceDelta(dist);
-		}
-	
-		if (key == Key::KeypadSubtract) {
-			glm::vec2 s = OsEng.renderEngine().camera()->scaling();
-			s[1] -= 0.5;
-			OsEng.renderEngine().camera()->setScaling(s);
-		}
-		if (key == Key::KeypadAdd) {
-			glm::vec2 s = OsEng.renderEngine().camera()->scaling();
-			s[1] += 0.5;
-			OsEng.renderEngine().camera()->setScaling(s);
-		}
-	}
+    if (key == Key::S) {
+        glm::vec3 euler(speed * dt, 0.0, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->orbitDelta(rot);
+    }
+    if (key == Key::W) {
+        glm::vec3 euler(-speed * dt, 0.0, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->orbitDelta(rot);
+    }
+    if (key == Key::A) {
+        glm::vec3 euler(0.0, -speed * dt, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->orbitDelta(rot);
+    }
+    if (key == Key::D) {
+        glm::vec3 euler(0.0, speed * dt, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->orbitDelta(rot);
+    }
+    if (key == Key::Q) {
+        Time::ref().advanceTime(dt);
+    }
+    if (key == Key::Right) {
+        glm::vec3 euler(0.0, speed * dt, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->rotateDelta(rot);
+    }
+    if (key == Key::Left) {
+        glm::vec3 euler(0.0, -speed * dt, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->rotateDelta(rot);
+    }
+    if (key == Key::Down) {
+        glm::vec3 euler(speed * dt, 0.0, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->rotateDelta(rot);
+    }
+    if (key == Key::Up) {
+        glm::vec3 euler(-speed * dt, 0.0, 0.0);
+        glm::quat rot = glm::quat(euler);
+        _handler->rotateDelta(rot);
+    }
+    if (key == Key::R) {
+        float dist = -speed * dt;
+        _handler->distanceDelta(dist);
+    }
+    if (key == Key::F) {
+        float dist = speed * dt;
+        _handler->distanceDelta(dist);
+    }
+    if (key == Key::T) {
+        float dist = -speed * pow(10.0f, 11.0f) * dt;
+        _handler->distanceDelta(dist);
+    }
+    if (key == Key::Y) {
+        float dist = -speed * 100.0f * dt * pow(10.0f, 6.0f);
+        _handler->distanceDelta(dist);
+    }
+    if (key == Key::H) {
+        float dist = speed * 100.0f * dt * pow(10.0f, 6.0f);
+        _handler->distanceDelta(dist);
+    }
+}
 	/*
 	if (key == '1') {
 	    SceneGraphNode* node = getSceneGraphNode("sun");

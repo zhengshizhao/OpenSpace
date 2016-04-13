@@ -24,7 +24,7 @@ void ExternalControl::orbit(const glm::quat &rotation) {
 	//OsEng.interactionHandler().orbit(rotation);
 }
 
-void ExternalControl::distance(const PowerScaledScalar &distance) {
+void ExternalControl::distance(float distance) {
 	//OsEng.interactionHandler().distance(distance);
 }
 

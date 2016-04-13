@@ -153,7 +153,7 @@ void RenderablePath::render(const RenderData& data) {
 	//	return;
 	
 	_programObject->activate();
-	psc currentPosition = data.position;
+	glm::vec3 currentPosition = data.position;
 	glm::mat4 camrot = data.camera.viewRotationMatrix();
 	glm::mat4 transform = glm::mat4(1);
 
@@ -221,15 +221,14 @@ void RenderablePath::calculatePath(std::string observer) {
 	double currentTime = _start;
 	_vertexArray.resize(segments);
 
-    psc pscPos;
+    glm::vec3 pscPos;
 	//float r, g, b;
 	//float g = _lineColor[1];
 	//float b = _lineColor[2];
 	for (int i = 0; i < segments; i++) {
         glm::dvec3 p =
         SpiceManager::ref().targetPosition(_target, observer, _frame, {}, currentTime, lightTime);
-        pscPos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
-		pscPos[3] += 3;
+        pscPos = p * std::pow(10, 3);
 			
 		//if (!correctPosition) {
 		//	r = 1.f;
@@ -244,12 +243,12 @@ void RenderablePath::calculatePath(std::string observer) {
 		//	r = g = b = 0.6f;
 		//}
 		//add position
-		_vertexArray[i] = { pscPos[0], pscPos[1], pscPos[2], pscPos[3] };
+		_vertexArray[i] = { pscPos[0], pscPos[1], pscPos[2], 0 };
 		//add color for position
 		//_vertexArray[i + 1] = { r, g, b, a };
 		currentTime += _increment;
 	}
-	_lastPosition = pscPos.dvec4();
+    _lastPosition = pscPos;
 
 	glBindBuffer(GL_ARRAY_BUFFER, _vBufferID);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, _vertexArray.size() *  sizeof(VertexInfo), &_vertexArray[0]);

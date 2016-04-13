@@ -27,8 +27,6 @@
 
 // open space includes
 #include <ghoul/opengl/ghoul_gl.h>
-#include <openspace/util/powerscaledcoordinate.h>
-#include <openspace/util/powerscaledscalar.h>
 #include <unordered_map>
 #include <map>
 #include <vector>

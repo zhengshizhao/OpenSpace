@@ -27,7 +27,6 @@
 
 //openspace includes
 #include <openspace/scripting/scriptengine.h>
-#include <openspace/util/powerscaledcoordinate.h>
 #include <openspace/network/messagestructures.h>
 
 //glm includes

@@ -29,7 +29,7 @@ uniform mat4 ModelTransform;
 
 uniform vec3 color;
 
-layout(location = 0) in vec4 in_position;
+layout(location = 0) in vec3 in_position;
 
 out vec4 vs_color;
 out vec4 vs_position;
@@ -38,8 +38,8 @@ const int targetId = 1;
 #include "PowerScaling/powerScaling_vs.hglsl"
 
 void main() {
-	vs_position = in_position;
-	vec4 tmp = in_position;
+	vs_position = vec4(in_position, 0.0);
+	vec4 tmp = vec4(in_position, 0.0);
 	int id = gl_VertexID;
 	
 	vec3 black = vec3(0.0);

@@ -241,7 +241,7 @@ void RenderablePlaneProjection::updatePlane(const Image img, double currentTime)
     }
 
 	double lt;
-	psc projection[4];
+    glm::vec3 projection[4];
 
     glm::dvec3 vecToTarget = SpiceManager::ref().targetPosition(
         _target.body,
@@ -262,8 +262,7 @@ void RenderablePlaneProjection::updatePlane(const Image img, double currentTime)
 		}
         cornerPosition = SpiceManager::ref().frameTransformationMatrix(GalacticFrame, _target.frame, currentTime) * cornerPosition;
 				
-		projection[j] = PowerScaledCoordinate::CreatePowerScaledCoordinate(cornerPosition[0], cornerPosition[1], cornerPosition[2]);
-		projection[j][3] += 3;
+        projection[j] = static_cast<glm::vec3>(cornerPosition) * std::pow(10.0f, 3.0f);
 	}
 
 	if (!_moving) {
@@ -334,15 +333,15 @@ std::string RenderablePlaneProjection::findClosestTarget(double currentTime) {
 	std::string targetBody;
 	bool hasBody, found = false;
 
-	PowerScaledScalar min = PowerScaledScalar::CreatePSS(REALLY_FAR);
-	PowerScaledScalar distance = PowerScaledScalar::CreatePSS(0.0);
+	float min = FLT_MAX;
+    float distance = 0.0;
 
 	std::string closestTarget = "";
 
 	double lt;
     glm::dvec3 p =
     SpiceManager::ref().targetPosition(_spacecraft, "SSB", GalacticFrame, {}, currentTime, lt);
-    psc spacecraftPos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
+    glm::vec3 spacecraftPos = static_cast<glm::vec3>(p);
 
 
 	for (auto node : nodes)

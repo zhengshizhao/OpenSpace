@@ -26,7 +26,6 @@
 #include <modules/newhorizons/rendering/renderableshadowcylinder.h>
 #include <openspace/engine/openspaceengine.h>
 #include <openspace/rendering/renderengine.h>
-#include <openspace/util/powerscaledcoordinate.h>
 #include <openspace/util/spicemanager.h>
 
 #include <ghoul/filesystem/filesystem>
@@ -155,23 +154,10 @@ void RenderableShadowCylinder::update(const UpdateData& data) {
 	createCylinder();
 }
 
-glm::vec4 psc_addition(glm::vec4 v1, glm::vec4 v2) {
-	float k = 10.f;
-	float ds = v2.w - v1.w;
-	if (ds >= 0) {
-		float p = pow(k, -ds);
-		return glm::vec4(v1.x*p + v2.x, v1.y*p + v2.y, v1.z*p + v2.z, v2.w);
-	}
-	else {
-		float p = pow(k, ds);
-		return glm::vec4(v1.x + v2.x*p, v1.y + v2.y*p, v1.z + v2.z*p, v1.w);
-	}
-}
-
 void RenderableShadowCylinder::createCylinder() {
 	double targetEpoch;
 	glm::dvec3 observerPosition;
-	std::vector<psc> terminatorPoints;
+	std::vector<glm::vec3> terminatorPoints;
     SpiceManager::TerminatorType t;
     if (_terminatorType == "UMBRAL")
         t = SpiceManager::TerminatorType::Umbral;
@@ -186,8 +172,7 @@ void RenderableShadowCylinder::createCylinder() {
     
     std::vector<glm::dvec3> ps = std::move(res.terminatorPoints);
     for (auto&& p : ps) {
-        PowerScaledCoordinate psc = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
-        psc[3] += 3;
+        glm::vec3 psc = p * std::pow(10, 3);
         terminatorPoints.push_back(psc);
     }
     
@@ -202,11 +187,11 @@ void RenderableShadowCylinder::createCylinder() {
 	vecLightSource *= _shadowLength;
 	_vertices.clear();
 
-	psc endpoint = psc::CreatePowerScaledCoordinate(vecLightSource.x, vecLightSource.y, vecLightSource.z);
+    glm::vec3 endpoint = vecLightSource;
 	for (auto v : terminatorPoints){
-		_vertices.push_back(CylinderVBOLayout(v[0], v[1], v[2], v[3]));
-		glm::vec4 f = psc_addition(v.vec4(), endpoint.vec4());
-		_vertices.push_back(CylinderVBOLayout(f[0], f[1], f[2], f[3]));
+		_vertices.push_back(CylinderVBOLayout(v[0], v[1], v[2], 0));
+		glm::vec3 f = v + endpoint;
+		_vertices.push_back(CylinderVBOLayout(f[0], f[1], f[2], 0));
 	}
 	_vertices.push_back(_vertices[0]);
 	_vertices.push_back(_vertices[1]);

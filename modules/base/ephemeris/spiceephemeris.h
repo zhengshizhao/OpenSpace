@@ -26,21 +26,20 @@
 #define __SPICEEPHEMERIS_H__
 
 #include <openspace/scene/ephemeris.h>
-
-#include <openspace/util/powerscaledcoordinate.h>
+#include <glm/glm.hpp>
 
 namespace openspace {
     
 class SpiceEphemeris : public Ephemeris {
 public:
     SpiceEphemeris(const ghoul::Dictionary& dictionary);
-    const psc& position() const;
+    const glm::vec3& position() const;
 	void update(const UpdateData& data) override;
 
 private:
     std::string _targetName;
     std::string _originName;
-    psc _position;
+    glm::vec3 _position;
 	bool _kernelsLoadedSuccessfully;
 	//std::string _ghosting;
 	std::string _name;

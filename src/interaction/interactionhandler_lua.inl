@@ -137,7 +137,7 @@ int distance(lua_State* L) {
 
     double d1 = luaL_checknumber(L, -2);
     double d2 = luaL_checknumber(L, -1);
-    PowerScaledScalar dist(static_cast<float>(d1), static_cast<float>(d2));
+    float dist = static_cast<float>(d1) * std::pow(10.0f, d2);
     OsEng.interactionHandler().distanceDelta(dist);
     return 0;
 }

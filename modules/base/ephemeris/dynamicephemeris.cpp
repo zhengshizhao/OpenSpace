@@ -31,7 +31,7 @@ namespace {
 namespace openspace {
 
 DynamicEphemeris::DynamicEphemeris(const ghoul::Dictionary& dictionary)
-    : _position(0.f, 0.f, 0.f, 0.f)
+    : _position(0.f, 0.f, 0.f)
 {
     const bool hasPosition = dictionary.hasKeyAndValue<glm::vec4>(KeyPosition);
     if (hasPosition) {
@@ -43,11 +43,11 @@ DynamicEphemeris::DynamicEphemeris(const ghoul::Dictionary& dictionary)
 
 DynamicEphemeris::~DynamicEphemeris() {}
 
-const psc& DynamicEphemeris::position() const {
+const glm::vec3& DynamicEphemeris::position() const {
     return _position;
 }
 
-void DynamicEphemeris::setPosition(psc pos) {
+void DynamicEphemeris::setPosition(const glm::vec3& pos) {
 	_position = pos;
 }
 

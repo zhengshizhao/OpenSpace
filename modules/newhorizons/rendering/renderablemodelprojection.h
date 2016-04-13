@@ -137,7 +137,7 @@ namespace openspace {
 
 		bool _capture;
 
-		psc _sunPosition;
+        glm::vec3 _sunPosition;
 
 		properties::BoolProperty _performShading;
 		bool _programIsDirty;

@@ -40,6 +40,7 @@
 
 #include <cctype>
 #include <chrono>
+#include <glm/gtx/vector_angle.hpp>
 
 namespace {
     const std::string _loggerCat = "SceneGraphNode";
@@ -165,7 +166,7 @@ bool SceneGraphNode::deinitialize() {
     _parent = nullptr;
     _renderableVisible = false;
     _boundingSphereVisible = false;
-    _boundingSphere = PowerScaledScalar(0.0, 0.0);
+    _boundingSphere = 0.0;
 
     return true;
 }
@@ -202,7 +203,7 @@ void SceneGraphNode::update(const UpdateData& data) {
 	}
 }
 
-void SceneGraphNode::evaluate(const Camera* camera, const psc& parentPosition) {
+void SceneGraphNode::evaluate(const Camera* camera, const glm::vec3& parentPosition) {
     //const psc thisPosition = parentPosition + _ephemeris->position();
     //const psc camPos = camera->position();
     //const psc toCamera = thisPosition - camPos;
@@ -243,7 +244,7 @@ void SceneGraphNode::evaluate(const Camera* camera, const psc& parentPosition) {
 }
 
 void SceneGraphNode::render(const RenderData& data, RendererTasks& tasks) {
-    const psc thisPosition = worldPosition();
+    const glm::vec3 thisPosition = worldPosition();
 
 	RenderData newData = {data.camera, thisPosition, data.doPerformanceMeasurement};
 
@@ -300,12 +301,12 @@ void SceneGraphNode::addChild(SceneGraphNode* child) {
 //	return false;
 //}
 
-const psc& SceneGraphNode::position() const
+const glm::vec3& SceneGraphNode::position() const
 {
     return _ephemeris->position();
 }
 
-psc SceneGraphNode::worldPosition() const
+glm::vec3 SceneGraphNode::worldPosition() const
 {
     // recursive up the hierarchy if there are parents available
     if (_parent) {
@@ -324,12 +325,12 @@ const std::vector<SceneGraphNode*>& SceneGraphNode::children() const{
 }
 
 // bounding sphere
-PowerScaledScalar SceneGraphNode::calculateBoundingSphere(){
+float SceneGraphNode::calculateBoundingSphere(){
     // set the bounding sphere to 0.0
 	_boundingSphere = 0.0;
 	
     if (!_children.empty()) {  // node
-        PowerScaledScalar maxChild;
+        float maxChild = 0;
 
         // loop though all children and find the one furthest away/with the largest
         // bounding sphere
@@ -338,7 +339,7 @@ PowerScaledScalar SceneGraphNode::calculateBoundingSphere(){
             // position
             //PowerScaledScalar child = _children.at(i)->position().length()
             //            + _children.at(i)->calculateBoundingSphere();
-			PowerScaledScalar child = _children.at(i)->calculateBoundingSphere();
+			float child = _children.at(i)->calculateBoundingSphere();
             if (child > maxChild) {
                 maxChild = child;
             }
@@ -348,7 +349,7 @@ PowerScaledScalar SceneGraphNode::calculateBoundingSphere(){
 
     // if has a renderable, use that boundingsphere
     if (_renderable ) {
-        PowerScaledScalar renderableBS = _renderable->getBoundingSphere();
+        float renderableBS = _renderable->getBoundingSphere();
         if(renderableBS > _boundingSphere)
             _boundingSphere = renderableBS;
     }
@@ -357,7 +358,7 @@ PowerScaledScalar SceneGraphNode::calculateBoundingSphere(){
     return _boundingSphere;
 }
 
-PowerScaledScalar SceneGraphNode::boundingSphere() const{
+float SceneGraphNode::boundingSphere() const{
     return _boundingSphere;
 }
 
@@ -376,25 +377,25 @@ Renderable* SceneGraphNode::renderable() {
 }
 
 // private helper methods
-bool SceneGraphNode::sphereInsideFrustum(const psc& s_pos, const PowerScaledScalar& s_rad,
+bool SceneGraphNode::sphereInsideFrustum(const glm::vec3& s_pos, float s_rad,
                                          const Camera* camera)
 {
     // direction the camera is looking at in power scale
-    psc psc_camdir = psc(camera->viewDirection());
+    glm::vec3 psc_camdir = glm::vec3(camera->viewDirection());
 
     // the position of the camera, moved backwards in the view direction to encapsulate
     // the sphere radius
-    psc U = camera->position() - psc_camdir * s_rad * (1.0 / camera->sinMaxFov());
+    glm::vec3 U = camera->position() - psc_camdir * s_rad * static_cast<float>(1.0 / camera->sinMaxFov());
 
     // the vector to the object from the new position
-    psc D = s_pos - U;
+    glm::vec3 D = s_pos - U;
 
-    const double a = psc_camdir.angle(D);
+    const double a = glm::angle(psc_camdir, D);
     if (a < camera->maxFov()) {
         // center is inside K''
         D = s_pos - camera->position();
         if (D.length() * psc_camdir.length() * camera->sinMaxFov()
-            <= -psc_camdir.dot(D)) {
+            <= -glm::dot(psc_camdir,D)) {
             // center is inside K'' and inside K'
             return D.length() <= s_rad;
         } else {
@@ -421,22 +422,15 @@ SceneGraphNode* SceneGraphNode::childNode(const std::string& name)
 }
 
 void SceneGraphNode::updateCamera(Camera* camera) const{
-
-	psc origin = worldPosition();
-	//int i = 0;
-	// the camera position
+    glm::vec3 origin = worldPosition();
 	
-	psc relative = camera->position();
-	psc focus = camera->focusPosition();
-	psc relative_focus = relative - focus;
-
-	psc target = origin + relative_focus;
+    glm::vec3 relative = camera->position();
+    glm::vec3 focus = camera->focusPosition();
+    glm::vec3 relative_focus = relative - focus;
+    glm::vec3 target = origin + relative_focus;
 	
-	camera->setPosition(target);
-	camera->setFocusPosition(origin);
-
-	//printf("target: %f, %f, %f, %f\n", target.vec4().x, target.vec4().y, target.vec4().z, target.vec4().w);
-	
+    camera->setPosition(target);
+    camera->setFocusPosition(origin);
 }
 
 }  // namespace openspace

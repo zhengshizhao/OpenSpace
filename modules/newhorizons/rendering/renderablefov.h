@@ -35,7 +35,6 @@
 #include <ghoul/opengl/programobject.h>
 #include <ghoul/opengl/texture.h>
 //#include <openspace/util/runtimedata.h>
-#include <openspace/util/powerscaledcoordinate.h>
 #include <openspace/util/spicemanager.h>
 
 namespace openspace {
@@ -63,7 +62,7 @@ public:
 	// class methods
 	void loadTexture();
 	void allocateData();
-	void insertPoint(std::vector<float>& arr, glm::vec4 p, glm::vec4 c);
+	void insertPoint(std::vector<float>& arr, glm::vec3 p, glm::vec3 c);
 	void fovSurfaceIntercept(bool H[], std::vector<glm::dvec3> bounds);
 	void determineTarget();
 	void updateGPU();
@@ -73,9 +72,9 @@ public:
 	// helper methods
 	void computeColors();
 	void computeIntercepts(const RenderData& data);
-	psc orthogonalProjection(glm::dvec3 camvec);
-	psc checkForIntercept(glm::dvec3 ray);
-	psc pscInterpolate(psc p0, psc p1, float t);
+    glm::vec3 orthogonalProjection(glm::dvec3 camvec);
+    glm::vec3 checkForIntercept(glm::dvec3 ray);
+    glm::vec3 pscInterpolate(glm::vec3 p0, glm::vec3 p1, float t);
 	glm::dvec3 interpolate(glm::dvec3 p0, glm::dvec3 p1, float t);
 	glm::dvec3 bisection(glm::dvec3 p1, glm::dvec3 p2, double tolerance);
 
@@ -85,8 +84,8 @@ public:
 	bool _rebuild = false;
 	bool _interceptTag[8];
 	bool _withinFOV;
-	std::vector<psc> _projectionBounds;
-	psc _interceptVector;
+	std::vector<glm::vec3> _projectionBounds;
+    glm::vec3 _interceptVector;
 
 	std::vector<float> _fovBounds;
 	std::vector<float> _fovPlane;

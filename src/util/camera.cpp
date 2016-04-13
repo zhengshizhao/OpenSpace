@@ -27,6 +27,7 @@
 #include <openspace/util/syncbuffer.h>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
 namespace openspace {
@@ -59,18 +60,18 @@ Camera::~Camera()
 {
 }
 
-void Camera::setPosition(psc pos)
+void Camera::setPosition(glm::vec3 pos)
 {
     std::lock_guard<std::mutex> _lock(_mutex);
 	_localPosition = std::move(pos);
 }
 
-const psc& Camera::position() const
+const glm::vec3& Camera::position() const
 {
 	return _syncedPosition;
 }
 
-const psc& Camera::unsynchedPosition() const{
+const glm::vec3& Camera::unsynchedPosition() const{
 	return _localPosition;
 }
 
@@ -174,12 +175,12 @@ void Camera::setRotation(glm::mat4 rotation)
   //  return _viewRotation;
 //}
 
-void Camera::setFocusPosition(psc pos){
+void Camera::setFocusPosition(glm::vec3 pos){
     std::lock_guard<std::mutex> _lock(_mutex);
 	_focusPosition = pos;
 }
 
-const psc& Camera::focusPosition() const{
+const glm::vec3& Camera::focusPosition() const{
 	return _focusPosition;
 }
 

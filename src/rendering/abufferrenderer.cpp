@@ -214,7 +214,7 @@ void ABufferRenderer::render(float blackoutFactor, bool doPerformanceMeasurement
     glBindImageTexture(1, _fragmentTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32UI);
 
     // Render the scene to the fragment buffer. Collect renderer tasks (active raycasters)
-    RenderData data{ *_camera, psc(), doPerformanceMeasurements };
+    RenderData data{ *_camera, glm::vec3(0.0), doPerformanceMeasurements };
     RendererTasks tasks;
     _scene->render(data, tasks);
 

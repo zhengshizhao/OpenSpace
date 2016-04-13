@@ -146,8 +146,8 @@ bool RenderableTrail::isReady() const {
 
 void RenderableTrail::render(const RenderData& data) {
     _programObject->activate();
-    psc currentPosition = data.position;
-    psc campos = data.camera.position();
+    glm::vec3 currentPosition = data.position;
+    glm::vec3 campos = data.camera.position();
     glm::mat4 camrot = data.camera.viewRotationMatrix();
 
     glm::mat4 transform = glm::mat4(1);
@@ -229,11 +229,9 @@ void RenderableTrail::update(const UpdateData& data) {
 	else
         p = SpiceManager::ref().targetPosition(_target, _observer, _frame, {}, data.time, lightTime);
     
-    psc pscPos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
+    glm::vec3 pscPos = static_cast<glm::vec3>(p) * std::pow(10.0f, 3);
     
-
-    pscPos[3] += 3; // KM to M
-    _vertexArray[0] = { pscPos[0], pscPos[1], pscPos[2], pscPos[3] };
+    _vertexArray[0] = { pscPos[0], pscPos[1], pscPos[2], 0 };
 
     if (nValues != 0) {
         // If we have new values to create, we do that here. nValues should always be
@@ -252,9 +250,8 @@ void RenderableTrail::update(const UpdateData& data) {
 				et = end;
             glm::dvec3 p =
             SpiceManager::ref().targetPosition(_target, _observer, _frame, {}, et, lightTime);
-            pscPos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
-			pscPos[3] += 3;
-            _vertexArray[i] = { pscPos[0], pscPos[1], pscPos[2], pscPos[3] };
+            pscPos = static_cast<glm::vec3>(p) * std::pow(10.0f, 3);
+            _vertexArray[i] = { pscPos[0], pscPos[1], pscPos[2], 0 };
         }
 
         for (size_t i = 0; i < tmp.size() - (nValues + 1); ++i)
@@ -316,10 +313,9 @@ void RenderableTrail::fullYearSweep(double time) {
             }
         }
         
-        psc pscPos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
-		pscPos[3] += 3;
+        glm::vec3 pscPos = static_cast<glm::vec3>(p) * std::pow(10.0f, 3);
 
-        _vertexArray[i] = {pscPos[0], pscPos[1], pscPos[2], pscPos[3]};
+        _vertexArray[i] = {pscPos[0], pscPos[1], pscPos[2], 0};
         time -= _increment;
     }
 

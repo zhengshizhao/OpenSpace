@@ -74,7 +74,7 @@ private:
 	//bool _isGhost;
 	int _frameCount;
 
-    psc _sunPosition;
+    glm::vec3 _sunPosition;
 
 	properties::BoolProperty _performShading;
 };

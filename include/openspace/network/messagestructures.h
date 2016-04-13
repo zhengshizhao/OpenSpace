@@ -32,9 +32,6 @@
 //glm includes
 #include <glm/gtx/quaternion.hpp>
 
-//openspace includes
-#include <openspace/util/powerscaledcoordinate.h>
-
 namespace openspace{
     
     namespace network{
@@ -48,7 +45,7 @@ namespace openspace{
         
             struct PositionKeyframe{
                 glm::quat _viewRotationQuat;
-                psc _position;
+                glm::vec3 _position;
                 double _timeStamp;
                 
                 void serialize(std::vector<char> &buffer){

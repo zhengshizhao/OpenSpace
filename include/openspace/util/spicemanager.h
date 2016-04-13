@@ -25,8 +25,6 @@
 #ifndef __SPICEMANAGER_H__
 #define __SPICEMANAGER_H__
 
-#include <openspace/util/powerscaledcoordinate.h>
-
 #include <ghoul/glm.h>
 #include <ghoul/designpattern/singleton.h>
 #include <ghoul/misc/exception.h>

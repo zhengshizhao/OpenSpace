@@ -27,8 +27,6 @@
 
 // open space includes
 #include <ghoul/opengl/ghoul_gl.h>
-#include <openspace/util/powerscaledcoordinate.h>
-#include <openspace/util/powerscaledscalar.h>
 #include <openspace/properties/vectorproperty.h>
 
 namespace openspace {
@@ -36,9 +34,9 @@ namespace openspace {
 class PowerScaledSphere {
 public:
     // initializers
-    PowerScaledSphere(const PowerScaledScalar& radius, 
+    PowerScaledSphere(const float radius, 
 		int segments = 8);
-	PowerScaledSphere(properties::Vec4Property &radius,
+	PowerScaledSphere(properties::Vec3Property &radius,
 		int segments, std::string planetName);
 
     ~PowerScaledSphere();

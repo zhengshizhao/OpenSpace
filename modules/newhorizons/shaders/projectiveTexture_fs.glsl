@@ -23,7 +23,7 @@
  ****************************************************************************************/
 
 uniform vec4 campos;
-uniform vec4 objpos;
+uniform vec3 objpos;
 //uniform vec3 camdir; // add this for specular
   
 
@@ -54,7 +54,7 @@ Fragment getFragment() {
 	vec3 n = normalize(vs_normal.xyz);
 	//vec3 e = normalize(camdir);
 	vec3 l_pos = sun_pos; // sun.
-	vec3 l_dir = normalize(l_pos-objpos.xyz);
+	vec3 l_dir = normalize(l_pos-objpos);
 	float terminatorBright = 0.4;
 	float intensity = min(max(5*dot(n,l_dir), terminatorBright), 1);
 	

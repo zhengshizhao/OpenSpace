@@ -223,11 +223,11 @@ void RenderableFov::updateGPU() {
 }
 
 // various helper methods
-void RenderableFov::insertPoint(std::vector<float>& arr, glm::vec4 p, glm::vec4 c) {
-	for (int i = 0; i < 4; i++){
+void RenderableFov::insertPoint(std::vector<float>& arr, glm::vec3 p, glm::vec3 c) {
+	for (int i = 0; i < 3; i++){
 		arr.push_back(p[i]);
 	}
-	for (int i = 0; i < 4; i++){
+	for (int i = 0; i < 3; i++){
 		arr.push_back(c[i]);
 	}
 	_nrInserted++;
@@ -241,7 +241,7 @@ glm::dvec3 RenderableFov::interpolate(glm::dvec3 p0, glm::dvec3 p1, float t) {
 
 
 // This method is the current bottleneck.
-psc RenderableFov::checkForIntercept(glm::dvec3 ray) {
+glm::vec3 RenderableFov::checkForIntercept(glm::dvec3 ray) {
     std::string bodyfixed = "IAU_";
     bool convert = (_frame.find(bodyfixed) == std::string::npos);
     if (convert)
@@ -261,20 +261,19 @@ psc RenderableFov::checkForIntercept(glm::dvec3 ray) {
     bool intercepted = result.interceptFound;
     
 	ivec *= 0.9999;// because fov lands exactly on top of surface we need to move it out slightly
-	_interceptVector = PowerScaledCoordinate::CreatePowerScaledCoordinate(ivec[0], ivec[1], ivec[2]);
-	_interceptVector[3] += 3;
+	_interceptVector = glm::vec3(ivec[0], ivec[1], ivec[2]);
+	_interceptVector *= std::pow(10.0f, 3);
 
 	return _interceptVector;
 }
 // Orthogonal projection next to planets surface
-psc RenderableFov::orthogonalProjection(glm::dvec3 vecFov) {
+glm::vec3 RenderableFov::orthogonalProjection(glm::dvec3 vecFov) {
     glm::dvec3 vecToTarget =
         SpiceManager::ref().targetPosition(_fovTarget, _spacecraft, _frame, _aberrationCorrection, _time, _lt);
     vecFov = SpiceManager::ref().frameTransformationMatrix(_instrumentID, _frame, _time) * vecFov;
     glm::dvec3 p = glm::proj(vecToTarget, vecFov);
 
-	psc projection = PowerScaledCoordinate::CreatePowerScaledCoordinate(p[0], p[1], p[2]);
-	projection[3] += 3;
+    glm::vec3 projection = p * std::pow(10, 3);
 
 	return projection;
 }
@@ -336,7 +335,7 @@ void RenderableFov::fovSurfaceIntercept(bool H[], std::vector<glm::dvec3> bounds
 			next = bounds[k];
 
 			if (H[i] == false){ // If point is non-interceptive, project it. 
-				insertPoint(_fovPlane, orthogonalProjection(current).vec4(), tmp);
+				insertPoint(_fovPlane, orthogonalProjection(current), tmp);
 				if (H[i + 1] == false && _withinFOV){
 					// IFF incident point is also non-interceptive BUT something is within FOV
 					// we need then to check if this segment makes contact with surface
@@ -368,14 +367,14 @@ void RenderableFov::fovSurfaceIntercept(bool H[], std::vector<glm::dvec3> bounds
 						glm::dvec3 root1 = bisection(half, current, tolerance);
 						glm::dvec3 root2 = bisection(half, next, tolerance);
 
-						insertPoint(_fovPlane, orthogonalProjection(root1).vec4(), col_sq);
+						insertPoint(_fovPlane, orthogonalProjection(root1), col_sq);
 						for (int j = 1; j < _isteps; j++){
 							float t = (static_cast<float>(j) / _isteps);
 							interpolated = interpolate(root1, root2, t);
 							_interceptVector = checkForIntercept(interpolated);
-							insertPoint(_fovPlane, _interceptVector.vec4(), col_sq);
+							insertPoint(_fovPlane, _interceptVector, col_sq);
 						}
-						insertPoint(_fovPlane, orthogonalProjection(root2).vec4(), col_sq);
+						insertPoint(_fovPlane, orthogonalProjection(root2), col_sq);
 					}
 				}
 			}
@@ -386,7 +385,7 @@ void RenderableFov::fovSurfaceIntercept(bool H[], std::vector<glm::dvec3> bounds
 					float t = (static_cast<float>(j) / _isteps);
 					interpolated = interpolate(current, mid, t);
 					_interceptVector = (j < _isteps) ? checkForIntercept(interpolated) : orthogonalProjection(interpolated);
-					insertPoint(_fovPlane, _interceptVector.vec4(), col_sq);
+					insertPoint(_fovPlane, _interceptVector, col_sq);
 				}
 			}
 			if (H[i] == false && H[i + 1] == true){ // current point is non-interceptive, next is
@@ -395,7 +394,7 @@ void RenderableFov::fovSurfaceIntercept(bool H[], std::vector<glm::dvec3> bounds
 					float t = (static_cast<float>(j) / _isteps);
 					interpolated = interpolate(mid, next, t);
 					_interceptVector = (j > 1) ? checkForIntercept(interpolated) : orthogonalProjection(interpolated);
-					insertPoint(_fovPlane, _interceptVector.vec4(), col_sq);
+					insertPoint(_fovPlane, _interceptVector, col_sq);
 				}
 			}
 			if (H[i] == true && H[i + 1] == true){ // both points intercept
@@ -403,7 +402,7 @@ void RenderableFov::fovSurfaceIntercept(bool H[], std::vector<glm::dvec3> bounds
 					float t = (static_cast<float>(j) / _isteps);
 					interpolated = interpolate(current, next, t);
 					_interceptVector = checkForIntercept(interpolated);
-					insertPoint(_fovPlane, _interceptVector.vec4(), col_sq);
+					insertPoint(_fovPlane, _interceptVector, col_sq);
 				}
 			}
 		}
@@ -496,22 +495,22 @@ void RenderableFov::computeIntercepts(const RenderData& data){
 		// if not found, use the orthogonal projected point
 		if (!_interceptTag[r]) _projectionBounds[r] = orthogonalProjection(_bounds[r]);
 
-		glm::vec4 fovOrigin = glm::vec4(0); //This will have to be fixed once spacecraft is 1:1!
+		glm::vec3 fovOrigin = glm::vec3(0); //This will have to be fixed once spacecraft is 1:1!
 
 		if (_interceptTag[r]){
-			_interceptVector = PowerScaledCoordinate::CreatePowerScaledCoordinate(ivec[0], ivec[1], ivec[2]);
-			_interceptVector[3] += 3;
+			_interceptVector = glm::vec3(ivec[0], ivec[1], ivec[2]) * std::pow(10.0f, 3.0f);
 			// INTERCEPTIONS
 			insertPoint(_fovBounds, fovOrigin, col_start);
-			insertPoint(_fovBounds, _interceptVector.vec4(), col_end);
+			insertPoint(_fovBounds, _interceptVector, col_end);
 		}
 		else if (_withinFOV){
 			// OBJECT IN FOV, NO INTERCEPT FOR THIS FOV-RAY
 			insertPoint(_fovBounds, fovOrigin, glm::vec4(0, 0, 1, 1));
-			insertPoint(_fovBounds, _projectionBounds[r].vec4(), col_blue);
+			insertPoint(_fovBounds, _projectionBounds[r], col_blue);
 		}
 		else{
-			glm::vec4 corner(_bounds[r][0], _bounds[r][1], _bounds[r][2], data.position[3] + 2);
+            float scale = std::pow(10.0f, 2);
+			glm::vec4 corner(_bounds[r][0] * scale, _bounds[r][1] * scale, _bounds[r][2] * scale, 1);
 			corner = _spacecraftRotation*corner;
 			// NONE OF THE FOV-RAYS INTERCEPT AND NO OBJECT IN FOV
 			insertPoint(_fovBounds, fovOrigin, col_gray);
@@ -529,14 +528,14 @@ void RenderableFov::computeIntercepts(const RenderData& data){
 		    							  _aberrationCorrection,
 		    							  _time,
 		    							  _lt);
-    psc p = PowerScaledCoordinate::CreatePowerScaledCoordinate(position.x, position.y, position.z);
-	pss length = p.length();
-	if (length[0] < DBL_EPSILON) {
+    glm::vec3 p = position;
+	float length = p.length();
+	if (length < DBL_EPSILON) {
 		_drawFOV = false;
 		return;
 	}
 	//if aimed 80 deg away from target, dont draw white square
-	if (glm::dot(glm::normalize(aim), glm::normalize(p.vec3())) < 0.2){
+	if (glm::dot(glm::normalize(aim), glm::normalize(p)) < 0.2){
 		_drawFOV = false;
 	}
 }

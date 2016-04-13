@@ -144,7 +144,7 @@ RenderableModelProjection::RenderableModelProjection(const ghoul::Dictionary& di
     completeSuccess &= s;
     
 	openspace::SpiceManager::ref().addFrame(_target, _source);
-	setBoundingSphere(pss(1.f, 9.f));
+	setBoundingSphere(std::pow(10, 9));
 
 	addProperty(_performShading);
 	addProperty(_performProjection);
@@ -327,7 +327,7 @@ void RenderableModelProjection::render(const RenderData& data) {
 	_programObject->setUniform("ProjectorMatrix", _projectorMatrix);
 	_programObject->setUniform("boresight", _boresight);
 	_programObject->setUniform("_performShading", _performShading);
-	_programObject->setUniform("sun_pos", _sunPosition.vec3());
+	_programObject->setUniform("sun_pos", _sunPosition);
 	_viewProjection = data.camera.viewProjectionMatrix();
 	_programObject->setUniform("ViewProjection", _viewProjection);
 	_programObject->setUniform("ModelTransform", _transform);
@@ -362,7 +362,7 @@ void RenderableModelProjection::update(const UpdateData& data) {
 	double  lt;
     glm::dvec3 p =
     openspace::SpiceManager::ref().targetPosition("SUN", _target, "GALACTIC", {}, _time, lt);
-    _sunPosition = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
+    _sunPosition = static_cast<glm::vec3>(p);
 }
 
 void RenderableModelProjection::imageProjectGPU() {
@@ -438,10 +438,7 @@ void RenderableModelProjection::attitudeParameters(double time) {
 	double lightTime;
     glm::dvec3 p =
         SpiceManager::ref().targetPosition(_projectorID, _projecteeID, _destination, _aberration, time, lightTime);
-    psc position = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
- 
-	position[3] += (3 + _camScaling[1]);
-	glm::vec3 cpos = position.vec3();
+    glm::vec3 cpos = static_cast<glm::vec3>(p) * std::pow(10.0f, 3 + _camScaling[1]);
 
 	_projectorMatrix = computeProjectorMatrix(cpos, boresight, _up);
 }

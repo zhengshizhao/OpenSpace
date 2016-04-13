@@ -28,7 +28,6 @@
 
 #include <openspace/properties/propertyowner.h>
 #include <openspace/properties/scalarproperty.h>
-#include <openspace/util/powerscaledscalar.h>
 #include <openspace/util/updatestructures.h>
 
 #include <ghoul/opengl/programobject.h>
@@ -63,8 +62,8 @@ public:
 	virtual bool isReady() const = 0;
 	bool isEnabled() const;
 
-    void setBoundingSphere(const PowerScaledScalar& boundingSphere);
-    const PowerScaledScalar& getBoundingSphere();
+    void setBoundingSphere(float boundingSphere);
+    float getBoundingSphere();
 
     virtual void render(const RenderData& data);
     virtual void render(const RenderData& data, RendererTasks& rendererTask);
@@ -81,11 +80,11 @@ public:
 
     void onEnabledChange(std::function<void(bool)> callback);
 
-    static void setPscUniforms(ghoul::opengl::ProgramObject& program, const Camera& camera, const PowerScaledCoordinate& position);
+    static void setPscUniforms(ghoul::opengl::ProgramObject& program, const Camera& camera, const glm::vec3& position);
 
 private:
 	properties::BoolProperty _enabled;
-    PowerScaledScalar boundingSphere_;
+    float boundingSphere_;
 	std::string _startTime;
 	std::string _endTime;
 	std::string _targetBody;

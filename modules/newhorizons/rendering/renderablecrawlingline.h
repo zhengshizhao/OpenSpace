@@ -50,7 +50,7 @@ private:
     std::string _referenceFrame;
 	glm::vec3 _lineColor;
 
-    psc _positions[2];
+    glm::vec3 _positions[2];
 	int _frameCounter;
 
     bool _drawLine;

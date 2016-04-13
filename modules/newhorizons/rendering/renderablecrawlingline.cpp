@@ -92,10 +92,10 @@ bool RenderableCrawlingLine::initialize() {
 
     glBindVertexArray(_vao);
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(psc), NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(glm::vec3), NULL, GL_DYNAMIC_DRAW);
 
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	glBindVertexArray(0);
 
@@ -122,8 +122,8 @@ void RenderableCrawlingLine::render(const RenderData& data) {
 	    _program->activate();
 		_frameCounter++;
 	    // fetch data
-	    psc currentPosition = data.position;
-	    psc campos = data.camera.position();
+	    glm::vec3 currentPosition = data.position;
+        glm::vec3 campos = data.camera.position();
 	    glm::mat4 camrot = data.camera.viewRotationMatrix();
 
 	    glm::mat4 transform = glm::mat4(1);
@@ -144,10 +144,10 @@ void RenderableCrawlingLine::render(const RenderData& data) {
 
 	    glBindVertexArray(_vao);
         glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(psc) * 2, _positions);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::vec3) * 2, _positions);
 
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 	    glDrawArrays(GL_LINES, 0, 2);
 	    glBindVertexArray(0);
@@ -168,7 +168,7 @@ void RenderableCrawlingLine::update(const UpdateData& data) {
 		}
 	}
 
-	_positions[SourcePosition] = PowerScaledCoordinate::CreatePowerScaledCoordinate(0, 0, 0);
+	_positions[SourcePosition] = glm::vec3(0.0);
 
 	glm::dvec3 boresight;
     try {

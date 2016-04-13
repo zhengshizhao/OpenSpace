@@ -106,7 +106,7 @@ void ModelGeometry::changeRenderMode(const GLenum mode) {
 
 bool ModelGeometry::initialize(Renderable* parent) {
     _parent = parent;
-	PowerScaledScalar ps = PowerScaledScalar(1.0, 0.0); // will set proper bounding soon.
+	float ps = 1; // will set proper bounding soon.
 	_parent->setBoundingSphere(ps);
 
 	if (_vertices.empty())

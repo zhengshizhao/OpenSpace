@@ -36,7 +36,7 @@ const std::string _loggerCat = "PowerScaledSphere";
 
 namespace openspace {
 
-PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segments)
+PowerScaledSphere::PowerScaledSphere(float radius, int segments)
     : _vaoID(0)
     , _vBufferID(0)
     , _iBufferID(0)
@@ -50,7 +50,7 @@ PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segmen
 
     int nr = 0;
     const float fsegments = static_cast<float>(segments);
-    const float r = static_cast<float>(radius[0]);
+    const float r = static_cast<float>(radius);
 
     for (int i = 0; i <= segments; i++) {
         // define an extra vertex around the y-axis due to texture mapping
@@ -79,7 +79,7 @@ PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segmen
             _varray[nr].location[0] = x;
             _varray[nr].location[1] = y;
             _varray[nr].location[2] = z;
-            _varray[nr].location[3] = static_cast<GLfloat>(radius[1]);
+            _varray[nr].location[3] = 0; // TODO: remove power scaled coordinate from buffer.
             _varray[nr].normal[0] = normal[0];
             _varray[nr].normal[1] = normal[1];
             _varray[nr].normal[2] = normal[2];
@@ -126,7 +126,7 @@ PowerScaledSphere::PowerScaledSphere(const PowerScaledScalar& radius, int segmen
 }
 
 // Alternative Constructor for using accurate triaxial ellipsoid 
-PowerScaledSphere::PowerScaledSphere(properties::Vec4Property &radius, int segments, std::string planetName)
+PowerScaledSphere::PowerScaledSphere(properties::Vec3Property &radius, int segments, std::string planetName)
 	: _vaoID(0)
 	, _vBufferID(0)
 	, _iBufferID(0)
@@ -154,23 +154,22 @@ PowerScaledSphere::PowerScaledSphere(properties::Vec4Property &radius, int segme
     }
     
 	if (accutareRadius) {
-		PowerScaledCoordinate powerScaledRadii = psc::CreatePowerScaledCoordinate(a, b, c);
-		powerScaledRadii[3] += 3; // SPICE returns radii in km
+        glm::vec3 powerScaledRadii = glm::vec3(a, b, c) * 1000.0f;  // SPICE returns radii in km
 		
 		std::swap(powerScaledRadii[1], powerScaledRadii[2]); // c is equivalent to y in our coordinate system
-		radius.set(powerScaledRadii.vec4());
+		radius.set(powerScaledRadii);
 		a = powerScaledRadii[0];
 		b = powerScaledRadii[1];
 		c = powerScaledRadii[2];
-		powerscale = powerScaledRadii[3];
+		powerscale = 0;
 	}
 	else {
         ghoul::any r = radius.get();
-		glm::vec4 modRadius = ghoul::any_cast<glm::vec4>(r);
+		glm::vec3 modRadius = ghoul::any_cast<glm::vec3>(r);
 		a = modRadius[0];
 		b = modRadius[1];
 		c = modRadius[2];
-		powerscale = modRadius[3];
+		powerscale = 0;
 	}
 
 	int nr = 0;
@@ -193,7 +192,7 @@ PowerScaledSphere::PowerScaledSphere(properties::Vec4Property &radius, int segme
 			_varray[nr].location[0] = x;
 			_varray[nr].location[1] = y;
 			_varray[nr].location[2] = z;
-			_varray[nr].location[3] = powerscale;
+			_varray[nr].location[3] = 0;
 
 			glm::vec3 normal = glm::vec3(x, y, z);
 			if (!(x == 0.f && y == 0.f && z == 0.f))

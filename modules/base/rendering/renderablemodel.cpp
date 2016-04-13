@@ -99,7 +99,7 @@ RenderableModel::RenderableModel(const ghoul::Dictionary& dictionary)
 
 	openspace::SpiceManager::ref().addFrame(_target, _source);
 
-    setBoundingSphere(pss(1.f, 9.f));
+    setBoundingSphere(std::pow(10.f, 9.f));
 	addProperty(_performShading);
 
 	if (dictionary.hasKeyAndValue<bool>(keyFading)) {
@@ -193,11 +193,11 @@ void RenderableModel::render(const RenderData& data) {
 
     glm::dvec3 p =
     SpiceManager::ref().targetPosition(_target, "SUN", "GALACTIC", {}, time, lt);
-    psc tmppos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
-	glm::vec3 cam_dir = glm::normalize(data.camera.position().vec3() - tmppos.vec3());
+    glm::vec3 tmppos = static_cast<glm::vec3>(p);
+	glm::vec3 cam_dir = glm::normalize(data.camera.position() - tmppos);
 	_programObject->setUniform("cam_dir", cam_dir);
 	_programObject->setUniform("transparency", _alpha);
-	_programObject->setUniform("sun_pos", _sunPosition.vec3());
+	_programObject->setUniform("sun_pos", _sunPosition);
 	_programObject->setUniform("ViewProjection", data.camera.viewProjectionMatrix());
 	_programObject->setUniform("ModelTransform", transform);
 	setPscUniforms(*_programObject.get(), data.camera, data.position);
@@ -257,7 +257,7 @@ void RenderableModel::update(const UpdateData& data) {
     double  lt;
     glm::dvec3 p =
     openspace::SpiceManager::ref().targetPosition("SUN", _target, "GALACTIC", {}, _time, lt);
-    _sunPosition = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
+    _sunPosition = static_cast<glm::vec3>(p);
 }
 
 void RenderableModel::loadTexture() {

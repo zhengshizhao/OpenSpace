@@ -26,6 +26,7 @@
 #define __STATICEPHEMERIS_H__
 
 #include <openspace/scene/ephemeris.h>
+#include <glm/glm.hpp>
 
 namespace openspace {
     
@@ -34,10 +35,10 @@ public:
     StaticEphemeris(const ghoul::Dictionary& dictionary
                                 = ghoul::Dictionary());
     virtual ~StaticEphemeris();
-    virtual const psc& position() const;
+    virtual const glm::vec3& position() const;
 	virtual void update(const UpdateData& data) override;
 private:
-    psc _position;
+    glm::vec3 _position;
 };
     
 } // namespace openspace

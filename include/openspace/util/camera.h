@@ -27,9 +27,6 @@
 
 #include <mutex>
 
-// open space includes
-#include <openspace/util/powerscaledcoordinate.h>
-
 // glm includes
 #include <ghoul/glm.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -97,10 +94,10 @@ public:
     Camera();
     ~Camera();
 
-    void setPosition(psc pos);
-    const psc& position() const;
+    void setPosition(glm::vec3 pos);
+    const glm::vec3& position() const;
 	
-	const psc& unsynchedPosition() const;
+	const glm::vec3& unsynchedPosition() const;
 
 	void setModelMatrix(glm::mat4 modelMatrix);
 	const glm::mat4& modelMatrix() const;
@@ -116,8 +113,8 @@ public:
     void setCameraDirection(glm::vec3 cameraDirection);
     glm::vec3 cameraDirection() const;
 
-	void setFocusPosition(psc pos);
-	const psc& focusPosition() const;
+	void setFocusPosition(glm::vec3 pos);
+	const glm::vec3& focusPosition() const;
 
 	void setViewRotationMatrix(glm::mat4 m);
 	const glm::mat4& viewRotationMatrix() const;
@@ -154,7 +151,7 @@ private:
     mutable bool _dirtyViewProjectionMatrix;
     glm::vec3 _viewDirection;
     glm::vec3 _cameraDirection;
-	psc _focusPosition;
+    glm::vec3 _focusPosition;
     // glm::quat _viewRotation;
     
     glm::vec3 _lookUp;
@@ -164,16 +161,16 @@ private:
 	//local variables
 	glm::mat4 _localViewRotationMatrix;
 	glm::vec2 _localScaling;
-	psc _localPosition;
+	glm::vec3 _localPosition;
 
 	//shared copies of local variables
 	glm::vec2 _sharedScaling;
-	psc _sharedPosition;
+    glm::vec3 _sharedPosition;
 	glm::mat4 _sharedViewRotationMatrix;
 
 	//synced copies of local variables
 	glm::vec2 _syncedScaling;
-	psc _syncedPosition;
+    glm::vec3 _syncedPosition;
 	glm::mat4 _syncedViewRotationMatrix;
 	
 };

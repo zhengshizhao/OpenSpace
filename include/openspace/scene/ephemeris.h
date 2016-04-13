@@ -25,7 +25,6 @@
 #ifndef __EPHEMERIS_H__
 #define __EPHEMERIS_H__
 
-#include <openspace/util/powerscaledcoordinate.h>
 #include <ghoul/misc/dictionary.h>
 #include <openspace/util/updatestructures.h>
 
@@ -38,7 +37,7 @@ public:
     Ephemeris(const ghoul::Dictionary& dictionary);
     virtual ~Ephemeris();
     virtual bool initialize();
-    virtual const psc& position() const = 0;
+    virtual const glm::vec3& position() const = 0;
     virtual void update(const UpdateData& data);
 
 protected:

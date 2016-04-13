@@ -40,7 +40,6 @@
 #include <openspace/util/time.h>
 #include <openspace/util/screenlog.h>
 #include <openspace/util/spicemanager.h>
-//#include <openspace/rendering/renderablepath.h>
 #include <modules/base/rendering/renderablepath.h>
 #include <openspace/util/syncbuffer.h>
 #include <ghoul/filesystem/filesystem.h>
@@ -188,7 +187,7 @@ bool RenderEngine::initialize() {
 	// init camera and set temporary position and scaling
 	_mainCamera = new Camera();
 	_mainCamera->setScaling(glm::vec2(1.0, -8.0));
-	_mainCamera->setPosition(psc(0.f, 0.f, 1.499823f, 11.f));
+	_mainCamera->setPosition(glm::vec3(0.f, 0.f, 1.499823f) * std::pow(10.0f, 11));
 
     OsEng.interactionHandler().setCamera(_mainCamera);
     if (_renderer) {
@@ -1173,7 +1172,7 @@ void RenderEngine::renderInformation() {
                 double lt;
                 glm::dvec3 p =
                     SpiceManager::ref().targetPosition("PLUTO", "NEW HORIZONS", "GALACTIC", {}, currentTime, lt);
-                psc nhPos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
+                glm::vec3 nhPos = static_cast<glm::vec3>(p);
                 float a, b, c;
                 glm::dvec3 radii;
                 SpiceManager::ref().getValue("PLUTO", "RADII", radii);
@@ -1181,7 +1180,7 @@ void RenderEngine::renderInformation() {
                 b = radii.y;
                 c = radii.z;
                 float radius = (a + b) / 2.f;
-                float distToSurf = glm::length(nhPos.vec3()) - radius;
+                float distToSurf = glm::length(nhPos) - radius;
 
                 RenderFont(*_fontInfo,
                     penPosition,

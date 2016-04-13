@@ -62,10 +62,8 @@ SimpleSphereGeometry::SimpleSphereGeometry(const ghoul::Dictionary& dictionary)
                                            << keyRadius << "'");
 	}
 	else {
-		radius[0] = _modRadius[0];
-		radius[1] = _modRadius[0];
-		radius[2] = _modRadius[0];
-		radius[3] = _modRadius[1];
+        radius[0] = radius[1] = radius[2] = _modRadius[0] * std::pow(10, _modRadius[1]);
+		radius[3] = 0;
 		_realRadius = radius; // In case the kernels does not supply a real
 	}
 
@@ -113,7 +111,7 @@ void SimpleSphereGeometry::render()
 void SimpleSphereGeometry::createSphere(){
     //create the power scaled scalar
 
-    PowerScaledScalar planetSize(_modRadius);
+    float planetSize = _modRadius[0] * std::pow(10, _modRadius[1]);
     _parent->setBoundingSphere(planetSize);
 
     if(_sphere)

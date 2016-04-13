@@ -36,35 +36,11 @@ uniform mat4 ModelTransform;
 uniform vec4 objectVelocity;
 uniform vec4 lastPosition;
 
-//this function does not consider cases where w component is negative
-float psc_distance(vec4 v1, vec4 v2) {
-    // reduce position numbers
-    /*while(v1.w > 1 && v2.w > 1) {
-        v1.w -= 1;
-        v2.w -= 1;
-    } */
-    // get position in vec3
-    if (v1.w > 1) {
-        float f = floor(v1.w);
-        v1.xyz *= pow(10, f);
-        v1.w -= f;
-    }
-
-    if (v2.w > 1) {
-        float f = floor(v2.w);
-        v2.xyz *= pow(10, f);
-        v2.w -= f;
-    }
-    
-    // using native distance function   
-    return distance(v1.xyz, v2.xyz); 
-}
 
 #include "PowerScaling/powerScaling_vs.hglsl"
 
 void main() {
     vec4 gray = vec4(0.6f, 0.6f, 0.6f, 0.8f);
-    float cameraTooFar = 1 * pow(k, 10);
     float bigPoint = 5.f;
     float smallPoint = 2.f;
     
@@ -81,9 +57,7 @@ void main() {
     vs_point_color.xyz = color;
     vs_point_color[3] = 1.f;
 
-    vec4 v1 = campos;
     vec4 v2 = vs_point_position;
-    float cameraDistance = psc_distance(v1,v2);
 
     vec4 temp = in_point_position;
     vec4 templast = lastPosition;
@@ -100,14 +74,6 @@ void main() {
         templast.xyz *= pow(10, f);
     }
 
-    // while(temp.w > 1) {
-    //  temp.xyz *= 10;
-    //  temp.w -= 1;
-    // } 
-    // while(templast.w > 1) {
-    //  templast.xyz *= 10;
-    //  templast.w -= 1;
-    // } 
     float observerDistance = length(temp.xyz);
     float lastDistance = length(templast.xyz);
     
@@ -124,9 +90,5 @@ void main() {
             gl_PointSize = smallPoint;
             //vs_point_color = gray;
     }
-    /*if (cameraDistance > cameraTooFar ) {
-            vs_point_color[3] = 0.0f;
-            
-    }*/
 
 }

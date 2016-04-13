@@ -58,8 +58,8 @@ glm::vec3 MouseController::mapToTrackball(glm::vec2 mousePos) {
 glm::vec3 MouseController::mapToCamera(glm::vec3 trackballPos) {
 	//Get x,y,z axis vectors of current camera view
 	glm::vec3 currentViewYaxis = glm::normalize(_handler->camera()->lookUpVector());
-	psc viewDir = _handler->camera()->position() - _handler->focusNode()->worldPosition();
-	glm::vec3 currentViewZaxis = glm::normalize(viewDir.vec3());
+	glm::vec3 viewDir = _handler->camera()->position() - _handler->focusNode()->worldPosition();
+	glm::vec3 currentViewZaxis = glm::normalize(viewDir);
 	glm::vec3 currentViewXaxis = glm::normalize(glm::cross(currentViewYaxis, currentViewZaxis));
 
 	//mapping to camera co-ordinate
@@ -129,16 +129,16 @@ void TrackballMouseController::move(float x, float y) {
 }
 
 void TrackballMouseController::scrollWheel(int pos) {
-	const float speed = 4.75f;
-	const float dt = static_cast<float>(_handler->deltaTime());
-	if (pos < 0) {
-		PowerScaledScalar dist(speed * dt, 0.0f);
-		_handler->distanceDelta(dist);
-	}
-	else if (pos > 0) {
-		PowerScaledScalar dist(-speed * dt, 0.0f);
-		_handler->distanceDelta(dist);
-	}
+    const float speed = 4.75f;
+    const float dt = static_cast<float>(_handler->deltaTime());
+    if (pos < 0) {
+        float dist = speed * dt;
+        _handler->distanceDelta(dist);
+    }
+    else if (pos > 0) {
+        float dist = -speed * dt;
+        _handler->distanceDelta(dist);
+    }
 }
 
 void TrackballMouseController::update(const double& dt){

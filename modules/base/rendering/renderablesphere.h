@@ -56,7 +56,7 @@ private:
 	properties::StringProperty _texturePath;
     properties::OptionProperty _orientation;
 
-    properties::Vec2Property _size;
+    properties::FloatProperty _size;
     properties::IntProperty _segments;
 
     properties::FloatProperty _transparency;

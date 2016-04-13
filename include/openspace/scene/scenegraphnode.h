@@ -65,7 +65,7 @@ public:
     bool deinitialize();
 
     void update(const UpdateData& data);
-    void evaluate(const Camera* camera, const psc& parentPosition = psc());
+    void evaluate(const Camera* camera, const glm::vec3& parentPosition = glm::vec3(0.0));
     void render(const RenderData& data, RendererTasks& tasks);
 	void updateCamera(Camera* camera) const;
 
@@ -75,14 +75,14 @@ public:
     void setParent(SceneGraphNode* parent);
 	//bool abandonChild(SceneGraphNode* child);
 
-    const psc& position() const;
-    psc worldPosition() const;
+    const glm::vec3& position() const;
+    glm::vec3 worldPosition() const;
 
     SceneGraphNode* parent() const;
     const std::vector<SceneGraphNode*>& children() const;
 
-    PowerScaledScalar calculateBoundingSphere();
-    PowerScaledScalar boundingSphere() const;
+    float calculateBoundingSphere();
+    float boundingSphere() const;
 
     SceneGraphNode* childNode(const std::string& name);
 
@@ -99,7 +99,7 @@ public:
     }
 
 private:
-    bool sphereInsideFrustum(const psc& s_pos, const PowerScaledScalar& s_rad, const Camera* camera);
+    bool sphereInsideFrustum(const glm::vec3& s_pos, float s_rad, const Camera* camera);
 
 	std::vector<SceneGraphNode*> _children;
     SceneGraphNode* _parent;
@@ -111,7 +111,7 @@ private:
     bool _renderableVisible;
 
     bool _boundingSphereVisible;
-    PowerScaledScalar _boundingSphere;
+    float _boundingSphere;
 };
 
 } // namespace openspace

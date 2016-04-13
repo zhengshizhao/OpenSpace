@@ -26,7 +26,7 @@
 #define __RENDERABLEVOLUMEGL_H__
 
 #include <modules/volume/rendering/renderablevolume.h>
-#include <openspace/util/powerscaledcoordinate.h>
+
 
 // Forward declare to minimize dependencies
 namespace ghoul {
@@ -74,7 +74,7 @@ private:
 	GLuint _vertexPositionBuffer;
 	ghoul::opengl::ProgramObject* _boxProgram;
 	glm::vec3 _boxScaling;
-	psc _pscOffset;
+	glm::vec3 _pscOffset;
 	float _w;
     
     bool _updateTransferfunction;

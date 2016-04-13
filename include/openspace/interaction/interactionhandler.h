@@ -76,7 +76,7 @@ public:
 
     void rotateDelta(const glm::quat& rotation);
 
-    void distanceDelta(const PowerScaledScalar& distance, size_t iterations = 0);
+    void distanceDelta(float distance, size_t iterations = 0);
 
     void lookAt(const glm::quat& rotation);
 

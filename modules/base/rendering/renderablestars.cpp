@@ -532,7 +532,7 @@ void RenderableStars::createDataSlice(ColorOption option) {
         //psc position = psc(glm::vec4(p, distance));
 
         // Convert parsecs -> meter
-        psc position = psc(glm::vec4(p * 0.308567756f, 17));
+        glm::vec3 position = p * 0.308567756f * std::pow(10.0f, 17);
 
         //position[1] *= parsecsToMetersFactor[0];
         //position[2] *= parsecsToMetersFactor[0];
@@ -547,7 +547,7 @@ void RenderableStars::createDataSlice(ColorOption option) {
                 } layout;
 
                 layout.value.position = { {
-                    position[0], position[1], position[2], position[3]
+                    position[0], position[1], position[2], 0
                 } };
                     
                 layout.value.bvColor = _fullData[i + 3];
@@ -574,7 +574,7 @@ void RenderableStars::createDataSlice(ColorOption option) {
                 } layout;
 
                 layout.value.position = { {
-                        position[0], position[1], position[2], position[3]
+                        position[0], position[1], position[2], 0
                     } };
 
                 layout.value.bvColor = _fullData[i + 3];
@@ -598,7 +598,7 @@ void RenderableStars::createDataSlice(ColorOption option) {
                 } layout;
 
                 layout.value.position = { {
-                        position[0], position[1], position[2], position[3]
+                        position[0], position[1], position[2], 0
                     } };
 
                 layout.value.bvColor = _fullData[i + 3];

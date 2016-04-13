@@ -206,7 +206,7 @@ void RenderablePlanet::render(const RenderData& data)
 	double  lt;
     glm::dvec3 p =
     SpiceManager::ref().targetPosition("SUN", _target, "GALACTIC", {}, _time, lt);
-    psc sun_pos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
+    glm::vec3 sun_pos = static_cast<glm::vec3>(p);
 
     // setup the data to the shader
 //	_programObject->setUniform("camdir", camSpaceEye);

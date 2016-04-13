@@ -25,7 +25,6 @@
 #include <openspace/engine/configurationmanager.h>
 #include <modules/base/rendering/renderableplane.h>
 #include <openspace/engine/openspaceengine.h>
-#include <openspace/util/powerscaledcoordinate.h>
 
 #include <openspace/scene/scenegraphnode.h>
 #include <openspace/rendering/renderengine.h>
@@ -55,7 +54,7 @@ RenderablePlane::RenderablePlane(const ghoul::Dictionary& dictionary)
 	, _texturePath("texture", "Texture")
 	, _billboard("billboard", "Billboard", false)
 	, _projectionListener("projectionListener", "DisplayProjections", false)
-	, _size("size", "Size", glm::vec2(1,1), glm::vec2(0.f), glm::vec2(1.f, 25.f))
+	, _size("size", "Size", 1.0f, 0.0f, std::pow(10, 25))
 	, _origin(Origin::Center)
 	, _shader(nullptr)
     , _textureIsDirty(false)
@@ -65,7 +64,7 @@ RenderablePlane::RenderablePlane(const ghoul::Dictionary& dictionary)
 {
     glm::vec2 size;
 	dictionary.getValue("Size", size);
-    _size = size;
+    _size = size[0] * std::pow(10, size[1]);
 
 	if (dictionary.hasKey("Name")){
 		dictionary.getValue("Name", _nodeName);
@@ -255,16 +254,15 @@ void RenderablePlane::createPlane() {
     // ============================
     // 		GEOMETRY (quad)
     // ============================
-    const GLfloat size = _size.value()[0];
-    const GLfloat w = _size.value()[1];
+    const GLfloat size = _size;
     const GLfloat vertex_data[] = { // square of two triangles (sigh)
         //	  x      y     z     w     s     t
-        -size, -size, 0.0f, w, 0, 1,
-        size, size, 0.0f, w, 1, 0,
-        -size, size, 0.0f, w, 0, 0,
-        -size, -size, 0.0f, w, 0, 1,
-        size, -size, 0.0f, w, 1, 1,
-        size, size, 0.0f, w, 1, 0,
+        -size, -size, 0.0f, 0, 0, 1,
+        size, size, 0.0f, 0, 1, 0,
+        -size, size, 0.0f, 0, 0, 0,
+        -size, -size, 0.0f, 0, 0, 1,
+        size, -size, 0.0f, 0, 1, 1,
+        size, size, 0.0f, 0, 1, 0,
     };
 
     glBindVertexArray(_quad); // bind array

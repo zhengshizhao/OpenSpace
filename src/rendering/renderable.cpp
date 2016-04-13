@@ -97,12 +97,12 @@ Renderable::Renderable(const ghoul::Dictionary& dictionary)
 Renderable::~Renderable() {
 }
 
-void Renderable::setBoundingSphere(const PowerScaledScalar& boundingSphere)
+void Renderable::setBoundingSphere(float boundingSphere)
 {
     boundingSphere_ = boundingSphere;
 }
 
-const PowerScaledScalar& Renderable::getBoundingSphere()
+float Renderable::getBoundingSphere()
 {
     return boundingSphere_;
 }
@@ -124,12 +124,11 @@ void Renderable::render(const RenderData& data)
 void Renderable::setPscUniforms(
 	ghoul::opengl::ProgramObject& program, 
 	const Camera& camera,
-	const PowerScaledCoordinate& position) 
+	const glm::vec3& position)
 {
-	program.setUniform("campos", camera.position().vec4());
-	program.setUniform("objpos", position.vec4());
+	program.setUniform("campos", camera.position());
+	program.setUniform("objpos", position);
 	program.setUniform("camrot", camera.viewRotationMatrix());
-	program.setUniform("scaling", camera.scaling());
 }
 
 bool Renderable::isVisible() const {

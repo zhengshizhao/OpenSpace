@@ -25,10 +25,10 @@
 #ifndef POWERSCALING_VS_H_HGLSL
 #define POWERSCALING_VS_H_HGLSL
 
-uniform vec4 campos;
+uniform vec3 campos;
 uniform mat4 camrot;
 uniform vec2 scaling;
-uniform vec4 objpos;
+uniform vec3 objpos;
 
 #include "powerScalingMath.hglsl"
 
@@ -48,34 +48,17 @@ vec4 psc_scaling(vec4 v1, vec2 v2) {
 
 vec4 pscTransform(inout vec4 vertexPosition, mat4 modelTransform) {
 	vec3 local_vertex_pos = mat3(modelTransform) * vertexPosition.xyz;
-	//vec4 lvp = ModelTransform * vertexPosition;
-	
-	// PSC addition; local vertex position and the object power scaled world position
-	vertexPosition = psc_addition(vec4(local_vertex_pos,vertexPosition.w),objpos);
-	//position = psc_addition(lvp,objpos);
+    vertexPosition = modelTransform * vertexPosition;
+	vec3 vp = vertexPosition.xyz * pow(10, vertexPosition.w) + objpos;
 	
 	// PSC addition; rotated and viewscaled vertex and the cmaeras negative position
-	vertexPosition = psc_addition(vertexPosition,vec4(-campos.xyz,campos.w));
+    vp = vp - campos;
 	
 	// rotate the camera
-	vertexPosition.xyz =  mat3(camrot) * vertexPosition.xyz;
-	vec4 tmp = vertexPosition;
-	vertexPosition = psc_scaling(vertexPosition, scaling);
-	//position = vec4(local_vertex_pos, position.w);
-	//position =  camrot* position;
+	vp = mat3(camrot) * vp.xyz;
+	vec3 tmp = vp;
 
-	// rescales the scene to fit inside the view frustum
-	// is set from the main program, but these are decent values
-	// scaling = vec2(1.0, -8.0);
-
-	// project using the rescaled coordinates,
-	//vec4 vs_position_rescaled = psc_scaling(position, scaling);
-	tmp = psc_to_meter(tmp, scaling);
-	
-	// tmp.z *= 2.0;
-
-	// return vertexPosition;
-	return tmp;
+	return vec4(tmp, 0.0);
 }
 
 #endif

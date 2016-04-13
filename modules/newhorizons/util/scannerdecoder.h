@@ -26,7 +26,6 @@
 #define __SCANNERDECODER_H__
 
 #include <modules/newhorizons/util/decoder.h>
-#include <openspace/util/powerscaledcoordinate.h>
 
 namespace openspace {
     

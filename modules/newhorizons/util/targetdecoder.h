@@ -27,8 +27,6 @@
 
 #include <modules/newhorizons/util/decoder.h>
 
-#include <openspace/util/powerscaledcoordinate.h>
-
 namespace openspace {
     
 class TargetDecoder : public Decoder {

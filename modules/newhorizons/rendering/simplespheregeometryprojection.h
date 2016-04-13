@@ -50,7 +50,7 @@ private:
     void createSphere();
 
 	glm::vec2 _modRadius;
-	properties::Vec4Property _realRadius;
+	properties::Vec3Property _realRadius;
     properties::IntProperty _segments;
 	std::string _name;
 

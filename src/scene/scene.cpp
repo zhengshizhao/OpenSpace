@@ -229,7 +229,7 @@ bool Scene::loadSceneInternal(const std::string& sceneDescriptionFilePath) {
     );
 
 	glm::vec2 cameraScaling(1);
-	psc cameraPosition(0,0,1,0);
+	glm::vec3 cameraPosition(0,0,1);
 
     //if (_focus->)
     if (focusIterator != _graph.nodes().end()) {
@@ -241,21 +241,10 @@ bool Scene::loadSceneInternal(const std::string& sceneDescriptionFilePath) {
         // TODO: Set distance and camera direction in some more smart way
         // TODO: Set scaling dependent on the position and distance
         // set position for camera
-		const PowerScaledScalar bound = focusNode->calculateBoundingSphere();
-
-        // this part is full of magic!
-		glm::vec2 boundf = bound.vec2();
-        //glm::vec2 scaling{1.0f, -boundf[1]};
-		cameraScaling = glm::vec2(1.f, -boundf[1]);
-        boundf[0] *= 5.0f;
+		const float bound = focusNode->calculateBoundingSphere();
         
-		//psc cameraPosition = focusNode->position();
-        //cameraPosition += psc(glm::vec4(0.f, 0.f, boundf));
-
-		//cameraPosition = psc(glm::vec4(0.f, 0.f, 1.f,0.f));
-
 		cameraPosition = focusNode->position();
-		cameraPosition += psc(glm::vec4(0.f, 0.f, boundf));
+		cameraPosition += glm::vec3(0.f, 0.f, bound);
 		
 		//why this line? (JK)
 		//cameraPosition = psc(glm::vec4(0.f, 0.f, 1.f, 0.f));
@@ -281,7 +270,7 @@ bool Scene::loadSceneInternal(const std::string& sceneDescriptionFilePath) {
                 << position[2] << ", "
                 << position[3] << ")");
 
-            cameraPosition = psc(position);
+            cameraPosition = glm::vec3(position);
         }
         catch (const ghoul::Dictionary::DictionaryError& e) {
             LERROR("Error loading Camera location: " << e.what());
@@ -292,7 +281,7 @@ bool Scene::loadSceneInternal(const std::string& sceneDescriptionFilePath) {
 	const SceneGraphNode* fn = OsEng.interactionHandler().focusNode();
     // Check crash for when fn == nullptr
 
-	glm::mat4 la = glm::lookAt(cameraPosition.vec3(), fn->worldPosition().vec3(), c->lookUpVector());
+	glm::mat4 la = glm::lookAt(cameraPosition, fn->worldPosition(), c->lookUpVector());
 
 	c->setRotation(la);
 	c->setPosition(cameraPosition);

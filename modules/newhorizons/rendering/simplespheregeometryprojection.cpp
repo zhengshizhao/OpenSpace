@@ -58,17 +58,17 @@ SimpleSphereGeometryProjection::SimpleSphereGeometryProjection(const ghoul::Dict
 	if(_name.find("Projection"))
 		_name = _name.substr(0, _name.size() - 10); 
 
-    glm::vec4 radius;
+    glm::vec3 radius;
 	success = dictionary.getValue(keyRadius, _modRadius);
 	if (!success) {
 		LERROR("SimpleSphereGeometry of '" << _name << "' did not provide a key '"
                                            << keyRadius << "'");
 	}
 	else {
-		radius[0] = _modRadius[0];
-		radius[1] = _modRadius[0];
-		radius[2] = _modRadius[0];
-		radius[3] = _modRadius[1];
+		radius[0] = _modRadius[0] * std::pow(10, _modRadius[1]);
+		radius[1] = _modRadius[0] * std::pow(10, _modRadius[1]);
+		radius[2] = _modRadius[0] * std::pow(10, _modRadius[1]);
+
 		_realRadius = radius;
 	}
     double segments;
@@ -114,7 +114,7 @@ void SimpleSphereGeometryProjection::createSphere()
 {
     //create the power scaled scalar
 
-    PowerScaledScalar planetSize(_modRadius);
+    float planetSize = _modRadius[0] * std::pow(10, _modRadius[1]);
     _parent->setBoundingSphere(planetSize);
 
     delete _planet;

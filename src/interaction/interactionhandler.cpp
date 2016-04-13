@@ -116,7 +116,7 @@ void InteractionHandler::update(double deltaTime) {
     _mouseController->update(deltaTime);
     
     bool hasKeys = false;
-    psc pos;
+    glm::vec3 pos;
     glm::quat q;
     
     _keyframeMutex.lock();
@@ -138,14 +138,14 @@ void InteractionHandler::update(double deltaTime) {
 
         double t0 = p1._timeStamp;
         double t1 = p2._timeStamp;
-        double fact = (_currentKeyframeTime - t0) / (t1 - t0);
+        float fact = (_currentKeyframeTime - t0) / (t1 - t0);
 
         
         
         //glm::dvec4 v = positionInterpCR.interpolate(fact, _keyframes[0]._position.dvec4(), _keyframes[1]._position.dvec4(), _keyframes[2]._position.dvec4(), _keyframes[3]._position.dvec4());
-        glm::dvec4 v = ghoul::interpolateLinear(fact, p1._position.dvec4(), p2._position.dvec4());
+        glm::vec3 v = glm::mix(p1._position, p2._position, fact);
         
-        pos = psc(v.x, v.y, v.z, v.w);
+        pos = v;
         q = ghoul::interpolateLinear(fact, p1._viewRotationQuat, p2._viewRotationQuat);
         
         //we're done with this sample interval
@@ -180,9 +180,9 @@ void InteractionHandler::setFocusNode(SceneGraphNode* node) {
     _focusNode = node;
 
     //orient the camera to the new node
-    psc focusPos = node->worldPosition();
-    psc camToFocus = focusPos - _camera->position();
-    glm::vec3 viewDir = glm::normalize(camToFocus.vec3());
+    glm::vec3 focusPos = node->worldPosition();
+    glm::vec3 camToFocus = focusPos - _camera->position();
+    glm::vec3 viewDir = glm::normalize(camToFocus);
     glm::vec3 cameraView = glm::normalize(_camera->viewDirection());
     //set new focus position
     _camera->setFocusPosition(node->worldPosition());
@@ -252,21 +252,21 @@ void InteractionHandler::orbit(const float &dx, const float &dy, const float &dz
 
     
     //get "old" focus position 
-    psc focus = _camera->focusPosition();
+    glm::vec3 focus = _camera->focusPosition();
     
     //// get camera position 
     //psc relative = _camera->position();
 
     // get camera position (UNSYNCHRONIZED)
-    psc relative = _camera->unsynchedPosition();
+    glm::vec3 relative = _camera->unsynchedPosition();
 
     //get relative vector
-    psc relative_focus_coordinate = relative - focus;
+    glm::vec3 relative_focus_coordinate = relative - focus;
     //rotate relative vector
-    relative_focus_coordinate = glm::inverse(transform) * relative_focus_coordinate.vec4();
+    relative_focus_coordinate = (glm::inverse(transform) * glm::vec4(relative_focus_coordinate, 1.0)).xyz();
     
     //get new new position of focus node
-    psc origin;
+    glm::vec3 origin;
     if (_focusNode) {
         origin = _focusNode->worldPosition();
     }
@@ -274,13 +274,13 @@ void InteractionHandler::orbit(const float &dx, const float &dy, const float &dz
     //new camera position
     relative = origin + relative_focus_coordinate; 	
 
-    float bounds = 2.f * (_focusNode ? _focusNode->boundingSphere().lengthf() : 0.f) / 10.f;
+    float bounds = 2.f * (_focusNode ? _focusNode->boundingSphere() : 0.f) / 10.f;
 
-    psc target = relative + relative_focus_coordinate * dist;
+    glm::vec3 target = relative + relative_focus_coordinate * dist;
     //don't fly into objects
-    if ((target - origin).length() < bounds){
+    /*if ((target - origin).length() < bounds){
         target = relative;
-    }
+    }*/
 
     unlockControls();
     
@@ -315,20 +315,20 @@ void InteractionHandler::orbitDelta(const glm::quat& rotation)
     lockControls();
 
     // the camera position
-    psc relative = _camera->position();
+    glm::vec3 relative = _camera->position();
 
     // should be changed to something more dynamic =)
-    psc origin;
+    glm::vec3 origin;
     if (_focusNode) {
         origin = _focusNode->worldPosition();
     }
 
-    psc relative_origin_coordinate = relative - origin;
+    glm::vec3 relative_origin_coordinate = relative - origin;
     //glm::mat4 rotation_matrix = glm::mat4_cast(glm::inverse(rotation));
     //relative_origin_coordinate = relative_origin_coordinate.vec4() * glm::inverse(rotation);
-    relative_origin_coordinate = glm::inverse(rotation) * relative_origin_coordinate.vec4();
+    relative_origin_coordinate = glm::inverse(rotation) * relative_origin_coordinate;
     relative = relative_origin_coordinate + origin;
-    glm::mat4 la = glm::lookAt(_camera->position().vec3(), origin.vec3(), glm::rotate(rotation, _camera->lookUpVector()));
+    glm::mat4 la = glm::lookAt(_camera->position(), origin, glm::rotate(rotation, _camera->lookUpVector()));
     
     unlockControls();
     
@@ -362,41 +362,40 @@ void InteractionHandler::rotateDelta(const glm::quat& rotation)
     _camera->rotate(rotation);
 }
 
-void InteractionHandler::distanceDelta(const PowerScaledScalar& distance, size_t iterations)
+void InteractionHandler::distanceDelta(float distance, size_t iterations)
 {
     if (iterations > 5)
         return;
     //assert(this_);
     lockControls();
         
-    psc relative = _camera->position();
-    const psc origin = (_focusNode) ? _focusNode->worldPosition() : psc();
+    glm::vec3 relative = _camera->position();
+    const glm::vec3 origin = (_focusNode) ? _focusNode->worldPosition() : glm::vec3();
     
     unlockControls();
 
-    psc relative_origin_coordinate = relative - origin;
-    const glm::vec3 dir(relative_origin_coordinate.direction());
-    glm::vec3 newdir = dir * distance[0];
+    glm::vec3 relative_origin_coordinate = relative - origin;
+    const glm::vec3 dir = glm::normalize(relative_origin_coordinate);
+    glm::vec3 newdir = dir * distance;
 
     relative_origin_coordinate = newdir;
-    relative_origin_coordinate[3] = distance[1];
     relative = relative + relative_origin_coordinate;
 
     relative_origin_coordinate = relative - origin;
-    if (relative_origin_coordinate.vec4().x == 0.f && relative_origin_coordinate.vec4().y == 0.f && relative_origin_coordinate.vec4().z == 0.f)
+    if (relative_origin_coordinate.x == 0.f && relative_origin_coordinate.y == 0.f && relative_origin_coordinate.z == 0.f)
         // TODO: this shouldn't be allowed to happen; a mechanism to prevent the camera to coincide with the origin is necessary (ab)
         return;
 
-    newdir = relative_origin_coordinate.direction();
+    newdir = glm::normalize(relative_origin_coordinate);
 
     // update only if on the same side of the origin
     if (glm::angle(newdir, dir) < 90.0f) {
         _camera->setPosition(relative);
     }
     else {
-        PowerScaledScalar d2 = distance;
-        d2[0] *= 0.75f;
-        d2[1] *= 0.85f;
+        float d2 = distance;
+        d2 *= 0.75f;
+        //d2[1] *= 0.85f;
         distanceDelta(d2, iterations + 1);
     }
 }

@@ -451,12 +451,7 @@ void RenderablePlanetProjection::attitudeParameters(double time){
     }
 
     glm::dvec3 p = SpiceManager::ref().targetPosition(_projectorID, _projecteeID, _mainFrame, _aberration, time, lightTime);
-    psc position = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
-   
-    //change to KM and add psc camera scaling. 
-    position[3] += (3 + _camScaling[1]);
-    //position[3] += 3;
-    glm::vec3 cpos = position.vec3();
+    glm::vec3 cpos = static_cast<glm::vec3>(p) * std::pow(10.0f, 3 + _camScaling[1]);
 
     _projectorMatrix = computeProjectorMatrix(cpos, bs, _up);
 }
@@ -532,12 +527,12 @@ void RenderablePlanetProjection::render(const RenderData& data){
     double  lt;
     glm::dvec3 p =
     openspace::SpiceManager::ref().targetPosition("SUN", _projecteeID, "GALACTIC", {}, _time, lt);
-    psc sun_pos = PowerScaledCoordinate::CreatePowerScaledCoordinate(p.x, p.y, p.z);
+    glm::vec3 sun_pos = static_cast<glm::vec3>(p);
 
     // Main renderpass
     _programObject->activate();
     // setup the data to the shader
-    _programObject->setUniform("sun_pos", sun_pos.vec3());
+    _programObject->setUniform("sun_pos", sun_pos);
     _programObject->setUniform("ProjectorMatrix", _projectorMatrix);
     _programObject->setUniform("ViewProjection" ,  data.camera.viewProjectionMatrix());
     _programObject->setUniform("ModelTransform" , _transform);

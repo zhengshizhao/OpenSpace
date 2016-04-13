@@ -69,7 +69,7 @@ private:
 	properties::StringProperty _texturePath;
 	properties::BoolProperty _billboard;
 	properties::BoolProperty _projectionListener;
-    properties::Vec2Property _size;
+    properties::FloatProperty _size;
 
 	Origin _origin;
 	std::string _nodeName;
