@@ -146,6 +146,8 @@ void AtlasManager::updateAtlas(BUFFER_INDEX bufferIndex, std::vector<int>& brick
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, _atlasMapBuffer);
     GLint *to = (GLint*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+    /// TODO: Handle error if buffer could not be mapped (for example if OpenGL < 4.3
+    /// ---abock
     memcpy(to, _atlasMap.data(), sizeof(GLint)*_atlasMap.size());
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
