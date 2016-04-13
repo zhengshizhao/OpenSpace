@@ -285,7 +285,6 @@ bool Scene::loadSceneInternal(const std::string& sceneDescriptionFilePath) {
 
 	c->setRotation(la);
 	c->setPosition(cameraPosition);
-	c->setScaling(cameraScaling);
 
 	glm::vec3 viewOffset;
 	if (cameraDictionary.hasKey(KeyViewOffset)

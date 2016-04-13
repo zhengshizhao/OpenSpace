@@ -131,7 +131,6 @@ RenderEngine::~RenderEngine() {
 
 	delete _mainCamera;
 	delete _performanceMemory;
-	delete _raycasterManager;
 
 	if (ghoul::SharedMemory::exists(PerformanceMeasurementSharedData))
 		ghoul::SharedMemory::remove(PerformanceMeasurementSharedData);
@@ -179,14 +178,13 @@ bool RenderEngine::initialize() {
         }
     }
 
-    _raycasterManager = new RaycasterManager();
+    _raycasterManager = std::make_unique<RaycasterManager>();
 
 	LINFO("Seting renderer from string: " << renderingMethod);
 	setRendererFromString(renderingMethod);
 
 	// init camera and set temporary position and scaling
 	_mainCamera = new Camera();
-	_mainCamera->setScaling(glm::vec2(1.0, -8.0));
 	_mainCamera->setPosition(glm::vec3(0.f, 0.f, 1.499823f) * std::pow(10.0f, 11));
 
     OsEng.interactionHandler().setCamera(_mainCamera);
@@ -217,7 +215,7 @@ bool RenderEngine::initializeGL() {
 
 	// set the close clip plane and the far clip plane to extreme values while in
 	// development
-    OsEng.windowWrapper().setNearFarClippingPlane(0.001f, 1000.f);
+    //OsEng.windowWrapper().setNearFarClippingPlane(0.001f, 1000.f);
     
     
     try {
@@ -233,58 +231,9 @@ bool RenderEngine::initializeGL() {
         throw;
     }
    
-    
-    
-    // ALL OF THIS HAS TO BE CHECKED
-    // ---abock
-    
-    
-//	sgct::Engine::instance()->setNearAndFarClippingPlanes(0.001f, 1000.0f);
-	// sgct::Engine::instance()->setNearAndFarClippingPlanes(0.1f, 30.0f);
-
-	// calculating the maximum field of view for the camera, used to
-	// determine visibility of objects in the scene graph
-/*    if (sgct::Engine::instance()->getCurrentRenderTarget() == sgct::Engine::NonLinearBuffer) {
-		// fisheye mode, looking upwards to the "dome"
-		glm::vec4 upDirection(0, 1, 0, 0);
-
-		// get the tilt and rotate the view
-		const float tilt = wPtr->getFisheyeTilt();
-		glm::mat4 tiltMatrix
-			= glm::rotate(glm::mat4(1.0f), tilt, glm::vec3(1.0f, 0.0f, 0.0f));
-		const glm::vec4 viewdir = tiltMatrix * upDirection;
-
-		// set the tilted view and the FOV
-		_mainCamera->setCameraDirection(glm::vec3(viewdir[0], viewdir[1], viewdir[2]));
-		_mainCamera->setMaxFov(wPtr->getFisheyeFOV());
-		_mainCamera->setLookUpVector(glm::vec3(0.0, 1.0, 0.0));
-	}
-	else {*/
-		// get corner positions, calculating the forth to easily calculate center
-		
-  //      glm::vec3 corners[4];
-  //      sgct::SGCTWindow* wPtr = sgct::Engine::instance()->getWindowPtr(0);
-  //      sgct_core::BaseViewport* vp = wPtr->getViewport(0);
-  //      sgct_core::SGCTProjectionPlane* projectionPlane = vp->getProjectionPlane();
-
-  //      corners[0] = *(projectionPlane->getCoordinatePtr(sgct_core::SGCTProjectionPlane::LowerLeft));
-  //      corners[1] = *(projectionPlane->getCoordinatePtr(sgct_core::SGCTProjectionPlane::UpperLeft));
-  //      corners[2] = *(projectionPlane->getCoordinatePtr(sgct_core::SGCTProjectionPlane::UpperRight));
-  //      corners[3] = glm::vec3(corners[2][0], corners[0][1], corners[2][2]);
-  //       
-  //      const glm::vec3 center = (corners[0] + corners[1] + corners[2] + corners[3]);
-		////	
-		//const glm::vec3 eyePosition = sgct_core::ClusterManager::instance()->getDefaultUserPtr()->getPos();
-		////// get viewdirection, stores the direction in the camera, used for culling
-		//const glm::vec3 viewdir = glm::normalize(eyePosition - center);
-
-        //const glm::vec3 upVector = corners[0] - corners[1];
-
-        
-		//_mainCamera->setCameraDirection(glm::normalize(-viewdir));
+   
      _mainCamera->setCameraDirection(glm::vec3(0.f, 0.f, -1.f));
-		//_mainCamera->setLookUpVector(glm::normalize(upVector));
-        _mainCamera->setLookUpVector(glm::vec3(0.f, 1.f, 0.f));
+     _mainCamera->setLookUpVector(glm::vec3(0.f, 1.f, 0.f));
 
 		// set the initial fov to be 0.0 which means everything will be culled
 		//float maxFov = 0.0f;

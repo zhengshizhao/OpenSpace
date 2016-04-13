@@ -151,7 +151,7 @@ private:
 
 	Camera* _mainCamera;
 	Scene* _sceneGraph;
-    RaycasterManager* _raycasterManager;
+    std::unique_ptr<RaycasterManager> _raycasterManager;
 
     std::unique_ptr<Renderer> _renderer;
     RendererImplementation _rendererImplementation;

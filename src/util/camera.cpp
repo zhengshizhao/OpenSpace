@@ -207,18 +207,6 @@ void Camera::setMaxFov(float fov)
     _sinMaxFov = sin(_maxFov);
 }
 
-void Camera::setScaling(glm::vec2 scaling)
-{
-    std::lock_guard<std::mutex> _lock(_mutex);
-	_localScaling = std::move(scaling);
-}
-
-const glm::vec2& Camera::scaling() const
-{
-	//return _localScaling;
-	return _syncedScaling;
-}
-
 void Camera::setLookUpVector(glm::vec3 lookUp)
 {
     std::lock_guard<std::mutex> _lock(_mutex);
@@ -270,100 +258,5 @@ void Camera::preSynchronization(){
 	_mutex.unlock();
 }
 
-//
-//Camera::Camera()
-//    : _position(0.f, 0.f, 1.f, 0.f)
-//    , _focus(0.f, 0.f, 0.f, 0.f)
-//    , _upVector(0.f, 1.f, 0.f, 0.f)
-//    , _projectionMatrix(glm::mat4(1.f))
-//    , _viewMatrix(glm::mat4(1.f))
-//    , _scaling(0.f)
-//    , _maxFov(0.f)
-//    , _viewMatrixIsDirty(false)
-//{
-//
-//}
-//
-//void Camera::setPosition(psc pos)
-//{
-//    _position = std::move(pos);
-//}
-//
-//const psc& Camera::position() const
-//{
-//    return _position;
-//}
-//
-//void Camera::setFocus(psc focus)
-//{
-//    _focus = std::move(focus);
-//}
-//
-//const psc& Camera::focus() const
-//{
-//    return _focus;
-//}
-//
-//void Camera::setUpVector(psc upVector)
-//{
-//    _upVector = std::move(upVector);
-//}
-//
-//const psc& Camera::upVector() const
-//{
-//    return _upVector;
-//}
-//
-//void Camera::setScaling(float scaling)
-//{
-//    _scaling = scaling;
-//}
-//
-//float Camera::scaling() const
-//{
-//    return _scaling;
-//}
-//
-//const glm::mat4& Camera::viewMatrix() const
-//{
-//    
-//    return _viewMatrix;
-//}
-//
-//void Camera::setProjectionMatrix(glm::mat4 projectionMatrix)
-//{
-//    _projectionMatrix = std::move(projectionMatrix);
-//}
-//
-//const glm::mat4& Camera::projectionMatrix() const
-//{
-//    return _projectionMatrix;
-//}
-//
-//void Camera::setMaxFox(float fov)
-//{
-//    _maxFov = fov;
-//}
-//
-//float Camera::maxFov() const
-//{
-//    return _maxFov;
-//}
-//
-//psc Camera::lookVector() const
-//{
-//    return _focus - _position;
-//}
-//
-//void Camera::invalidateViewMatrix() {
-//    _viewMatrixIsDirty = true;
-//}
-//
-//void Camera::updateViewMatrix() const {
-//    if (_viewMatrixIsDirty) {
-//        _viewMatrix = glm::lookAt(_position.getVec3f(), _focus.getVec3f(), _upVector.getVec3f());
-//        _viewMatrixIsDirty = false;
-//    }
-//}
 
 } // namespace openspace

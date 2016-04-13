@@ -35,59 +35,7 @@
 
 namespace openspace {
 
-//class Camera {
-//public:
-//    enum class ProjectionMode {
-//        Perspective,
-//        Orthographic,
-//        Frustum,
-//        FixedPerspective
-//    };
-//
-//    Camera();
-//
-//    void setPosition(psc pos);
-//    const psc& position() const;
-//
-//    void setFocus(psc focus);
-//    const psc& focus() const;
-//
-//    void setUpVector(psc upVector);
-//    const psc& upVector() const;
-//
-//    void setScaling(float scaling);
-//    float scaling() const;
-//
-//    const glm::mat4& viewMatrix() const;
-//
-//    void setProjectionMatrix(glm::mat4 projectionMatrix);
-//    const glm::mat4& projectionMatrix() const;
-//
-//    void setMaxFox(float fov);
-//    float maxFov() const;
-//
-//
-//    // derived values
-//    psc lookVector() const;
-//
-//private:
-//    void invalidateViewMatrix();
-//    void updateViewMatrix() const;  // has to be constant to be called from getter methods
-//
-//    psc _position;
-//    psc _focus;
-//    psc _upVector;
-//
-//    glm::mat4 _projectionMatrix;
-//    mutable glm::mat4 _viewMatrix;
-//    float _scaling;
-//
-//    float _maxFov;
-//
-//    mutable bool _viewMatrixIsDirty;
-//};
-
-	class SyncBuffer;
+class SyncBuffer;
 
 class Camera {
 public:
@@ -130,8 +78,6 @@ public:
 	const float& maxFov() const;
     const float& sinMaxFov() const;
     void setMaxFov(float fov);
-    void setScaling(glm::vec2 scaling);
-    const glm::vec2& scaling() const;
 
     void setLookUpVector(glm::vec3 lookUp);
     const glm::vec3& lookUpVector() const;

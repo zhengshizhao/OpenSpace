@@ -366,7 +366,6 @@ void RenderablePlanetProjection::imageProjectGPU(){
 
     _fboProgramObject->setUniform("ProjectorMatrix", _projectorMatrix);
     _fboProgramObject->setUniform("ModelTransform" , _transform);
-    _fboProgramObject->setUniform("_scaling"       , _camScaling);
     _fboProgramObject->setUniform("boresight"      , _boresight);
 
     if (_geometry->hasProperty("radius")){ 
@@ -451,7 +450,7 @@ void RenderablePlanetProjection::attitudeParameters(double time){
     }
 
     glm::dvec3 p = SpiceManager::ref().targetPosition(_projectorID, _projecteeID, _mainFrame, _aberration, time, lightTime);
-    glm::vec3 cpos = static_cast<glm::vec3>(p) * std::pow(10.0f, 3 + _camScaling[1]);
+    glm::vec3 cpos = static_cast<glm::vec3>(p) * std::pow(10.0f, 3);
 
     _projectorMatrix = computeProjectorMatrix(cpos, bs, _up);
 }
@@ -516,7 +515,6 @@ void RenderablePlanetProjection::render(const RenderData& data){
     
     if (_clearAllProjections) clearAllProjections();
 
-    _camScaling = data.camera.scaling();
     _up = data.camera.lookUpVector();
 
     if (_capture && _performProjection)

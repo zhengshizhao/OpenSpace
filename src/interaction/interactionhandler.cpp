@@ -429,16 +429,6 @@ void InteractionHandler::keyboardCallback(Key key, KeyModifier modifier, KeyActi
             glm::quat rot = glm::quat(euler);
             rotateDelta(rot);
         }
-        if ((key == Key::KeypadSubtract) && (modifier == KeyModifier::NoModifier)) {
-            glm::vec2 s = OsEng.renderEngine().camera()->scaling();
-            s[1] -= 0.5f;
-            OsEng.renderEngine().camera()->setScaling(s);
-        }
-        if ((key == Key::KeypadAdd) && (modifier == KeyModifier::NoModifier)) {
-            glm::vec2 s = OsEng.renderEngine().camera()->scaling();
-            s[1] += 0.5f;
-            OsEng.renderEngine().camera()->setScaling(s);
-        }
 
         // iterate over key bindings
         _validKeyLua = true;
