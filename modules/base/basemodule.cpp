@@ -43,8 +43,10 @@
 #include <modules/base/rendering/modelgeometry.h>
 #include <modules/base/rendering/multimodelgeometry.h>
 
+#include <modules/base/ephemeris/keplerephemeris.h>
 #include <modules/base/ephemeris/staticephemeris.h>
 #include <modules/base/ephemeris/spiceephemeris.h>
+#include <modules/base/ephemeris/tleephemeris.h>
 
 #include <ghoul/filesystem/filesystem>
 
@@ -73,8 +75,10 @@ void BaseModule::internalInitialize() {
 
     auto fEphemeris = FactoryManager::ref().factory<Ephemeris>();
     ghoul_assert(fEphemeris, "Ephemeris factory was not created");
+    fEphemeris->registerClass<KeplerEphemeris>("Kepler");
     fEphemeris->registerClass<StaticEphemeris>("Static");
     fEphemeris->registerClass<SpiceEphemeris>("Spice");
+    fEphemeris->registerClass<TLEEphemeris>("TLE");
 
     auto fPlanetGeometry = FactoryManager::ref().factory<planetgeometry::PlanetGeometry>();
     ghoul_assert(fPlanetGeometry, "Planet geometry factory was not created");
