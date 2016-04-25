@@ -33,24 +33,24 @@ namespace openspace {
     
 class KeplerEphemeris : public Ephemeris {
 public:
-    KeplerEphemeris(const ghoul::Dictionary& dictionary
-                                = ghoul::Dictionary());
+    KeplerEphemeris(const ghoul::Dictionary& dictionary);
     virtual ~KeplerEphemeris();
     virtual const psc& position() const override;
     virtual void update(const UpdateData& data) override;
 
 protected:
+    KeplerEphemeris() = default;
     void computeOrbitPlane();
 
-    double _eccentricity;
-    double _semimajorAxis;
-    double _inclination;
-    double _ascendingNode;
-    double _argumentOfPeriapsis;
-    double _meanAnomalyAtEpoch;
+    double _eccentricity = 0.0;
+    double _semimajorAxis = 0.0; // in m
+    double _inclination = 0.0;
+    double _ascendingNode = 0.0;
+    double _argumentOfPeriapsis = 0.0;
+    double _meanAnomalyAtEpoch = 0.0;
     
-    double _epoch; // in JD
-    double _period;
+    double _epoch = 0.0; // in JD
+    double _period = 0.0;
 
     glm::dmat3 _orbitPlaneRotation;
 
