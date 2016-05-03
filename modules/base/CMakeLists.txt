@@ -75,11 +75,15 @@ set(SHADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/imageplane_vs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/model_fs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/model_vs.glsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/nighttexture_fs.glsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/nighttexture_vs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/path_fs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/path_gs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/path_vs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/plane_fs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/plane_vs.glsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/pscstandard_fs.glsl
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/pscstandard_vs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/sphere_fs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/sphere_vs.glsl
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/star_fs.glsl
