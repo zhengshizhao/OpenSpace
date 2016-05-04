@@ -1,0 +1,35 @@
+function preInitialization()
+    --[[
+    The scripts in this function are executed after the scene is loaded but before the
+    scene elements have been initialized, thus they should be used to set the time at
+    which the scene should start and other settings that might determine initialization
+    critical objects.
+    ]]--
+
+    openspace.time.setTime(openspace.time.currentWallTime())
+    dofile(openspace.absPath('${SCRIPTS}/bind_keys.lua'))
+end
+
+function postInitialization()
+    --[[
+    The scripts in this function are executed after all objects in the scene have been
+    created and initialized, but before the first render call. This is the place to set
+    graphical settings for the renderables.
+    ]]--
+    openspace.setPropertyValue("Earth.renderable.performShading", false)
+end
+
+return {
+    ScenePath = ".",
+    CommonFolder = "common",
+    Camera = {
+        Focus = "Kepler-Test",
+        Position = {1, 0, 0, 5},
+    },
+    Modules = {
+        "test/ephemeris/earth",
+        "test/ephemeris/kepler",
+        "test/ephemeris/spice"
+    }
+}
+
