@@ -168,7 +168,7 @@ private:
     GLuint _deltaSRayleighTableTexture;
     GLuint _deltaSMieTableTexture;
     GLuint _deltaJTableTexture;
-    GLuint _dummyTexture;
+    //GLuint _dummyTexture;
     GLuint _atmosphereTexture;
     GLuint _atmosphereFBO;
     GLuint _atmosphereRenderVAO;

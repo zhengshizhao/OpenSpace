@@ -107,7 +107,7 @@ RenderablePlanet::RenderablePlanet(const ghoul::Dictionary& dictionary)
     , _deltaSRayleighTableTexture(0)
     , _deltaSMieTableTexture(0)
     , _deltaJTableTexture(0)
-    , _dummyTexture(0)
+    //, _dummyTexture(0)
     , _atmosphereTexture(0)
     , _atmosphereFBO(0)
     , _atmosphereRenderVAO(0)
@@ -829,6 +829,7 @@ void RenderablePlanet::render(const RenderData& data)
 
 
         ghoul::opengl::TextureUnit reflectanceUnit;
+        std::cout << "\n\n=== reflectanceUnit: " << reflectanceUnit.glEnum() << " ===" << std::endl;
         if (_hasReflectanceTexture) {
             reflectanceUnit.activate();
             _reflectanceTexture->bind();
@@ -836,6 +837,7 @@ void RenderablePlanet::render(const RenderData& data)
         }
 
         ghoul::opengl::TextureUnit cloudsUnit;
+        std::cout << "\n\n=== cloudsUnit: " << cloudsUnit.glEnum() << " ===" << std::endl;
         if (_hasCloudsTexture) {
             cloudsUnit.activate();
             _cloudsTexture->bind();
@@ -1338,12 +1340,11 @@ void RenderablePlanet::createComputationTextures() {
     }
 
     _dummyTextureUnit.activate();
-    glGenTextures(1, &_dummyTexture);
-    glBindTexture(GL_TEXTURE_2D, _dummyTexture);
+    //glGenTextures(1, &_dummyTexture);
+    /*glBindTexture(GL_TEXTURE_2D, _dummyTexture);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, TRANSMITTANCE_TABLE_WIDTH,
-        TRANSMITTANCE_TABLE_HEIGHT, 0, GL_RGB, GL_FLOAT, nullptr);
-
+        TRANSMITTANCE_TABLE_HEIGHT, 0, GL_RGB, GL_FLOAT, nullptr);*/
 
     //============== Transmittance =================
     _transmittanceTableTextureUnit.activate();
@@ -1484,7 +1485,7 @@ void RenderablePlanet::createComputationTextures() {
 
 void RenderablePlanet::deleteComputationTextures() {
     // Cleaning up
-    glDeleteTextures(1, &_dummyTexture);
+    //glDeleteTextures(1, &_dummyTexture);
     glDeleteTextures(1, &_transmittanceTableTexture);
     glDeleteTextures(1, &_irradianceTableTexture);
     glDeleteTextures(1, &_inScatteringTableTexture);
@@ -1495,7 +1496,7 @@ void RenderablePlanet::deleteComputationTextures() {
 }
 
 void RenderablePlanet::deleteUnusedComputationTextures() {
-    glDeleteTextures(1, &_dummyTexture);
+    //glDeleteTextures(1, &_dummyTexture);
     glDeleteTextures(1, &_deltaETableTexture);
     glDeleteTextures(1, &_deltaSRayleighTableTexture);
     glDeleteTextures(1, &_deltaSMieTableTexture);
@@ -1836,7 +1837,7 @@ void RenderablePlanet::preCalculateAtmosphereParam() {
     GLuint calcFBO;
     glGenFramebuffers(1, &calcFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, calcFBO);
-    glReadBuffer(GL_COLOR_ATTACHMENT1);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
     //glDrawBuffer(GL_COLOR_ATTACHMENT1);
     GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
     glDrawBuffers(1, drawBuffers);
