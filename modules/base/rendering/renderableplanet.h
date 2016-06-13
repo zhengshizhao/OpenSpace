@@ -148,7 +148,6 @@ private:
     std::unique_ptr<ghoul::opengl::ProgramObject> _deltaJProgramObject;
     std::unique_ptr<ghoul::opengl::ProgramObject> _atmosphereProgramObject;
     ghoul::opengl::TextureUnit _dummyTextureUnit;
-    ghoul::opengl::TextureUnit _dummy3DTextureUnit;
     ghoul::opengl::TextureUnit _transmittanceTableTextureUnit;
     ghoul::opengl::TextureUnit _irradianceTableTextureUnit;
     ghoul::opengl::TextureUnit _inScatteringTableTextureUnit;
@@ -170,7 +169,6 @@ private:
     GLuint _deltaSMieTableTexture;
     GLuint _deltaJTableTexture;
     GLuint _dummyTexture;
-    GLuint _dummy3DTexture;
     GLuint _atmosphereTexture;
     GLuint _atmosphereFBO;
     GLuint _atmosphereRenderVAO;

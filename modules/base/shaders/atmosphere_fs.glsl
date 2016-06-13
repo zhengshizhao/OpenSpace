@@ -386,7 +386,7 @@ Fragment getFragment() {
         // atmosphere
         vec4 viewport = vec4(screenX, screenY, screenWIDTH, screenHEIGHT);
         vec4 ndcPos;
-        ndcPos.xy = ((2.0 * gl_FragCoord.xy) - (2.0 * viewport.xy)) / (viewport.zw) - 1;
+        ndcPos.xy = ((2.0 * (gl_FragCoord.xy - 0.5)) - (2.0 * viewport.xy)) / (viewport.zw) - 1;
         ndcPos.z = (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) / 
         (gl_DepthRange.far - gl_DepthRange.near);
         ndcPos.w = 1.0;
@@ -418,7 +418,9 @@ Fragment getFragment() {
             
             //diffuse = HDR(vec4(sunColor + groundColor + inscatterColor, 1.0) + diffuse2); 
             diffuse = HDR((vec4(sunColor + groundColor + inscatterColor, 1.0) + diffuse2) *
-                        calcShadow(shadowDataArray, vs_posWorld.xyz) ); 
+                        calcShadow(shadowDataArray, vs_posWorld.xyz) );
+            
+            //diffuse = vec4(1.0); 
         }
         // else
         //     diffuse = HDR(diffuse);
