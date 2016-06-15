@@ -107,8 +107,7 @@ RenderablePlanet::RenderablePlanet(const ghoul::Dictionary& dictionary)
     , _deltaSRayleighTableTexture(0)
     , _deltaSMieTableTexture(0)
     , _deltaJTableTexture(0)
-    , _dummyTexture(0)
-    , _dummy3DTexture(0)
+    //, _dummyTexture(0)
     , _atmosphereTexture(0)
     , _atmosphereFBO(0)
     , _atmosphereRenderVAO(0)
@@ -853,227 +852,12 @@ void RenderablePlanet::render(const RenderData& data)
         saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, ss.str(), m_viewport[2], m_viewport[3]);*/
     }
 
-
-
-
+    
     // render
     _geometry->render();
 
     // disable shader
     _programObject->deactivate();
-
-
-
-    //
-    //
-    //// Render Atmosphere to a texture:
-    //if (_atmosphereEnabled) {
-
-    //    /*std::cout << "\nTestes..." << std::endl;
-    //    glm::dvec3 sunPosSun = SpiceManager::ref().targetPosition("SUN", "SUN", "GALACTIC", {}, _time, lt);
-    //    glm::dvec3 earthPosSun = SpiceManager::ref().targetPosition("EARTH", "SUN", "GALACTIC", {}, _time, lt);
-    //    std::cout << "\n\nSun in Sun: " << sunPosSun.x << ", " << sunPosSun.y << ", " << sunPosSun.z << std::endl;
-    //    std::cout << "\n\nEarth in Sun: " << earthPosSun.x << ", " << earthPosSun.y << ", " << earthPosSun.z << std::endl;
-    //    std::cout << "\n\nCam Position in Sun: " << data.camera.position().vec3().x << ", " << data.camera.position().vec3().y << ", " << data.camera.position().vec3().z << std::endl;
-    //    std::cout << "\n\nCam Position from Earth in Sun: " << cam_dir.x << ", " << cam_dir.y << ", " << cam_dir.z << std::endl;
-    //    
-    //    glm::dmat3 sun2earthMat = SpiceManager::ref().frameTransformationMatrix("GALACTIC", "IAU_EARTH", _time);
-    //    glm::dvec3 sunPosEarth = sun2earthMat * sunPosSun;
-    //    glm::dvec3 earthPosEarth = sun2earthMat * earthPosSun;
-    //    glm::dvec3 camDirEarth = sun2earthMat * cam_dir;
-    //    glm::dvec3 camPosEarth = sun2earthMat * data.camera.position().vec3();
-    //    std::cout << "\n\nSun in Earth: " << sunPosEarth.x << ", " << sunPosEarth.y << ", " << sunPosEarth.z << std::endl;
-    //    std::cout << "\n\nEarth in Earth: " << earthPosEarth.x << ", " << earthPosEarth.y << ", " << earthPosEarth.z << std::endl;
-    //    std::cout << "\n\nCam Position in Earth: " << camPosEarth.x << ", " << camPosEarth.y << ", " << camPosEarth.z << std::endl;
-    //    std::cout << "\n\nCam Position from Earth in Earth: " << camDirEarth.x << ", " << camDirEarth.y << ", " << camDirEarth.z << std::endl;
-
-    //    glm::dvec3 sunPosView = glm::dvec3(data.camera.viewMatrix() * glm::dvec4(sunPosSun.x, sunPosSun.y, sunPosSun.z, 1.0));
-    //    glm::dvec3 earthPosView = glm::dvec3(data.camera.viewMatrix() * glm::dvec4(earthPosSun.x, earthPosSun.y, earthPosSun.z, 1.0));
-    //    glm::dvec3 camDirView = glm::dvec3(data.camera.viewMatrix() * glm::dvec4(cam_dir.x, cam_dir.y, cam_dir.z, 0.0));
-    //    glm::dvec3 camPosView = glm::dvec3(data.camera.viewMatrix() * glm::dvec4(data.camera.position().vec3().x, data.camera.position().vec3().y, data.camera.position().vec3().z, 1.0));
-    //    std::cout << "\n\nSun in View: " << sunPosView.x << ", " << sunPosView.y << ", " << sunPosView.z << std::endl;
-    //    std::cout << "\n\nEarth in View: " << earthPosView.x << ", " << earthPosView.y << ", " << earthPosView.z << std::endl;
-    //    std::cout << "\n\nCam Position in View: " << camPosView.x << ", " << camPosView.y << ", " << camPosView.z << std::endl;
-    //    std::cout << "\n\nCam Position from Earth in View: " << camDirView.x << ", " << camDirView.y << ", " << camDirView.z << std::endl;*/
-
-
-    //    GLint defaultFBO;
-    //    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &defaultFBO);
-
-    //    GLint m_viewport[4];
-    //    glGetIntegerv(GL_VIEWPORT, m_viewport);
-
-    //    glBindFramebuffer(GL_FRAMEBUFFER, _atmosphereFBO);
-    //    glReadBuffer(GL_COLOR_ATTACHMENT1);
-    //    GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    //    glDrawBuffers(2, drawBuffers);
-
-    //    if (!glIsTexture(_dummyTexture)) {
-    //        _dummyTextureUnit.activate();
-    //        glGenTextures(1, &_dummyTexture);
-    //        //glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _dummyTexture);
-    //        glBindTexture(GL_TEXTURE_2D, _dummyTexture);
-    //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    //        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-    //        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_viewport[2],
-    //            m_viewport[3], 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-    //        /*glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 8, GL_RGBA,
-    //            m_viewport[2], m_viewport[3], true);*/
-    //    }        
-
-    //    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummyTexture, 0);
-    //    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _atmosphereTexture, 0);
-    //    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _dummyTexture, 0);
-    //    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, _atmosphereTexture, 0);
-    //    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    //        LERROR("Atmosphere Framework not built.");
-    //        GLenum fbErr = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    //        switch (fbErr) {
-    //        case GL_FRAMEBUFFER_UNDEFINED:
-    //            LERROR("Indefined framebuffer.");
-    //            break;
-    //        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-    //            LERROR("Incomplete, missing attachement.");
-    //            break;
-    //        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-    //            LERROR("Framebuffer doesn't have at least one image attached to it.");
-    //            break;
-    //        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-    //            LERROR("Returned if the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for any color attachment point(s) named by GL_DRAW_BUFFERi."); 
-    //            break;
-    //        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-    //            LERROR("Returned if GL_READ_BUFFER is not GL_NONE and the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for the color attachment point named by GL_READ_BUFFER.");
-    //            break;
-    //        case GL_FRAMEBUFFER_UNSUPPORTED:
-    //            LERROR("Returned if the combination of internal formats of the attached images violates an implementation - dependent set of restrictions.");
-    //            break;
-    //        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-    //            LERROR("Returned if the value of GL_RENDERBUFFER_SAMPLES is not the same for all attached renderbuffers; if the value of GL_TEXTURE_SAMPLES is the not same for all attached textures; or , if the attached images are a mix of renderbuffers and textures, the value of GL_RENDERBUFFER_SAMPLES does not match the value of GL_TEXTURE_SAMPLES.");
-    //            LERROR("Returned if the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not the same for all attached textures; or , if the attached images are a mix of renderbuffers and textures, the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not GL_TRUE for all attached textures.");
-    //            break;
-    //        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
-    //            LERROR("Returned if any framebuffer attachment is layered, and any populated attachment is not layered, or if all populated color attachments are not from textures of the same target.");
-    //            break;
-    //        }
-    //    }
-
-    //    GLenum err;
-    //    while ((err = glGetError()) != GL_NO_ERROR) {
-    //        const GLubyte * errorString = gluErrorString(err);
-    //        std::stringstream ss;
-    //        ss << "Error setting up atmosphere framebuffer. OpenGL error: "
-    //            << err << " - " << errorString << std::endl;
-    //        LERROR(ss.str());
-    //    }
-
-    //    glClearColor(1.0, 0.0, 0.0, 1.0);
-    //    glClear(GL_COLOR_BUFFER_BIT);
-    //    
-    //    _atmosphereProgramObject->activate();
-    //    //glm::vec2 camScaling = data.camera.scaling();
-    //    ///*glm::mat4 invScaling = glm::scale(glm::mat4(1.0), glm::vec3(1.0 / (camScaling.x * pow(10.0, camScaling.y))));
-    //    //glm::mat4 invCamRot  = glm::inverse(data.camera.viewRotationMatrix());
-    //    //glm::mat4 invTrans   = glm::translate(glm::mat4(1.0), glm::vec3(-data.camera.position().vec4()));*/
-
-    //    //glm::mat4 camScaleTrans = glm::scale(glm::mat4(1.0), glm::vec3(camScaling.x * pow(10.0, camScaling.y)));
-    //    //glm::mat4 camRotationTrans = glm::mat4(glm::mat3(data.camera.viewRotationMatrix()));
-    //    //glm::mat4 camTranslationTrans = glm::translate(glm::mat4(1.0), glm::vec3(-data.camera.position().vec4()));
-
-    //    //glm::mat4 completeInverse = glm::inverse(data.camera.viewProjectionMatrix() * camScaleTrans * 
-    //    //    camRotationTrans * camTranslationTrans);
-
-
-    //    // Object Space (in Km)
-    //    glm::mat4 obj2World = glm::translate(glm::mat4(1.0), data.position.vec3() / 1000.0f);
-    //    glm::mat4 M = data.camera.viewMatrix() * scaleCamTrans * data.camera.viewRotationMatrix() *
-    //        translateCamTrans * obj2World * transform;
-
-    //    // World Space
-    //    /*glm::mat4 M = data.camera.viewMatrix() * scaleCamTrans * data.camera.viewRotationMatrix() *
-    //        translateCamTrans;*/
-
-    //    //glm::mat4 completeInverse = glm::inverse(data.camera.projectionMatrix() * M);
-    //    glm::mat4 completeInverse = glm::inverse(M);
-
-    //    //glm::mat4 completeInverse = glm::inverse(data.camera.projectionMatrix() * ModelViewTrans);
-
-    //    _atmosphereProgramObject->setUniform("completeInverse", completeInverse);
-    //    _atmosphereProgramObject->setUniform("projInverse", glm::inverse(data.camera.projectionMatrix()));
-    //    
-    //    //// This is camera position and planet position vector in world coordinates, in Km.
-    //    //glm::vec4 cameraPosWorld = glm::vec4(data.camera.position().vec3() / 1000.0f, 1.0);
-    //    //glm::vec4 planetPositionWorld = glm::vec4(data.position.vec3() / 1000.0f, 1.0);
-    //    //_atmosphereProgramObject->setUniform("cameraPosWorld", cameraPosWorld);
-    //    //_atmosphereProgramObject->setUniform("planetPosition", planetPositionWorld);
-    //    //// I know it is (0,0,0). It is here just for sake of sanity. :-p
-    //    //glm::dvec3 sunPosWorld =
-    //    //    SpiceManager::ref().targetPosition("SUN", "SUN", "GALACTIC", {}, _time, lt);
-    //    //_atmosphereProgramObject->setUniform("sunPositionWorld", sunPosWorld);
-
-    //    // This is camera position and planet position vector in object coordinates, in Km.
-    //    glm::mat4 world2Obj = glm::inverse(obj2World * transform);
-    //    glm::vec4 cameraPosObj = world2Obj * glm::vec4(data.camera.position().vec3() / 1000.0f, 1.0);
-    //    glm::vec4 planetPositionObj = world2Obj * glm::vec4(data.position.vec3() / 1000.0f, 1.0);
-    //    _atmosphereProgramObject->setUniform("cameraPosObj", cameraPosObj);
-    //    _atmosphereProgramObject->setUniform("planetPositionObj", planetPositionObj);
-    //   
-    //    // I know it is (0,0,0). It is here just for sake of sanity. :-p
-    //    glm::dvec3 sunPosWorld =
-    //        SpiceManager::ref().targetPosition("SUN", "SUN", "GALACTIC", {}, _time, lt);
-    //    glm::vec4 sunPosObj = world2Obj * glm::vec4(sunPosWorld.x, sunPosWorld.y, sunPosWorld.z, 1.0);
-    //    _atmosphereProgramObject->setUniform("sunPositionObj", glm::vec3(sunPosObj));
-
-    //    //// DEBUG:
-    //    //std::cout << "\n\nSun in Obj Space: " << sunPosObj.x << ", " << sunPosObj.y << ", " << sunPosObj.z << std::endl;
-    //    //std::cout << "\n\nEarth in Obj Space: " << planetPositionObj.x << ", " << planetPositionObj.y << ", " << planetPositionObj.z << std::endl;
-    //    //std::cout << "\n\nCam in Obj Space: " << cameraPosObj.x << ", " << cameraPosObj.y << ", " << cameraPosObj.z << std::endl;
-    //    
-    //    _transmittanceTableTextureUnit.activate();
-    //    //glBindTexture(GL_TEXTURE_2D, _transmittanceTableTexture);
-    //    _atmosphereProgramObject->setUniform("transmittanceSampler", _transmittanceTableTextureUnit);
-
-    //    _irradianceTableTextureUnit.activate();
-    //    //glBindTexture(GL_TEXTURE_2D, _irradianceTableTexture);
-    //    _atmosphereProgramObject->setUniform("irradianceSampler", _irradianceTableTextureUnit);
-
-    //    _inScatteringTableTextureUnit.activate();
-    //    //glBindTexture(GL_TEXTURE_3D, _inScatteringTableTexture);
-    //    _atmosphereProgramObject->setUniform("inscatterSampler", _inScatteringTableTextureUnit);
-    //    
-    //    if (_hasReflectanceTexture) {
-    //        ghoul::opengl::TextureUnit reflectanceUnit;
-    //        reflectanceUnit.activate();
-    //        _reflectanceTexture->bind();
-    //        _atmosphereProgramObject->setUniform("reflectanceSampler", reflectanceUnit);
-    //    }
-
-    //    // HDR
-    //    _atmosphereProgramObject->setUniform("exposure", 0.4f);
-
-    //    setPscUniforms(*_atmosphereProgramObject.get(), data.camera, data.position);
-
-    //    // check OpenGL error
-    //    while ((err = glGetError()) != GL_NO_ERROR) {
-    //        const GLubyte * errorString = gluErrorString(err);
-    //        std::cout << "\n\nBefore Rendering Planet. OpenGL error: "
-    //            << err << " - " << errorString << std::endl;
-    //    }
-
-    //    renderQuadForCalc(_atmosphereRenderVAO, 6);
-
-    //    std::stringstream ss;
-    //    ss << "atmosphere-" << count++ << ".ppm";
-    //    saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, ss.str(), m_viewport[2], m_viewport[3]);
-
-    //    _atmosphereProgramObject->deactivate();
-
-    //    glBindFramebuffer(GL_FRAMEBUFFER, defaultFBO);
-    //    glViewport(m_viewport[0], m_viewport[1],
-    //        m_viewport[2], m_viewport[3]);
-    //}
 }
 
 void RenderablePlanet::update(const UpdateData& data) {
@@ -1192,7 +976,7 @@ void RenderablePlanet::loadComputationPrograms() {
 
     //============== Transmittance =================
     if (_transmittanceProgramObject == nullptr) {
-        _transmittanceProgramObject = renderEngine.buildRenderProgram(
+        _transmittanceProgramObject = ghoul::opengl::ProgramObject::Build(
             "transmittanceCalcProgram",
             "${MODULE_BASE}/shaders/transmittance_calc_vs.glsl",
             "${MODULE_BASE}/shaders/transmittance_calc_fs.glsl");
@@ -1206,13 +990,13 @@ void RenderablePlanet::loadComputationPrograms() {
 
     //============== Irradiance =================
     if (_irradianceProgramObject == nullptr) {
-        _irradianceProgramObject = renderEngine.buildRenderProgram(
+        _irradianceProgramObject = ghoul::opengl::ProgramObject::Build(
             "irradianceCalcProgram",
             "${MODULE_BASE}/shaders/irradiance_calc_vs.glsl",
             "${MODULE_BASE}/shaders/irradiance_calc_fs.glsl");
         if (!_irradianceProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
@@ -1223,18 +1007,18 @@ void RenderablePlanet::loadComputationPrograms() {
     _irradianceProgramObject->setIgnoreUniformLocationError(IgnoreError::Yes);
 
     if (_irradianceSupTermsProgramObject == nullptr) {
-        _irradianceSupTermsProgramObject = renderEngine.buildRenderProgram(
+        _irradianceSupTermsProgramObject = ghoul::opengl::ProgramObject::Build(
             "irradianceSupTermsCalcProgram",
             "${MODULE_BASE}/shaders/irradiance_sup_calc_vs.glsl",
             "${MODULE_BASE}/shaders/irradiance_sup_calc_fs.glsl");
         if (!_irradianceSupTermsProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
             if (_irradianceProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceProgramObject);
+                _irradianceProgramObject.reset();
                 _irradianceProgramObject = nullptr;
             }
 
@@ -1246,24 +1030,24 @@ void RenderablePlanet::loadComputationPrograms() {
 
     //============== InScattering =================
     if (_inScatteringProgramObject == nullptr) {
-        _inScatteringProgramObject = renderEngine.buildRenderProgram(
+        _inScatteringProgramObject = ghoul::opengl::ProgramObject::Build(
             "inScatteringCalcProgram",
             "${MODULE_BASE}/shaders/inScattering_calc_vs.glsl",
             "${MODULE_BASE}/shaders/inScattering_calc_fs.glsl",
             "${MODULE_BASE}/shaders/inScattering_calc_gs.glsl");
         if (!_inScatteringProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
             if (_irradianceProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceProgramObject);
+                _irradianceProgramObject.reset();
                 _irradianceProgramObject = nullptr;
             }
 
             if (_irradianceSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceSupTermsProgramObject);
+                _irradianceSupTermsProgramObject.reset();
                 _irradianceSupTermsProgramObject = nullptr;
             }
 
@@ -1274,29 +1058,29 @@ void RenderablePlanet::loadComputationPrograms() {
     _inScatteringProgramObject->setIgnoreUniformLocationError(IgnoreError::Yes);
 
     if (_inScatteringSupTermsProgramObject == nullptr) {
-        _inScatteringSupTermsProgramObject = renderEngine.buildRenderProgram(
+        _inScatteringSupTermsProgramObject = ghoul::opengl::ProgramObject::Build(
             "inScatteringSupTermsCalcProgram",
             "${MODULE_BASE}/shaders/inScattering_sup_calc_vs.glsl",
             "${MODULE_BASE}/shaders/inScattering_sup_calc_fs.glsl",
             "${MODULE_BASE}/shaders/inScattering_sup_calc_gs.glsl");
         if (!_inScatteringSupTermsProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
             if (_irradianceProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceProgramObject);
+                _irradianceProgramObject.reset();
                 _irradianceProgramObject = nullptr;
             }
 
             if (_irradianceSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceSupTermsProgramObject);
+                _irradianceSupTermsProgramObject.reset();
                 _irradianceSupTermsProgramObject = nullptr;
             }
 
             if (_inScatteringProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringProgramObject);
+                _inScatteringProgramObject.reset();
                 _inScatteringProgramObject = nullptr;
             }
 
@@ -1308,33 +1092,33 @@ void RenderablePlanet::loadComputationPrograms() {
 
     //============== Delta E =================
     if (_deltaEProgramObject == nullptr) {
-        _deltaEProgramObject = renderEngine.buildRenderProgram(
+        _deltaEProgramObject = ghoul::opengl::ProgramObject::Build(
             "deltaECalcProgram",
             "${MODULE_BASE}/shaders/deltaE_calc_vs.glsl",
             "${MODULE_BASE}/shaders/deltaE_calc_fs.glsl");
         if (!_deltaEProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
             if (_irradianceProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceProgramObject);
+                _irradianceProgramObject.reset();
                 _irradianceProgramObject = nullptr;
             }
 
             if (_irradianceSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceSupTermsProgramObject);
+                _irradianceSupTermsProgramObject.reset();
                 _irradianceSupTermsProgramObject = nullptr;
             }
 
             if (_inScatteringProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringProgramObject);
+                _inScatteringProgramObject.reset();
                 _inScatteringProgramObject = nullptr;
             }
 
             if (_inScatteringSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringSupTermsProgramObject);
+                _inScatteringSupTermsProgramObject.reset();
                 _inScatteringSupTermsProgramObject = nullptr;
             }
 
@@ -1346,39 +1130,39 @@ void RenderablePlanet::loadComputationPrograms() {
 
     //============== Delta S =================
     if (_deltaSProgramObject == nullptr) {
-        _deltaSProgramObject = renderEngine.buildRenderProgram(
+        _deltaSProgramObject = ghoul::opengl::ProgramObject::Build(
             "deltaSCalcProgram",
             "${MODULE_BASE}/shaders/deltaS_calc_vs.glsl",
             "${MODULE_BASE}/shaders/deltaS_calc_fs.glsl",
             "${MODULE_BASE}/shaders/deltaS_calc_gs.glsl");
         if (!_deltaSProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
             if (_irradianceProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceProgramObject);
+                _irradianceProgramObject.reset();
                 _irradianceProgramObject = nullptr;
             }
 
             if (_irradianceSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceSupTermsProgramObject);
+                _irradianceSupTermsProgramObject.reset();
                 _irradianceSupTermsProgramObject = nullptr;
             }
 
             if (_inScatteringProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringProgramObject);
+                _inScatteringProgramObject.reset();
                 _inScatteringProgramObject = nullptr;
             }
 
             if (_inScatteringSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringSupTermsProgramObject);
+                _inScatteringSupTermsProgramObject.reset();
                 _inScatteringSupTermsProgramObject = nullptr;
             }
 
             if (_deltaEProgramObject) {
-                renderEngine.removeRenderProgram(_deltaEProgramObject);
+                _deltaEProgramObject.reset();
                 _deltaEProgramObject = nullptr;
             }
 
@@ -1389,44 +1173,44 @@ void RenderablePlanet::loadComputationPrograms() {
     _deltaSProgramObject->setIgnoreUniformLocationError(IgnoreError::Yes);
 
     if (_deltaSSupTermsProgramObject == nullptr) {
-        _deltaSSupTermsProgramObject = renderEngine.buildRenderProgram(
+        _deltaSSupTermsProgramObject = ghoul::opengl::ProgramObject::Build(
             "deltaSSUPTermsCalcProgram",
             "${MODULE_BASE}/shaders/deltaS_sup_calc_vs.glsl",
             "${MODULE_BASE}/shaders/deltaS_sup_calc_fs.glsl",
             "${MODULE_BASE}/shaders/deltaS_sup_calc_gs.glsl");
         if (!_deltaSSupTermsProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
             if (_irradianceProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceProgramObject);
+                _irradianceProgramObject.reset();
                 _irradianceProgramObject = nullptr;
             }
 
             if (_irradianceSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceSupTermsProgramObject);
+                _irradianceSupTermsProgramObject.reset();
                 _irradianceSupTermsProgramObject = nullptr;
             }
 
             if (_inScatteringProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringProgramObject);
+                _inScatteringProgramObject.reset();
                 _inScatteringProgramObject = nullptr;
             }
 
             if (_inScatteringSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringSupTermsProgramObject);
+                _inScatteringSupTermsProgramObject.reset();
                 _inScatteringSupTermsProgramObject = nullptr;
             }
 
             if (_deltaEProgramObject) {
-                renderEngine.removeRenderProgram(_deltaEProgramObject);
+                _deltaEProgramObject.reset();
                 _deltaEProgramObject = nullptr;
             }
 
             if (_deltaSProgramObject) {
-                renderEngine.removeRenderProgram(_deltaSProgramObject);
+                _deltaSProgramObject.reset();
                 _deltaSProgramObject = nullptr;
             }
 
@@ -1439,49 +1223,49 @@ void RenderablePlanet::loadComputationPrograms() {
     //============== Delta J (Radiance Scattered) =================
     if (_deltaJProgramObject == nullptr) {
         // shadow program
-        _deltaJProgramObject = renderEngine.buildRenderProgram(
+        _deltaJProgramObject = ghoul::opengl::ProgramObject::Build(
             "deltaJCalcProgram",
             "${MODULE_BASE}/shaders/deltaJ_calc_vs.glsl",
             "${MODULE_BASE}/shaders/deltaJ_calc_fs.glsl",
             "${MODULE_BASE}/shaders/deltaJ_calc_gs.glsl");
         if (!_deltaJProgramObject) {
             if (_transmittanceProgramObject) {
-                renderEngine.removeRenderProgram(_transmittanceProgramObject);
+                _transmittanceProgramObject.reset();
                 _transmittanceProgramObject = nullptr;
             }
 
             if (_irradianceProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceProgramObject);
+                _irradianceProgramObject.reset();
                 _irradianceProgramObject = nullptr;
             }
 
             if (_irradianceSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_irradianceSupTermsProgramObject);
+                _irradianceSupTermsProgramObject.reset();
                 _irradianceSupTermsProgramObject = nullptr;
             }
 
             if (_inScatteringProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringProgramObject);
+                _inScatteringProgramObject.reset();
                 _inScatteringProgramObject = nullptr;
             }
 
             if (_inScatteringSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_inScatteringSupTermsProgramObject);
+                _inScatteringSupTermsProgramObject.reset();
                 _inScatteringSupTermsProgramObject = nullptr;
             }
 
             if (_deltaEProgramObject) {
-                renderEngine.removeRenderProgram(_deltaEProgramObject);
+                _deltaEProgramObject.reset();
                 _deltaEProgramObject = nullptr;
             }
 
             if (_deltaSProgramObject) {
-                renderEngine.removeRenderProgram(_deltaSProgramObject);
+                _deltaSProgramObject.reset();
                 _deltaSProgramObject = nullptr;
             }
 
             if (_deltaSSupTermsProgramObject) {
-                renderEngine.removeRenderProgram(_deltaSSupTermsProgramObject);
+                _deltaSSupTermsProgramObject.reset();
                 _deltaSSupTermsProgramObject = nullptr;
             }
 
@@ -1498,47 +1282,47 @@ void RenderablePlanet::unloadComputationPrograms() {
     RenderEngine& renderEngine = OsEng.renderEngine();
 
     if (_transmittanceProgramObject) {
-        renderEngine.removeRenderProgram(_transmittanceProgramObject);
+        _transmittanceProgramObject.reset();
         _transmittanceProgramObject = nullptr;
     }
 
     if (_irradianceProgramObject) {
-        renderEngine.removeRenderProgram(_irradianceProgramObject);
+        _irradianceProgramObject.reset();
         _irradianceProgramObject = nullptr;
     }
 
     if (_irradianceSupTermsProgramObject) {
-        renderEngine.removeRenderProgram(_irradianceSupTermsProgramObject);
+        _irradianceSupTermsProgramObject.reset();
         _irradianceSupTermsProgramObject = nullptr;
     }
 
     if (_inScatteringProgramObject) {
-        renderEngine.removeRenderProgram(_inScatteringProgramObject);
+        _inScatteringProgramObject.reset();
         _inScatteringProgramObject = nullptr;
     }
 
     if (_inScatteringSupTermsProgramObject) {
-        renderEngine.removeRenderProgram(_inScatteringSupTermsProgramObject);
+        _inScatteringSupTermsProgramObject.reset();
         _inScatteringSupTermsProgramObject = nullptr;
     }
 
     if (_deltaEProgramObject) {
-        renderEngine.removeRenderProgram(_deltaEProgramObject);
+        _deltaEProgramObject.reset();
         _deltaEProgramObject = nullptr;
     }
 
     if (_deltaSProgramObject) {
-        renderEngine.removeRenderProgram(_deltaSProgramObject);
+        _deltaSProgramObject.reset();
         _deltaSProgramObject = nullptr;
     }
 
     if (_deltaSSupTermsProgramObject) {
-        renderEngine.removeRenderProgram(_deltaSSupTermsProgramObject);
+        _deltaSSupTermsProgramObject.reset();
         _deltaSSupTermsProgramObject = nullptr;
     }
 
     if (_deltaJProgramObject) {
-        renderEngine.removeRenderProgram(_deltaJProgramObject);
+        _deltaJProgramObject.reset();
         _deltaJProgramObject = nullptr;
     }
 }
@@ -1556,39 +1340,11 @@ void RenderablePlanet::createComputationTextures() {
     }
 
     _dummyTextureUnit.activate();
-    glGenTextures(1, &_dummyTexture);
-    glBindTexture(GL_TEXTURE_2D, _dummyTexture);
+    //glGenTextures(1, &_dummyTexture);
+    /*glBindTexture(GL_TEXTURE_2D, _dummyTexture);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, TRANSMITTANCE_TABLE_WIDTH,
-        TRANSMITTANCE_TABLE_HEIGHT, 0, GL_RGB, GL_FLOAT, nullptr);
-
-    //GLenum err;
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        const GLubyte * errString = gluErrorString(err);
-        std::stringstream ss;
-        ss << "Error 1 creating OpenGL textures for Atmosphere computation. OpenGL error: " << errString << std::endl;
-        LERROR(ss.str());
-    }
-
-    ghoul::opengl::TextureUnit _dummy3DTextureUnit;
-    _dummy3DTextureUnit.activate();
-    glGenTextures(1, &_dummy3DTexture);
-    glBindTexture(GL_TEXTURE_3D, _dummy3DTexture);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB16F, MU_S_SAMPLES * NU_SAMPLES,
-        MU_SAMPLES, R_SAMPLES, 0, GL_RGB, GL_FLOAT, nullptr);
-
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        const GLubyte * errString = gluErrorString(err);
-        std::stringstream ss;
-        ss << "Error 2 creating OpenGL textures for Atmosphere computation. OpenGL error: " << errString << std::endl;
-        LERROR(ss.str());
-    }
+        TRANSMITTANCE_TABLE_HEIGHT, 0, GL_RGB, GL_FLOAT, nullptr);*/
 
     //============== Transmittance =================
     _transmittanceTableTextureUnit.activate();
@@ -1729,8 +1485,7 @@ void RenderablePlanet::createComputationTextures() {
 
 void RenderablePlanet::deleteComputationTextures() {
     // Cleaning up
-    glDeleteTextures(1, &_dummyTexture);
-    glDeleteTextures(1, &_dummy3DTexture);
+    //glDeleteTextures(1, &_dummyTexture);
     glDeleteTextures(1, &_transmittanceTableTexture);
     glDeleteTextures(1, &_irradianceTableTexture);
     glDeleteTextures(1, &_inScatteringTableTexture);
@@ -1741,8 +1496,7 @@ void RenderablePlanet::deleteComputationTextures() {
 }
 
 void RenderablePlanet::deleteUnusedComputationTextures() {
-    glDeleteTextures(1, &_dummyTexture);
-    glDeleteTextures(1, &_dummy3DTexture);
+    //glDeleteTextures(1, &_dummyTexture);
     glDeleteTextures(1, &_deltaETableTexture);
     glDeleteTextures(1, &_deltaSRayleighTableTexture);
     glDeleteTextures(1, &_deltaSMieTableTexture);
@@ -1762,21 +1516,20 @@ void RenderablePlanet::loadAtmosphereDataIntoShaderProgram(std::unique_ptr<ghoul
 }
 
 
-void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBuffers[2], const GLsizei vertexSize) {
+void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBuffers[1], const GLsizei vertexSize) {
     // ===========================================================
     // See Precomputed Atmosphere Scattering from Bruneton et al. paper, algorithm 4.1:
     // ===========================================================    
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummyTexture, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _transmittanceTableTexture, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _transmittanceTableTexture, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         LERROR("Computation Framework not built.");
     glViewport(0, 0, TRANSMITTANCE_TABLE_WIDTH, TRANSMITTANCE_TABLE_HEIGHT);
     _transmittanceProgramObject->activate();
     loadAtmosphereDataIntoShaderProgram(_transmittanceProgramObject);
     renderQuadForCalc(vao, vertexSize);
-    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, std::string("transmittance_texture.ppm"), 
+    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, std::string("transmittance_texture.ppm"), 
         TRANSMITTANCE_TABLE_WIDTH, TRANSMITTANCE_TABLE_HEIGHT);*/
-
+    
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {
         const GLubyte * errString = gluErrorString(err);
@@ -1786,12 +1539,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
     }
 
     // line 2 in algorithm 4.1
-    glBindTexture(GL_TEXTURE_2D, _dummyTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F,
-        DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT, 0,
-        GL_RGB, GL_FLOAT, nullptr);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummyTexture, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _deltaETableTexture, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _deltaETableTexture, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         LERROR("Computation Framework not built.");
     glViewport(0, 0, DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);
@@ -1799,7 +1547,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
     _irradianceProgramObject->setUniform("transmittanceTexture", _transmittanceTableTextureUnit);
     loadAtmosphereDataIntoShaderProgram(_irradianceProgramObject);
     renderQuadForCalc(vao, vertexSize);
-    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, std::string("deltaE_table_texture.ppm"),
+    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, std::string("deltaE_table_texture.ppm"),
         DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);*/
 
     while ((err = glGetError()) != GL_NO_ERROR) {
@@ -1810,11 +1558,10 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
     }
 
     // line 3 in algorithm 4.1
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummy3DTexture, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _deltaSRayleighTableTexture, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, _deltaSMieTableTexture, 0);
-    GLenum colorBuffers[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-    glDrawBuffers(3, colorBuffers);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _deltaSRayleighTableTexture, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _deltaSMieTableTexture, 0);
+    GLenum colorBuffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, colorBuffers);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         LERROR("Computation Framework not built.");
     glViewport(0, 0, MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);
@@ -1825,12 +1572,12 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         step3DTexture(_inScatteringProgramObject, layer);
         renderQuadForCalc(vao, vertexSize);
     }
-    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, std::string("deltaS_rayleigh_texture.ppm"),
+    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, std::string("deltaS_rayleigh_texture.ppm"),
     MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);
-    saveTextureToPPMFile(GL_COLOR_ATTACHMENT2, std::string("deltaS_mie_texture.ppm"),
+    saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, std::string("deltaS_mie_texture.ppm"),
     MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);*/
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, 0, 0);
-    glDrawBuffers(2, drawBuffers);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, 0, 0);
+    glDrawBuffers(1, drawBuffers);
 
     while ((err = glGetError()) != GL_NO_ERROR) {
         const GLubyte * errString = gluErrorString(err);
@@ -1840,22 +1587,47 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
     }
 
     // line 4 in algorithm 4.1
-    glBindTexture(GL_TEXTURE_2D, _dummyTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F,
-        DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT, 0,
-        GL_RGB, GL_FLOAT, nullptr);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummyTexture, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _irradianceTableTexture, 0);
-    glDrawBuffers(2, drawBuffers);
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        LERROR("Computation Framework not built.");
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _irradianceTableTexture, 0);
+    //glDrawBuffers(1, drawBuffers);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        LERROR("Computayion Framework not built.");
+        GLenum fbErr = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        switch (fbErr) {
+        case GL_FRAMEBUFFER_UNDEFINED:
+            LERROR("Indefined framebuffer.");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+            LERROR("Incomplete, missing attachement.");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+            LERROR("Framebuffer doesn't have at least one image attached to it.");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+            LERROR("Returned if the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for any color attachment point(s) named by GL_DRAW_BUFFERi.");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+            LERROR("Returned if GL_READ_BUFFER is not GL_NONE and the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for the color attachment point named by GL_READ_BUFFER.");
+            break;
+        case GL_FRAMEBUFFER_UNSUPPORTED:
+            LERROR("Returned if the combination of internal formats of the attached images violates an implementation - dependent set of restrictions.");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+            LERROR("Returned if the value of GL_RENDERBUFFER_SAMPLES is not the same for all attached renderbuffers; if the value of GL_TEXTURE_SAMPLES is the not same for all attached textures; or , if the attached images are a mix of renderbuffers and textures, the value of GL_RENDERBUFFER_SAMPLES does not match the value of GL_TEXTURE_SAMPLES.");
+            LERROR("Returned if the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not the same for all attached textures; or , if the attached images are a mix of renderbuffers and textures, the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not GL_TRUE for all attached textures.");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+            LERROR("Returned if any framebuffer attachment is layered, and any populated attachment is not layered, or if all populated color attachments are not from textures of the same target.");
+            break;
+        }
+    }
     glViewport(0, 0, DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);
     _deltaEProgramObject->activate();
     _deltaEProgramObject->setUniform("line", 4);
     _deltaEProgramObject->setUniform("deltaETexture", _deltaETableTextureUnit);
     loadAtmosphereDataIntoShaderProgram(_deltaEProgramObject);
     renderQuadForCalc(vao, vertexSize);
-    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, std::string("irradiance_texture.ppm"), 
+    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, std::string("irradiance_texture.ppm"), 
         DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);*/
 
     while ((err = glGetError()) != GL_NO_ERROR) {
@@ -1866,8 +1638,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
     }
 
     // line 5 in algorithm 4.1
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummy3DTexture, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _inScatteringTableTexture, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _inScatteringTableTexture, 0);
     glViewport(0, 0, MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);
     _deltaSProgramObject->activate();
     _deltaSProgramObject->setUniform("deltaSRTexture", _deltaSRayleighTableTextureUnit);
@@ -1877,7 +1648,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         step3DTexture(_deltaSProgramObject, layer, false);
         renderQuadForCalc(vao, vertexSize);
     }
-    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, std::string("S_texture.ppm"),
+    /*saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, std::string("S_texture.ppm"),
     MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);*/
 
     while ((err = glGetError()) != GL_NO_ERROR) {
@@ -1891,8 +1662,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
     for (int scatteringOrder = 2; scatteringOrder <= 4; ++scatteringOrder) {
 
         // line 7 in algorithm 4.1
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummy3DTexture, 0);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _deltaJTableTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _deltaJTableTexture, 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             LERROR("Computation Framework not built.");
         glViewport(0, 0, MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);
@@ -1912,7 +1682,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         }
         /*std::stringstream sst;
         sst << "deltaJ_texture-scattering_order-" << scatteringOrder << ".ppm";
-        saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, sst.str(),
+        saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, sst.str(),
         MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);*/
 
         while ((err = glGetError()) != GL_NO_ERROR) {
@@ -1923,12 +1693,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         }
 
         // line 8 in algorithm 4.1
-        glBindTexture(GL_TEXTURE_2D, _dummyTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F,
-            DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT, 0,
-            GL_RGB, GL_FLOAT, nullptr);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummyTexture, 0);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _deltaETableTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _deltaETableTexture, 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             LERROR("Computation Framework not built.");
         glViewport(0, 0, DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);
@@ -1944,7 +1709,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         renderQuadForCalc(vao, vertexSize);
         /*sst.str(std::string());
         sst << "deltaE_texture-scattering_order-" << scatteringOrder << ".ppm";
-        saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, sst.str(),
+        saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, sst.str(),
         DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);*/
 
         while ((err = glGetError()) != GL_NO_ERROR) {
@@ -1955,8 +1720,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         }
 
         // line 9 in algorithm 4.1
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummy3DTexture, 0);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _deltaSRayleighTableTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _deltaSRayleighTableTexture, 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             LERROR("Computation Framework not built.");
         glViewport(0, 0, MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);
@@ -1974,7 +1738,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         }
         /*sst.str(std::string());
         sst << "deltaS_texture-scattering_order-" << scatteringOrder << ".ppm";
-        saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, sst.str(),
+        saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, sst.str(),
         MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);*/
 
         while ((err = glGetError()) != GL_NO_ERROR) {
@@ -1989,12 +1753,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ONE);
 
         // line 10 in algorithm 4.1
-        glBindTexture(GL_TEXTURE_2D, _dummyTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F,
-            DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT, 0,
-            GL_RGB, GL_FLOAT, nullptr);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummyTexture, 0);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _irradianceTableTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _irradianceTableTexture, 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             LERROR("Computation Framework not built.");
         glViewport(0, 0, DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);
@@ -2005,7 +1764,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         renderQuadForCalc(vao, vertexSize);
         /*sst.str(std::string());
         sst << "irradianceTable_order-" << scatteringOrder << ".ppm";
-        saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, sst.str(),
+        saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, sst.str(),
         DELTA_E_TABLE_WIDTH, DELTA_E_TABLE_HEIGHT);*/
 
         while ((err = glGetError()) != GL_NO_ERROR) {
@@ -2016,8 +1775,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         }
 
         // line 11 in algorithm 4.1
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummy3DTexture, 0);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _inScatteringTableTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _inScatteringTableTexture, 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             LERROR("Computation Framework not built.");
         glViewport(0, 0, MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);
@@ -2030,7 +1788,7 @@ void RenderablePlanet::executeCalculations(const GLuint vao, const GLenum drawBu
         }
         /*sst.str(std::string());
         sst << "inscatteringTable_order-" << scatteringOrder << ".ppm";
-        saveTextureToPPMFile(GL_COLOR_ATTACHMENT1, sst.str(),
+        saveTextureToPPMFile(GL_COLOR_ATTACHMENT0, sst.str(),
         MU_S_SAMPLES * NU_SAMPLES, MU_SAMPLES);*/
 
         while ((err = glGetError()) != GL_NO_ERROR) {
@@ -2079,10 +1837,10 @@ void RenderablePlanet::preCalculateAtmosphereParam() {
     GLuint calcFBO;
     glGenFramebuffers(1, &calcFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, calcFBO);
-    glReadBuffer(GL_COLOR_ATTACHMENT1);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
     //glDrawBuffer(GL_COLOR_ATTACHMENT1);
-    GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    glDrawBuffers(2, drawBuffers);
+    GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+    glDrawBuffers(1, drawBuffers);
 
     while ((err = glGetError()) != GL_NO_ERROR) {
         const GLubyte * errString = gluErrorString(err);
@@ -2137,31 +1895,10 @@ void RenderablePlanet::createAtmosphereFBO() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_viewport[2],
-        m_viewport[2], 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        m_viewport[3], 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     /*glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 8, GL_RGBA,
         m_viewport[2], m_viewport[3], true);*/
     glGenFramebuffers(1, &_atmosphereFBO);
-    /*glBindFramebuffer(GL_FRAMEBUFFER, _atmosphereFBO);
-    glReadBuffer(GL_COLOR_ATTACHMENT1);
-    GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    glDrawBuffers(2, drawBuffers);
-
-    GLenum err;
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        std::stringstream ss;
-        ss << "Error creating atmosphere framebuffer. OpenGL error: " << err << std::endl;
-        LERROR(ss.str());
-    }
-
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _dummyTexture, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, _atmosphereTexture, 0);
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        LERROR("Atmosphere Framework not built.");
-
-    glBindFramebuffer(GL_FRAMEBUFFER, defaultFBO);
-    glViewport(m_viewport[0], m_viewport[1],
-        m_viewport[2], m_viewport[3]);*/
-
 }
 
 void RenderablePlanet::createRenderQuad(GLuint * vao, GLuint * vbo, const GLfloat size) {

@@ -367,7 +367,7 @@ vec3 groundColor(vec3 x, float t, vec3 v, vec3 s, float r, float mu, vec3 attenu
         
         // Fixing texture coordinates:
         vec4 reflectance = texture(reflectanceTexture, vs_st) * vec4(0.2, 0.2, 0.2, 1.0);
-        
+
         // The following code is generating surface acne in ground. 
         // It is only necessary inside atmosphere rendering. JCC
         // if (r0 > Rg + 0.01) {
@@ -382,6 +382,9 @@ vec3 groundColor(vec3 x, float t, vec3 v, vec3 s, float r, float mu, vec3 attenu
         vec4 clouds = vec4(0.85)*texture(cloudsTexture, vs_st);
         vec3 groundColor = (reflectance.rgb + clouds.rgb) * 
         (max(muS, 0.0) * sunLight + groundSkyLight) * ISun / M_PI;
+        
+        // vec3 groundColor = (reflectance.rgb) * 
+        // (max(muS, 0.0) * sunLight + groundSkyLight) * ISun / M_PI;
         
         // Yellowish reflection from sun on oceans and rivers
         if (reflectance.w > 0.0) {
@@ -455,7 +458,7 @@ Fragment getFragment() {
         // atmosphere
         vec4 viewport = vec4(screenX, screenY, screenWIDTH, screenHEIGHT);
         vec4 ndcPos;
-        ndcPos.xy = ((2.0 * gl_FragCoord.xy) - (2.0 * viewport.xy)) / (viewport.zw) - 1;
+        ndcPos.xy = ((2.0 * (gl_FragCoord.xy - 0.5)) - (2.0 * viewport.xy)) / (viewport.zw) - 1;
         ndcPos.z = (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) / 
         (gl_DepthRange.far - gl_DepthRange.near);
         ndcPos.w = 1.0;
@@ -486,8 +489,10 @@ Fragment getFragment() {
             //diffuse = HDR(vec4(inscatterColor, 1.0)); 
             
             //diffuse = HDR(vec4(sunColor + groundColor + inscatterColor, 1.0) + diffuse2); 
-            diffuse = HDR((vec4(sunColor + groundColor + inscatterColor, 1.0) + diffuse2) *
-                        calcShadow(shadowDataArray, vs_posWorld.xyz) ); 
+             diffuse = HDR((vec4(sunColor + groundColor + inscatterColor, 1.0) + diffuse2) *
+                         calcShadow(shadowDataArray, vs_posWorld.xyz) );
+            
+            //diffuse = vec4(1.0); 
         }
         // else
         //     diffuse = HDR(diffuse);
