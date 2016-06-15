@@ -52,21 +52,23 @@ return {
             },
             Atmosphere = {
                 -- Atmosphere radius in Km
-                AtmoshereRadius = 6420,
-                --AtmoshereRadius = 6390,
-                --PlanetRadius    = 6371,
-                PlanetRadius    = 6360,
+                --AtmoshereRadius = 6420,
+                AtmoshereRadius = 6390,
+                PlanetRadius    = 6371,
+                --PlanetRadius    = 6360,
                 PlanetAverageGroundReflectance = 0.1,
                 Rayleigh = {
                     Coefficients = {
                         -- Wavelengths are given in 10^-9m
                         Wavelengths = {680, 550, 440},
                         -- Reflection coefficients are given in km^-1
+                        --Scattering = {5.8e-3, 1.35e-2, 3.31e-2},
                         Scattering = {5.8e-3, 1.35e-2, 3.31e-2},
                         -- In Rayleigh scattering, the coefficients of absorption and scattering are the same.
                     },
                     -- Thichkness of atmosphere if its density were uniform, in Km
                     H_R = 8.0,
+                    --H_R = 15.0,
                 },
                 -- Default
                 Mie = {
@@ -79,8 +81,10 @@ return {
                         -- Height scale (atmosphere thickness for constant density) in Km
                     },
                     H_M = 1.2,
+                    --H_M = 0.2,
                     -- Mie Phase Function Value (G e [-1.0, 1.0]. If G = 1.0, Mie phase function = Rayleigh Phase Function)
                     G = 1.0,
+                    --G = 0.85,
                 },
                 -- Clear Sky
                 -- Mie = {
