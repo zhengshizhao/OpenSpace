@@ -127,7 +127,7 @@ void TLEEphemeris::readTLEFile(const std::string& file) {
                 struct LeapSecond {
                     int year;
                     int dayOfYear;
-                    bool operator<(const LeapSecond& rhs) {
+                    bool operator<(const LeapSecond& rhs) const {
                         return
                             std::tie(year, dayOfYear) < std::tie(rhs.year, rhs.dayOfYear);
                     }
