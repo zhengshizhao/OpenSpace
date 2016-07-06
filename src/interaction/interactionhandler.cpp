@@ -523,11 +523,27 @@ void InteractionHandler::orbit(const float &dx, const float &dy, const float &dz
 	//rotate relative vector
 	relative_focus_coordinate = glm::inverse(transform) * relative_focus_coordinate.vec4();
 	
-	//get new new position of focus node
+	//get new new position of focus node  
 	psc origin;
+	//psc focusposition;
+	
 	if (_focusNode) {
+		
 		origin = _focusNode->worldPosition();
+		
+		//origin = sceneGraphNode(_camera->getParent())->position();
+		//focusposition = _focusNode->worldPosition();
 	}
+	
+	//get new new new position for scalegraph
+	
+	//if (_focusNode) {
+	//origin = sceneGraphNode("Callisto")->position();
+			//(camera()->getParent)->position());
+			//_focusNode->worldPosition();
+	//	}
+
+	
 
 	//new camera position
 	relative = origin + relative_focus_coordinate; 	
@@ -543,6 +559,8 @@ void InteractionHandler::orbit(const float &dx, const float &dy, const float &dz
 	unlockControls();
     
     _camera->setFocusPosition(origin);
+	//_camera->setFocusPosition(focusposition);
+	
 	_camera->setPosition(target);
 	_camera->rotate(glm::quat_cast(transform));
 	
@@ -579,6 +597,7 @@ void InteractionHandler::orbitDelta(const glm::quat& rotation)
 	psc origin;
 	if (_focusNode) {
 		origin = _focusNode->worldPosition();
+
 	}
 
 	psc relative_origin_coordinate = relative - origin;

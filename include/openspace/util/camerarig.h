@@ -29,18 +29,23 @@
 
 
 #include <openspace/rendering/renderengine.h> 
+
 namespace openspace{
 
 	class CameraRig{
 
 
 	public:
+		//glm::vec3 setRelativeOrigin(Scene* scene) const;
 
+		//glm::vec3 newCameraOrigin(std::vector<SceneGraphNode*> commonParentPath, std::string commonParent, Camera* camera, Scene* scene) const;
+
+		//static const glm::mat4 setNewViewMatrix(std::string cameraParent, SceneGraphNode* target, Scene* scene) const
 
 	
 
 
-	private:
+
 	
 	};
 }

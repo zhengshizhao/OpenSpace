@@ -152,13 +152,17 @@ void Scene::update(const UpdateData& data) {
 			return;
 		OsEng.renderEngine()->aBuffer()->invalidateABuffer();
 	}
-    for (SceneGraphNode* node : _graph.nodes())
+	//SceneGraphNode* node = _graph.sceneGraphNode("PlutoBarycenter");
+	//SceneGraphNode* node = _graph.sceneGraphNode(camera->getParent());
+	 for (SceneGraphNode* node : _graph.nodes())
         node->update(data);
 }
 
 void Scene::evaluate(Camera* camera) {
+
     for (SceneGraphNode* node : _graph.nodes())
         node->evaluate(camera);
+	
 	//_root->evaluate(camera);
 }
 
@@ -179,8 +183,21 @@ void Scene::render(const RenderData& data) {
 			program->setIgnoreSubroutineUniformLocationError(true);
 	}
 
-    for (SceneGraphNode* node : _graph.nodes())
+	//SceneGraphNode* node = _graph.sceneGraphNode(camera->getParent());
+	//SceneGraphNode* node = _graph.sceneGraphNode("PlutoProjection");
+	
+	
+	//for (SceneGraphNode* node : _graph.sceneGraphNode("JupiterBarycenter"))
+	//	node->render(data);
+	//SceneGraphNode* node = _graph.sceneGraphNode("JupiterProjection");
+	//node->render(data);
+
+
+	// rendera allt som vanligt:
+	for ( SceneGraphNode* node : _graph.nodes())
         node->render(data);
+
+	
 	//if (_root)
 	//	_root->render(data);
 }

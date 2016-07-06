@@ -316,6 +316,8 @@ void RenderEngine::postSynchronizationPreDraw() {
 		_mainCamera->postSynchronizationPreDraw();
 
 	sgct_core::SGCTNode* thisNode = sgct_core::ClusterManager::instance()->getThisNodePtr();
+	
+	
 	bool updateAbuffer = false;
 	for (unsigned int i = 0; i < thisNode->getNumberOfWindows(); i++) {
 		if (sgct::Engine::instance()->getWindowPtr(i)->isWindowResized()) {
@@ -329,18 +331,33 @@ void RenderEngine::postSynchronizationPreDraw() {
 	}
 
 	// converts the quaternion used to rotation matrices
-    if (_mainCamera)
-        _mainCamera->compileViewRotationMatrix();
-
+	
+	
 	// update and evaluate the scene starting from the root node
+	
 	_sceneGraph->update({
 		Time::ref().currentTime(),
         Time::ref().timeJumped(),
 		Time::ref().deltaTime(),
 		_doPerformanceMeasurements
 	});
-	_sceneGraph->evaluate(_mainCamera);
+	//moved camera after _sceneGraph update since scenegraph needs to be updated first in order to find paths.
+	//Sets the camera to its relative position depending on the common parent (when changed from worldPosition to position)
+	if (_mainCamera){
+		setRelativeOrigin(_mainCamera, scene());
+		_mainCamera->compileViewRotationMatrix();
+		//setRelativeOrigin(_mainCamera, scene());
+		//_mainCamera->setPosition(origin);
+		//setNewViewMatrix
+	}
+	
+	//Hitta vart jag ska sätta dessa och om det var view eller view projection.
+	//glm::mat4 wm = setNewViewMatrix(_mainCamera, scene(), scene()->sceneGraphNode("PlutoProjection"));	
+	//_mainCamera->setViewProjectionMatrix(wm);
 
+	
+	_sceneGraph->evaluate(_mainCamera);
+	
 	// clear the abuffer before rendering the scene
 	_abuffer->clear();
 
@@ -478,136 +495,68 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 			PrintText(line++, "Avg. Frametime: %.5f", sgct::Engine::instance()->getAvgDt());
 			
 
-			
-			//
-			//psc objpos;
-			//double lt2;
-			//SpiceManager::ref().getTargetPosition("EARTH", "JUPITER", "GALACTIC", "NONE", currentTime, objpos, lt2);
-
-
-			//---
-			/* plocka ut namn ur sceneGraph, ta bort när det är gjort. 
-			struct PerformanceLayoutEntry {
-				char name[lengthName];
-				float renderTime[nValues];
-				float updateRenderable[nValues];
-				float updateEphemeris[nValues];
-
-				int32_t currentRenderTime;
-				int32_t currentUpdateRenderable;
-				int32_t currentUpdateEphemeris;
-			};
-
-			PerformanceLayoutEntry entries[maxValues];
-
-			const int moduleNodes = static_cast<int>(scene()->allSceneGraphNodes().size());
-
-			for (int i = 0; i < moduleNodes; ++i) {
-				SceneGraphNode* node = scene()->allSceneGraphNodes()[i];
-
-				memset(layout->entries[i].name, 0, lengthName);
-
-				strcpy_s(layout->entries[i].name, node->name().length() + 1, node->name().c_str());
-
-				strcpy(layout->entries[i].name, node->name().c_str());
-
-
-				layout->entries[i].currentRenderTime = 0;
-				layout->entries[i].currentUpdateRenderable = 0;
-				layout->entries[i].currentUpdateEphemeris = 0;
-			}
-			*/
-
-
-			// get names from sceneGraph:
-			
-			
-			
-			
-			
-			
 		
-			//const int numberOfNodes = static_cast<int>(scene()->allSceneGraphNodes().size());
 			
-			
-			
-			/*
-			for (int i = 0; i < numberOfNodes; ++i) {
-				SceneGraphNode* node = scene()->allSceneGraphNodes()[i];
-
-				memset(layout->entries[i].name, 0, lengthName);
-
-				strcpy_s(layout->entries[i].name, node->name().length() + 1, node->name().c_str());
-
-				strcpy(layout->entries[i].name, node->name().c_str());
-
-
-				layout->entries[i].currentRenderTime = 0;
-				layout->entries[i].currentUpdateRenderable = 0;
-				layout->entries[i].currentUpdateEphemeris = 0;
-			}*/
-
-
-
-			
-			
-			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[DistanceToObject::sceneNr];
-			//psc objpos = _tmpnode->position();
-				//calculate distance to current object
-			//SceneGraphNode* _tmpnode = scene()->sceneGraphNode(currentScene.c_str());
-			
-			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[NextValue];
-			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[NextValue];
-			//	SetScene::update(_sceneGraph);			_sceneGraph->position
-			//SceneGraphNode* test =
-			//test->position();
-
-
-			//SceneGraphNode* _tmpnode = scene()->allSceneGraphNodes()[1];
-			
-			//fuckit loopa här
-			
-			//function of this:
-			
-			//double previousDistance = 1000000.0;
-
-			
-			//_mainCamera->position()
-			// test for finding radius: 
-			/*
-			psc objpos = scene()->allSceneGraphNodes()[44]->position();
-			psc objposWP = scene()->allSceneGraphNodes()[44]->worldPosition();
-			float sceneRadiusTmp = scene()->allSceneGraphNodes()[44]->sceneRadius();
+			_mainCamera->setParent(_nameOfScene);
 			psc campos = _mainCamera->position();
+			psc parentLocalPos = scene()->sceneGraphNode(_mainCamera->getParent())->position();
+			psc parentWorldPos = scene()->sceneGraphNode(_mainCamera->getParent())->worldPosition();
+			glm::vec3 dispV = _mainCamera->getDisplacementVector();
 			
-			PrintText(line++, "Name of jupiterBC: (%s)", scene()->allSceneGraphNodes()[44]->name().c_str());
-			
-			PrintText(line++, "dist to: (%f)", distance);
-			//PrintText(line++, "position for tmpnode   =   (% .5f, % .5f, % .5f% .5f)", objpos[0], objpos[1], objpos[2], objpos[3]);
-			PrintText(line++, "position for tmpnodeWP =   (% .5f, % .5f, % .5f% .5f)", objposWP[0], objposWP[1], objposWP[2], objposWP[3]);
-			PrintText(line++, "Radius for tmpnodeWP =   (% .5f)", sceneRadiusTmp);
-			PrintText(line++, "position for camera =         (% .5f, % .5f, % .5f% .5f)", campos[0], campos[1], campos[2], campos[3]);
-			*/
-	
+			psc earthPos = scene()->sceneGraphNode("Earth")->position();
+			psc earthWPos = scene()->sceneGraphNode("Earth")->worldPosition();
+			/*
+			psc camUnsynched = _mainCamera->unsynchedPosition();
+			psc JupiterPos = scene()->sceneGraphNode("JupiterBarycenter")->worldPosition();
 
+			
+			PrintText(line++, "position for camera =         (% .5f, % .5f, % .5f% .5f)", campos[0], campos[1], campos[2], campos[3]);
+			/*
+			PrintText(line++, "position for camUnsynched =         (% .5f, % .5f, % .5f% .5f)", camUnsynched[0], camUnsynched[1], camUnsynched[2], camUnsynched[3]);
+			PrintText(line++, "World position for JupiterPos =         (% .5f, % .5f, % .5f% .5f)", JupiterPos[0], JupiterPos[1], JupiterPos[2], JupiterPos[3]);
+			*/
+			PrintText(line++, "Cammera parent: (%s)", _mainCamera->getParent().c_str());
+			PrintText(line++, "position for camera =               (% .5f, % .5f, % .5f% .5f)", campos[0], campos[1], campos[2], campos[3]);
+			PrintText(line++, "Local Position for parent =         (% .5f, % .5f, % .5f% .5f)", parentLocalPos[0], parentLocalPos[1], parentLocalPos[2], parentLocalPos[3]);
+			PrintText(line++, "Displacement Vector  =              (% .5f, % .5f, % .5f% .5f)", dispV[0], dispV[1],  dispV[2], 0.0f);
+			PrintText(line++, "Camera parent + displacementnode    (% .5f, % .5f, % .5f% .5f)", parentLocalPos[0] + dispV[0], parentLocalPos[1] + dispV[1], parentLocalPos[2] + dispV[2], parentLocalPos[3]);
+			PrintText(line++, "World position for parent =         (% .5f, % .5f, % .5f% .5f)", parentWorldPos[0], parentWorldPos[1], parentWorldPos[2], parentWorldPos[3]);
+			PrintText(line++, "World position for Earth =         (% .5f, % .5f, % .5f% .5f)", earthWPos[0], earthWPos[1], earthWPos[2], earthWPos[3]);
+			PrintText(line++, "Position for Earth =         (% .5f, % .5f, % .5f% .5f)", earthPos[0], earthPos[1], earthPos[2], earthPos[3]);
+			
+			//glm::mat4 testVM = setNewViewMatrix(_mainCamera, scene(), );
+
+			 //View Matrix print
+			/*
+			glm::mat4 testVM = setNewViewMatrix(_mainCamera, scene(), scene()->sceneGraphNode("PlutoProjection"));
+			
+			PrintText(line++, "New Matrix: R 1 =         (% .5f, % .5f, % .5f% .5f)", testVM[0][0], testVM[0][1], testVM[0][2], testVM[0][3]);
+			PrintText(line++, "New Matrix: R 2 =         (% .5f, % .5f, % .5f% .5f)", testVM[1][0], testVM[1][1], testVM[1][2], testVM[1][3]);
+			PrintText(line++, "New Matrix: R 3 =         (% .5f, % .5f, % .5f% .5f)", testVM[2][0], testVM[2][1], testVM[2][2], testVM[2][3]);
+			PrintText(line++, "New Matrix: R 4 =         (% .5f, % .5f, % .5f% .5f)", testVM[3][0], testVM[3][1], testVM[3][2], testVM[3][3]);
+			*/
+			//std::string commonParentNodename = findCommonParentNode(_mainCamera->getParent(), "Hydra",scene())->name().c_str();
+			//PrintText(line++, "commonParentNodename: (%s)", commonParentNodename.c_str());
 			double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
 			PrintText(line++, "Distance to target: (% .5f)", distance);
 			_nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
 			
+
+
+
 			//PrintText(line++, "Name of Current scene: (%s)", _nameOfScene.c_str());
-			_mainCamera->setParent(_nameOfScene);
-			std::string testParent = _mainCamera->getParent();
-			PrintText(line++, "Cammera parent: (%s)", testParent.c_str());
 			//mat4 viewMatrix = _sgctEngine->getActiveViewMatrix() * userMatrix;
+			
+			//std::string commonParentNodename = findCommonParentNode(_mainCamera->ParentName, "Hydra", scene())->name();
+			//PrintText(line++, "commonParentNodename: (%s)", commonParentNodename.c_str());
 			glm::mat4 VM = _mainCamera->viewMatrix();
 			
 			glm::mat4 MM = _mainCamera->viewRotationMatrix(); // _mainCamera->modelMatrix();
 			
-			
 			glm::mat4 PM = _mainCamera->viewProjectionMatrix();
 			PrintText(line++, "basicTest(1): (% .5f)", basicTest(2.0f));
-			//glm::mat4 PM = _mainCamera->projectionMatrix();
-		
+			
+			//glm::mat4 PM = _mainCamera->projectionMatrix();	
 //			glm::mat4 current_matrix =
 		
 			
@@ -620,51 +569,9 @@ void RenderEngine::render(const glm::mat4 &projectionMatrix, const glm::mat4 &vi
 			PrintText(line++, "Projection Matrix =         (% .5f, % .5f, % .5f% .5f)", PM[0], PM[1], PM[2], PM[3]);
 			*/
 			
-			/*
-			for (int i = 0; i < 105; i++)
-				{
-					SceneGraphNode* tmpnode = scene()->allSceneGraphNodes()[i];
-					std::string _nameOfSceneTmp = tmpnode->name();
-
-					std::vector<SceneGraphNode*> childrenScene = tmpnode->children();
-					//int nrOfChildren = static_cast<int>(childrenScene.size());
-					LINFO("Scene nr: "<<i<<" " << _nameOfSceneTmp);
-					//LINFO("Nr of children: " << nrOfChildren);
-						
-				}
-				*/
-						/*
-			for (int i = 29; i < 60; i++)
-			{
-				//LINFO(i);
-				LINFO("Scene nr: "<< i <<" "<< scene()->allSceneGraphNodes()[i]->name());
-			}
-			*/
-			/*
-			PrintText(line++, "Name of Scene 0: (%s)", scene()->allSceneGraphNodes()[0]->name().c_str());
-			PrintText(line++, "Name of Scene 1: (%s)", scene()->allSceneGraphNodes()[1]->name().c_str());
-			PrintText(line++, "Name of Scene 2: (%s)", scene()->allSceneGraphNodes()[2]->name().c_str());
-			PrintText(line++, "Name of Scene 3: (%s)", scene()->allSceneGraphNodes()[3]->name().c_str());
-			PrintText(line++, "Name of Scene 4: (%s)", scene()->allSceneGraphNodes()[4]->name().c_str());
-			PrintText(line++, "Name of Scene 17: (%s)", scene()->allSceneGraphNodes()[17]->name().c_str());
-			PrintText(line++, "Name of Scene 18: (%s)", scene()->allSceneGraphNodes()[18]->name().c_str());
-			PrintText(line++, "Name of Scene 19: (%s)", scene()->allSceneGraphNodes()[19]->name().c_str());
-			*/
-			//PrintText(line++, "Name of Scene 5: (%s)", scene()->allSceneGraphNodes()[5]->name().c_str());
 			
-			//objpos = _tmpnode->position();
-			//double distance = DistanceToObject::ref().distanceCalc(cameraPosition, objpos);
-			
-			/*if (distance < distToScene) {
-				//currentScene = "Sun";
-				NextValue++;
-				
-				
-				_tmpnode = scene()->allSceneGraphNodes()[NextValue];
-				currentScene = _tmpnode->name().c_str();
-				objpos = _tmpnode->position();
-				PrintText(line++, "Changing scene to !!!!!!!!! : %s", currentScene.c_str());
-			}*/
+		
+			//}
 			
 			//if (distance < 10000.0)
 			//PrintText(line++, "Distance to (% .5f) ", distance);
@@ -1037,8 +944,24 @@ void RenderEngine::camerRigTesting() {
 //Check camera what matrixes it gets and from where.
 	//Traversal fetching from all parents:
 	//need to traverse the scene tree for all the viewMatrices.
+	
+	//--------------- stuff---------- origin for camera change
+
+/*
+	________________________
+    \                       \
+	 \						 \
+	  \                       \
+	   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+						     
+*/
 	glm::mat4 VM = _mainCamera->viewMatrix();
 	//SceneGraphNode(_mainCamera->ParentName)
+	SceneGraphNode* camParent = scene()->sceneGraphNode(_mainCamera->getParent());
+	//glm::vec3 origoToCamVec = _mainCamera->position().vec3();
+	std::vector<SceneGraphNode*> path = pathTo(camParent);
+
+
 
 	//How to find matrix of parent?
 	//Create dummyCam instance, move to parent with current ofset and collect matrices?

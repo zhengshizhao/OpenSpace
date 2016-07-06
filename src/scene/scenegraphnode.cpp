@@ -39,6 +39,8 @@
 #include <modules/base/ephemeris/staticephemeris.h>
 #include <openspace/engine/openspaceengine.h>
 #include <openspace/util/factorymanager.h>
+#include <openspace/util/camerarig.h>
+#include <openspace/util/setscene.h> //scalegraph
 
 #include <boost/algorithm/string.hpp>
 
@@ -234,9 +236,11 @@ void SceneGraphNode::evaluate(const Camera* camera, const psc& parentPosition) {
     //const psc thisPosition = parentPosition + _ephemeris->position();
     //const psc camPos = camera->position();
     //const psc toCamera = thisPosition - camPos;
-
+	//setRelativeOrigin(camera, sceneGraph);
     // init as not visible
     //_boundingSphereVisible = false;
+	//glm::vec3 test = camera->getDisplacementVector();
+	//camera->setPosition(test);
     _renderableVisible = false;
 
 #ifndef OPENSPACE_VIDEO_EXPORT
@@ -271,8 +275,18 @@ void SceneGraphNode::evaluate(const Camera* camera, const psc& parentPosition) {
 }
 
 void SceneGraphNode::render(const RenderData& data) {
-    const psc thisPosition = worldPosition();
+    //change this position to the vm im calculating
+	glm::mat4 VM = setNewViewMatrix(data.camera.getParent(), this, sceneGraph());
+	glm::vec3 pos;
+	pos[0] = VM[0][3];
+	pos[1] = VM[1][3];
+	pos[2] = VM[2][3];
+	const psc thisPosition = psc(pos);
 
+
+	//const psc thisPosition = worldPosition();
+	
+	
 	RenderData newData = {data.camera, thisPosition, data.doPerformanceMeasurement};
 
 	_performanceRecord.renderTime = 0;
@@ -453,26 +467,35 @@ SceneGraphNode* SceneGraphNode::childNode(const std::string& name)
     return nullptr;
 }
 
-void SceneGraphNode::updateCamera(Camera* camera) const{
+// not used
+psc SceneGraphNode::updateCamera(Camera* camera) const{
 
+
+
+
+	
+	//psc origin = setRelativeOrigin(camera, sceneGraph(), camera->getParent());
+	//const glm::vec3 origin = camera.setRelativeOrigin(camera, sceneGraph());
+	//psc origin = position();
 	//psc origin = worldPosition();
-	 //scalegraph change, origin for the camera is now set to the parent
-	// of the camera. 
-	psc origin = Scene().sceneGraphNode(camera->getParent())->position();
-	//
-
+	
+	
+	
 	//int i = 0;
 	// the camera position
 	//psc org  = //camera->getParent();
-	
+	/*
 	psc relative = camera->position();
 	psc focus = camera->focusPosition();
 	psc relative_focus = relative - focus;
 
 	psc target = origin + relative_focus;
+	*/
+	psc target;
+	return target;
+	//camera->setPosition(target);
 	
-	camera->setPosition(target);
-	camera->setFocusPosition(origin);
+	//camera->setFocusPosition(origin);
 
 	//printf("target: %f, %f, %f, %f\n", target.vec4().x, target.vec4().y, target.vec4().z, target.vec4().w);
 	

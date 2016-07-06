@@ -57,6 +57,7 @@ Camera::Camera()
     , _syncedPosition()
 	, _syncedViewRotationMatrix(1.f)
 	, _parent("SolarSystemBarycenter")
+	, _displacementvector(0,0,0)
 {
 }
 
@@ -73,6 +74,16 @@ void Camera::setPosition(psc pos)
 const psc& Camera::position() const
 {
 	return _syncedPosition;
+}
+
+
+void Camera::setLocalPosition(glm::vec3 origin)
+{
+	
+	
+	
+	
+
 }
 
 const psc& Camera::unsynchedPosition() const{
@@ -178,12 +189,25 @@ void Camera::setRotation(glm::mat4 rotation)
 //{
   //  return _viewRotation;
 //}
+
+void Camera::setDisplacementVector(glm::vec3 distv)
+{
+	_displacementvector = distv;
+}
+
+glm::vec3 Camera::getDisplacementVector() const{
+	return _displacementvector;
+}
+
+//void Camera::setParentNode(SceneGraphNode* node){}
+
+
 void Camera::setParent(std::string parent)
 {
 	_parent = parent;
 }
 
-std::string Camera::getParent()
+const std::string Camera::getParent() const
 {
 	return _parent;
 }

@@ -94,7 +94,7 @@ namespace openspace {
 
 class Camera {
 public:
-	static std::string ParentName;
+	//const std::string ParentName;
 
     Camera();
     ~Camera();
@@ -116,11 +116,16 @@ public:
     void setViewProjectionMatrix(glm::mat4 viewProjectionMatrix);
     const glm::mat4& viewProjectionMatrix() const;
 
+
     void setCameraDirection(glm::vec3 cameraDirection);
     glm::vec3 cameraDirection() const;
 
 	void setFocusPosition(psc pos);
 	const psc& focusPosition() const;
+
+	void Camera::setLocalPosition(glm::vec3 origin);
+
+
 
 	void setViewRotationMatrix(glm::mat4 m);
 	const glm::mat4& viewRotationMatrix() const;
@@ -132,8 +137,15 @@ public:
 	void setRotation(glm::mat4 rotation);
 
 	void setParent(std::string parent);
-	std::string getParent();
-
+	const std::string getParent() const;
+	
+	void setDisplacementVector(glm::vec3 distvec);
+	glm::vec3 getDisplacementVector() const;
+	
+	//void setParentNode(SceneGraphNode* node);
+	//SceneGraphNode* getParentnode();
+	
+	
 	const glm::vec3& viewDirection() const;
 
 	const float& maxFov() const;
@@ -159,7 +171,9 @@ private:
 	glm::mat4 _projectionMatrix;
     glm::vec3 _viewDirection;
     glm::vec3 _cameraDirection;
+	glm::vec3 _displacementvector;
 	psc _focusPosition;
+	//SceneGraphNode* _parentNode;
     // glm::quat _viewRotation;
     
     glm::vec3 _lookUp;
