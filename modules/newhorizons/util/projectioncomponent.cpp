@@ -71,17 +71,25 @@ ProjectionComponent::ProjectionComponent()
     , _performProjection("performProjection", "Perform Projections", true)
     , _clearAllProjections("clearAllProjections", "Clear Projections", false)
     , _projectionFading("projectionFading", "Projection Fading", 1.f, 0.f, 1.f)
+    , _textureSize("textureSize", "Texture Size",
+        {OpenGLCap.max2DTextureSize() / 2, OpenGLCap.max2DTextureSize() / 4},
+        {16, 16}, {16384, 16384}
+    )
     , _projectionTexture(nullptr)
+    , _projectionTextureIsDirty(false)
 {
     setName("ProjectionComponent");
 
     addProperty(_performProjection);
     addProperty(_clearAllProjections);
     addProperty(_projectionFading);
+    addProperty(_textureSize);
+    _textureSize.onChange([&](){ _projectionTextureIsDirty = true; });
 }
 
 bool ProjectionComponent::initialize() {
     bool a = generateProjectionLayerTexture();
+    glGenFramebuffers(1, &_fboID);
     bool b = auxiliaryRendertarget();
 
     using std::unique_ptr;
@@ -212,6 +220,14 @@ bool ProjectionComponent::initializeParser(const ghoul::Dictionary& dictionary) 
 
     return completeSuccess;
 }
+    
+void ProjectionComponent::update() {
+    if (_projectionTextureIsDirty) {
+        generateProjectionLayerTexture();
+        auxiliaryRendertarget();
+        _projectionTextureIsDirty = false;
+    }
+}
 
 void ProjectionComponent::imageProjectBegin() {
     // keep handle to the current bound FBO
@@ -239,7 +255,6 @@ bool ProjectionComponent::auxiliaryRendertarget() {
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &defaultFBO);
 
     // setup FBO
-    glGenFramebuffers(1, &_fboID);
     glBindFramebuffer(GL_FRAMEBUFFER, _fboID);
     glFramebufferTexture2D(
         GL_FRAMEBUFFER,
@@ -386,13 +401,12 @@ std::shared_ptr<ghoul::opengl::Texture> ProjectionComponent::loadProjectionTextu
 }
 
 bool ProjectionComponent::generateProjectionLayerTexture() {
-    int maxSize = OpenGLCap.max2DTextureSize() / 2;
-
+    glm::ivec2 size = _textureSize;
     LINFO(
-        "Creating projection texture of size '" << maxSize << ", " << maxSize / 2 << "'"
+        "Creating projection texture of size '" << std::to_string(size) << "'"
     );
     _projectionTexture = std::make_unique<ghoul::opengl::Texture> (
-        glm::uvec3(maxSize, maxSize / 2, 1),
+        glm::uvec3(size, 1),
         ghoul::opengl::Texture::Format::RGBA
     );
     if (_projectionTexture)

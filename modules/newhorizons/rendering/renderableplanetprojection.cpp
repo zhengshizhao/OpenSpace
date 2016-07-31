@@ -369,6 +369,8 @@ void RenderablePlanetProjection::update(const UpdateData& data) {
 
     _time = Time::ref().currentTime();
     _capture = false;
+    
+    _projectionComponent.update();
 
     if (openspace::ImageSequencer::ref().isReady()){
         openspace::ImageSequencer::ref().updateSequencer(_time);

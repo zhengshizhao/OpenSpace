@@ -27,6 +27,7 @@
 
 #include <openspace/properties/propertyowner.h>
 #include <openspace/properties/scalarproperty.h>
+#include <openspace/properties/vectorproperty.h>
 #include <openspace/util/spicemanager.h>
 
 #include <ghoul/misc/dictionary.h>
@@ -46,6 +47,8 @@ public:
     bool initializeProjectionSettings(const ghoul::Dictionary& dictionary);
     bool initializeParser(const ghoul::Dictionary& dictionary);
 
+    void update();
+    
     void imageProjectBegin();
     void imageProjectEnd();
 
@@ -89,8 +92,10 @@ protected:
     properties::BoolProperty _performProjection;
     properties::BoolProperty _clearAllProjections;
     properties::FloatProperty _projectionFading;
+    properties::IVec2Property _textureSize;
 
     std::unique_ptr<ghoul::opengl::Texture> _projectionTexture;
+    bool _projectionTextureIsDirty;
 
     std::shared_ptr<ghoul::opengl::Texture> _placeholderTexture;
 

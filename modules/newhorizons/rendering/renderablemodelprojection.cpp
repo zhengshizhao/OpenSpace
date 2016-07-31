@@ -206,6 +206,8 @@ void RenderableModelProjection::update(const UpdateData& data) {
         _fboProgramObject->rebuildFromFile();
         
     _time = data.time;
+    
+    _projectionComponent.update();
 
     if (openspace::ImageSequencer::ref().isReady()) {
         openspace::ImageSequencer::ref().updateSequencer(_time);
