@@ -42,6 +42,7 @@
 #include <openspace/engine/openspaceengine.h>
 #include <openspace/interaction/interactionhandler.h>
 #include <openspace/scene/scene.h>
+#include <openspace/util/setscene.h>
 #include <openspace/util/camera.h>
 #include <openspace/util/time.h>
 #include <openspace/util/screenlog.h>
@@ -127,6 +128,7 @@ RenderEngine::RenderEngine()
     , _currentFadeTime(0.f)
     , _fadeDirection(0)
 	, _frametimeType(FrametimeType::DtTimeAvg)
+	, _nameOfScene("SolarSystemBarycenter")
     //    , _sgctRenderStatisticsVisible(false)
 {
     _onScreenInformation = {
@@ -353,8 +355,8 @@ void RenderEngine::postSynchronizationPreDraw() {
         }
     }
 
-    if (_mainCamera)
-        _mainCamera->postSynchronizationPreDraw();
+	
+        
 
     bool windowResized = OsEng.windowWrapper().windowHasResized();
 
@@ -371,6 +373,13 @@ void RenderEngine::postSynchronizationPreDraw() {
         Time::ref().deltaTime(),
         _performanceManager != nullptr
     });
+	if (_mainCamera) {
+
+		//Sets the camera to its relative position depending on the common parent (when changed from worldPosition to position)
+		//setRelativeOrigin(_mainCamera, scene()); 
+		
+		_mainCamera->postSynchronizationPreDraw();
+	}
     _sceneGraph->evaluate(_mainCamera);
 
     _renderer->update();
@@ -416,6 +425,11 @@ void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& vi
         if (screenSpaceRenderable->isEnabled() && screenSpaceRenderable->isReady())
             screenSpaceRenderable->render();
     }
+
+	_mainCamera->setParent(_nameOfScene);
+	double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
+
+	//_nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
 }
 
 void RenderEngine::renderShutdownInformation(float timer, float fullTime) {

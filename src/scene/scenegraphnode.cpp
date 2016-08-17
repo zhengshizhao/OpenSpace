@@ -37,6 +37,7 @@
 #include <modules/base/ephemeris/staticephemeris.h>
 #include <openspace/engine/openspaceengine.h>
 #include <openspace/util/factorymanager.h>
+#include <openspace/util/setscene.h>
 
 #include <cctype>
 #include <chrono>
@@ -52,6 +53,7 @@ namespace openspace {
 std::string SceneGraphNode::RootNodeName = "Root";
 const std::string SceneGraphNode::KeyName = "Name";
 const std::string SceneGraphNode::KeyParentName = "Parent";
+const std::string SceneGraphNode::KeySceneRadius = "SceneRadius";
 const std::string SceneGraphNode::KeyDependencies = "Dependencies";
 
 SceneGraphNode* SceneGraphNode::createFromDictionary(const ghoul::Dictionary& dictionary)
@@ -66,6 +68,10 @@ SceneGraphNode* SceneGraphNode::createFromDictionary(const ghoul::Dictionary& di
     std::string name;
     dictionary.getValue(KeyName, name);
     result->setName(name);
+
+	float sceneRadius;
+	dictionary.getValue(KeySceneRadius, sceneRadius);
+	result->setSceneRadius(sceneRadius);
 
     if (dictionary.hasValue<ghoul::Dictionary>(KeyRenderable)) {
         ghoul::Dictionary renderableDictionary;
@@ -126,6 +132,7 @@ SceneGraphNode::SceneGraphNode()
     , _renderable(nullptr)
     , _renderableVisible(false)
     , _boundingSphereVisible(false)
+	, _sceneRadius(0.0)
 {
 }
 
@@ -166,6 +173,7 @@ bool SceneGraphNode::deinitialize() {
     _renderableVisible = false;
     _boundingSphereVisible = false;
     _boundingSphere = PowerScaledScalar(0.0, 0.0);
+	_sceneRadius = 0.0;
 
     return true;
 }
@@ -311,6 +319,11 @@ void SceneGraphNode::addChild(SceneGraphNode* child) {
 //    return false;
 //}
 
+void SceneGraphNode::setSceneRadius(float sceneRadius) {
+
+	_sceneRadius = std::move(sceneRadius);
+
+}
 const psc& SceneGraphNode::position() const
 {
     return _ephemeris->position();
@@ -448,6 +461,9 @@ void SceneGraphNode::updateCamera(Camera* camera) const{
 
     //printf("target: %f, %f, %f, %f\n", target.vec4().x, target.vec4().y, target.vec4().z, target.vec4().w);
     
+}
+const float& SceneGraphNode::sceneRadius() const {
+	return _sceneRadius;
 }
 
 }  // namespace openspace

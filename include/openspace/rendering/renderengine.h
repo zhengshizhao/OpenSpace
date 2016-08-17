@@ -200,7 +200,7 @@ private:
     RaycasterManager* _raycasterManager;
 
     std::unique_ptr<performance::PerformanceManager> _performanceManager;
-
+	std::string _nameOfScene;
     std::unique_ptr<Renderer> _renderer;
     RendererImplementation _rendererImplementation;
     ghoul::Dictionary _rendererData;
