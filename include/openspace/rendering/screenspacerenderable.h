@@ -31,9 +31,16 @@
 #include <openspace/properties/triggerproperty.h>
 #include <openspace/properties/vectorproperty.h>
 
-#include <ghoul/opengl/programobject.h>
-#include <ghoul/opengl/texture.h>
-#include <ghoul/opengl/textureunit.h>
+#include <ghoul/opengl/ghoul_gl.h>
+
+namespace ghoul { 
+namespace opengl {
+
+class ProgramObject;
+class Texture;
+
+} // namespace opengl
+} // namespace ghoul
 
 namespace openspace {
 
@@ -53,10 +60,12 @@ public:
     virtual ~ScreenSpaceRenderable();
 
     virtual void render() = 0;
-    virtual bool initialize() = 0;
-    virtual bool deinitialize() = 0;
-    virtual void update() = 0;
+    virtual bool initialize();
+    virtual bool deinitialize();
+    virtual void update();
     virtual bool isReady() const = 0;
+
+    void setEnabled(bool enabled);
     bool isEnabled() const;
     
     glm::vec3 euclideanPosition() const;

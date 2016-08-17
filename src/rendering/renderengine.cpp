@@ -126,15 +126,8 @@ RenderEngine::RenderEngine()
     , _fadeDuration(2.f)
     , _currentFadeTime(0.f)
     , _fadeDirection(0)
-	, _frametimeType(FrametimeType::DtTimeAvg)
-    //    , _sgctRenderStatisticsVisible(false)
-{
-    _onScreenInformation = {
-        glm::vec2(0.f),
-        12,
-        -1
-    };
-}
+    , _frametimeType(FrametimeType::DtTimeAvg)
+{}
 
 RenderEngine::~RenderEngine() {
     delete _sceneGraph;
@@ -320,6 +313,15 @@ bool RenderEngine::initializeGL() {
     _log = log.get();
     ghoul::logging::LogManager::ref().addLog(std::move(log));
 
+    auto ost = std::make_shared<ScreenSpaceFramebuffer>();
+    ost->setEnabled(false);
+
+    ost->addRenderFunction([this]() {
+        renderInformation();
+    });
+
+    registerScreenSpaceRenderable(ost);
+
     LINFO("Finished initializing GL");
     return true;
 }
@@ -353,8 +355,9 @@ void RenderEngine::postSynchronizationPreDraw() {
         }
     }
 
-    if (_mainCamera)
+    if (_mainCamera) {
         _mainCamera->postSynchronizationPreDraw();
+    }
 
     bool windowResized = OsEng.windowWrapper().windowHasResized();
 
@@ -405,16 +408,10 @@ void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& vi
         _renderer->render(_globalBlackOutFactor, _performanceManager != nullptr);
     }
 
-    // Print some useful information on the master viewport
-    if (OsEng.isMaster() && OsEng.windowWrapper().isSimpleRendering()) {
-        if (_showInfo) {
-            renderInformation();
-        }
-    }
-    
     for (auto screenSpaceRenderable : _screenSpaceRenderables) {
-        if (screenSpaceRenderable->isEnabled() && screenSpaceRenderable->isReady())
+        if (screenSpaceRenderable->isEnabled() && screenSpaceRenderable->isReady()) {
             screenSpaceRenderable->render();
+        }
     }
 }
 
@@ -443,7 +440,14 @@ void RenderEngine::renderShutdownInformation(float timer, float fullTime) {
     );
 }
 
-void RenderEngine::postDraw() {
+void RenderEngine::postDraw(bool showGui) {
+    if (showGui) {
+        if (_showInfo) {
+            renderInformation();
+            renderScreenLog();
+        }
+    }
+
     if (Time::ref().timeJumped()) {
         Time::ref().setTimeJumped(false);
     }
@@ -499,23 +503,12 @@ void RenderEngine::serialize(SyncBuffer* syncBuffer) {
     if (_mainCamera){
         _mainCamera->serialize(syncBuffer);
     }
-
-
-    syncBuffer->encode(_onScreenInformation._node);
-    syncBuffer->encode(_onScreenInformation._position.x);
-    syncBuffer->encode(_onScreenInformation._position.y);
-    syncBuffer->encode(_onScreenInformation._size);
 }
 
 void RenderEngine::deserialize(SyncBuffer* syncBuffer) {
     if (_mainCamera){
         _mainCamera->deserialize(syncBuffer);
     }
-    syncBuffer->decode(_onScreenInformation._node);
-    syncBuffer->decode(_onScreenInformation._position.x);
-    syncBuffer->decode(_onScreenInformation._position.y);
-    syncBuffer->decode(_onScreenInformation._size);
-
 }
 
 Camera* RenderEngine::camera() const {
@@ -760,7 +753,6 @@ scripting::LuaLibrary RenderEngine::luaLibrary() {
                 "",
                 true
             },
-            //also temporary @JK
             {
                 "fadeOut",
                 &luascriptfunctions::fadeOut,

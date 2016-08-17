@@ -54,6 +54,7 @@ class Renderer;
 class RaycasterManager;
 class ScreenLog;
 class ScreenSpaceRenderable;
+class ScreenSpaceFramebuffer;
 
 class RenderEngine {
 public:
@@ -100,7 +101,7 @@ public:
 
     void renderScreenLog();
     void renderShutdownInformation(float timer, float fullTime);
-    void postDraw();
+    void postDraw(bool showGui);
 
     void takeScreenshot();
     void toggleInfoText(bool b);
@@ -182,12 +183,6 @@ public:
     void startFading(int direction, float fadeDuration);
 
     void sortScreenspaceRenderables();
-    // This is temporary until a proper screenspace solution is found ---abock
-    struct {
-        glm::vec2 _position;
-        unsigned int _size;
-        int _node;
-    } _onScreenInformation;
     
 private:
     void setRenderer(std::unique_ptr<Renderer> renderer);
@@ -207,7 +202,7 @@ private:
     ghoul::Dictionary _resolveData;
     ScreenLog* _log;
 
-	FrametimeType _frametimeType;
+    FrametimeType _frametimeType;
 
     bool _showInfo;
     bool _showLog;

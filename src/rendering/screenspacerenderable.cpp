@@ -30,6 +30,10 @@
 #include <openspace/util/camera.h>
 #include <openspace/util/factorymanager.h>
 
+#include <ghoul/opengl/texture.h>
+#include <ghoul/opengl/textureunit.h>
+#include <ghoul/opengl/programobject.h>
+
  #ifdef WIN32
  #define _USE_MATH_DEFINES
  #include <math.h>
@@ -111,6 +115,13 @@ ScreenSpaceRenderable::ScreenSpaceRenderable(const ghoul::Dictionary& dictionary
 
     dictionary.getValue(KeyFlatScreen, _useFlatScreen);
     useEuclideanCoordinates(_useFlatScreen);
+
+    if (_useFlatScreen) {
+        addProperty(_euclideanPosition);
+    }
+    else {
+        addProperty(_sphericalPosition);
+    }
     
     if (_useFlatScreen)
         dictionary.getValue(KeyPosition, _euclideanPosition);
@@ -142,6 +153,34 @@ ScreenSpaceRenderable::ScreenSpaceRenderable(const ghoul::Dictionary& dictionary
 }
 
 ScreenSpaceRenderable::~ScreenSpaceRenderable() {}
+
+bool ScreenSpaceRenderable::initialize() {
+    createPlane();
+    createShaders();
+    return true;
+}
+
+bool ScreenSpaceRenderable::deinitialize() {
+    glDeleteVertexArrays(1, &_quad);
+    _quad = 0;
+
+    glDeleteBuffers(1, &_vertexPositionBuffer);
+    _vertexPositionBuffer = 0;
+
+    _texture = nullptr;
+
+    RenderEngine& renderEngine = OsEng.renderEngine();
+    if (_shader) {
+        renderEngine.removeRenderProgram(_shader);
+        _shader = nullptr;
+    }
+
+    return true;
+}
+
+void ScreenSpaceRenderable::setEnabled(bool enabled) {
+    _enabled = enabled;
+}
 
 bool ScreenSpaceRenderable::isEnabled() const {
     return _enabled;
@@ -320,5 +359,12 @@ void ScreenSpaceRenderable::draw(glm::mat4 modelTransform) {
 
     _shader->deactivate();
 }
+
+void ScreenSpaceRenderable::update() {
+    if (_shader->isDirty()) {
+        _shader->rebuildFromFile();
+    }
+}
+
 
 } // namespace openspace

@@ -812,11 +812,11 @@ void OpenSpaceEngine::render(const glm::mat4& projectionMatrix, const glm::mat4&
 }
 
 void OpenSpaceEngine::postDraw() {
-    _renderEngine->postDraw();
-
     bool showGui = _windowWrapper->hasGuiWindow() ? _windowWrapper->isGuiWindow() : true;
+
+    _renderEngine->postDraw(showGui);
+
     if (showGui) {
-        _renderEngine->renderScreenLog();
         if (_console->isVisible())
             _console->render();
 #ifdef OPENSPACE_MODULE_ONSCREENGUI_ENABLED
@@ -825,8 +825,9 @@ void OpenSpaceEngine::postDraw() {
 #endif
     }
 
-    if (_isInShutdownMode)
+    if (_isInShutdownMode) {
         _renderEngine->renderShutdownInformation(_shutdownCountdown, _shutdownWait);
+    }
 }
 
 void OpenSpaceEngine::keyboardCallback(Key key, KeyModifier mod, KeyAction action) {

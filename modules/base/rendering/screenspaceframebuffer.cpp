@@ -32,123 +32,121 @@
 #include <openspace/rendering/framebufferrenderer.h>
 #include <openspace/engine/wrapper/windowwrapper.h>
 
+namespace {
+    const std::string KeySize = "Size";
+}
+
 namespace openspace {
+
 ScreenSpaceFramebuffer::ScreenSpaceFramebuffer(const ghoul::Dictionary& dictionary) 
-    :ScreenSpaceRenderable(dictionary)
-    ,_size("size", "Size", glm::vec4(0), glm::vec4(0), glm::vec4(2000))
-    ,_framebuffer(nullptr)
+    : ScreenSpaceRenderable(dictionary)
+    , _size("size", "Size", glm::vec2(0.f), glm::vec2(0.f), glm::vec2(2000.f))
+    , _framebuffer(nullptr)
 {
     _id = id();
     setName("ScreenSpaceFramebuffer" + std::to_string(_id));
 
-    glm::vec2 resolution = OsEng.windowWrapper().currentWindowResolution();
     addProperty(_size);
-    _size.set(glm::vec4(0, 0, resolution.x,resolution.y));
+    if (dictionary.hasKeyAndValue<glm::vec2>(KeySize)) {
+        _size = dictionary.value<glm::vec2>(KeySize);
+    }
+    else {
+        _size = OsEng.windowWrapper().currentWindowResolution();
+    }
+    _size.onChange([this]() { createTexture(); });
 
     _scale.setValue(1.0f);
 }
 
-ScreenSpaceFramebuffer::~ScreenSpaceFramebuffer(){}
+bool ScreenSpaceFramebuffer::initialize() {
+    bool success = ScreenSpaceRenderable::initialize();
 
-bool ScreenSpaceFramebuffer::initialize(){
-    _originalViewportSize = OsEng.windowWrapper().currentWindowResolution();
-
-    createPlane();
-    createShaders();
     createFragmentbuffer();
 
-    return isReady();
+    return success && isReady();
 }
 
-bool ScreenSpaceFramebuffer::deinitialize(){
-    glDeleteVertexArrays(1, &_quad);
-    _quad = 0;
-
-    glDeleteBuffers(1, &_vertexPositionBuffer);
-    _vertexPositionBuffer = 0;
-
-    _texture = nullptr;
-
-     RenderEngine& renderEngine = OsEng.renderEngine();
-    if (_shader) {
-        renderEngine.removeRenderProgram(_shader);
-        _shader = nullptr;
-    }
-
+bool ScreenSpaceFramebuffer::deinitialize() {
     _framebuffer->detachAll();
     removeAllRenderFunctions();
 
-    return true;
+    return ScreenSpaceRenderable::deinitialize();
 }
 
-void ScreenSpaceFramebuffer::render(){
-    glm::vec2 resolution = OsEng.windowWrapper().currentWindowResolution();
-    glm::vec4 size = _size.value();
+void ScreenSpaceFramebuffer::render() {
+    if (!_renderFunctions.empty()){
+        glm::vec2 size = _size;
 
-    float xratio = _originalViewportSize.x / (size.z-size.x);
-    float yratio = _originalViewportSize.y / (size.w-size.y);;
+        glViewport(
+            0.f, 0.f, size.x, size.y
+        );
 
-    if(!_renderFunctions.empty()){
-        glViewport (-size.x*xratio, -size.y*yratio, _originalViewportSize.x*xratio, _originalViewportSize.y*yratio);
         GLint defaultFBO = _framebuffer->getActiveObject();
         _framebuffer->activate();
         
-        glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
-        glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_ALPHA_TEST);
-        for(auto renderFunction : _renderFunctions){
-            (*renderFunction)();
+        for (const std::function<void()>& renderFunction : _renderFunctions){
+            renderFunction();
         }
         _framebuffer->deactivate();
 
         glBindFramebuffer(GL_FRAMEBUFFER, defaultFBO);
-        glViewport (0, 0, resolution.x, resolution.y);
+        glm::vec2 resolution = OsEng.windowWrapper().currentWindowResolution();
+        glViewport(0, 0, resolution.x, resolution.y);
         
         glm::mat4 rotation = rotationMatrix();
         glm::mat4 translation = translationMatrix();
-        glm::mat4 scale = scaleMatrix();
-        scale = glm::scale(scale, glm::vec3((1.0/xratio), -(1.0/yratio), 1.0f));
+        //glm::mat4 scale = scaleMatrix();
+        float textureRatio = size.y / size.x;
+
+        glm::mat4 scale = glm::scale(
+            glm::mat4(1.f),
+            glm::vec3(_scale, _scale * textureRatio, 1.f)
+        );
+        //scale = glm::scale(scale, glm::vec3((1.0/xratio), (1.0/yratio), 1.0f));
         glm::mat4 modelTransform = rotation*translation*scale;
         draw(modelTransform);
     }
 }
 
-
-void ScreenSpaceFramebuffer::update(){}
-
-bool ScreenSpaceFramebuffer::isReady() const{
-    bool ready = true;
-    if (!_shader)
-        ready &= false;
-    if(!_texture)
-        ready &= false;
-    return ready;
+bool ScreenSpaceFramebuffer::isReady() const {
+    return _shader && _texture;
 }
 
-
-void ScreenSpaceFramebuffer::setSize(glm::vec4 size){
-    _size.set(size);
+void ScreenSpaceFramebuffer::setSize(glm::vec2 size) {
+    _size = std::move(size);
 }
 
-void ScreenSpaceFramebuffer::addRenderFunction(std::shared_ptr<std::function<void()>> renderFunction){
-    _renderFunctions.push_back(renderFunction);
+void ScreenSpaceFramebuffer::addRenderFunction(std::function<void()> renderFunction) {
+    _renderFunctions.push_back(std::move(renderFunction));
 }
 
-void ScreenSpaceFramebuffer::removeAllRenderFunctions(){
+void ScreenSpaceFramebuffer::removeAllRenderFunctions() {
     _renderFunctions.clear();
 }
 
-void ScreenSpaceFramebuffer::createFragmentbuffer(){
+void ScreenSpaceFramebuffer::createFragmentbuffer() {
     _framebuffer = std::make_unique<ghoul::opengl::FramebufferObject>();
     _framebuffer->activate();
-    _texture = std::make_unique<ghoul::opengl::Texture>(glm::uvec3(_originalViewportSize.x, _originalViewportSize.y, 1));
-    _texture->uploadTexture();
-    _texture->setFilter(ghoul::opengl::Texture::FilterMode::Linear);
+    createTexture();
     _framebuffer->attachTexture(_texture.get(), GL_COLOR_ATTACHMENT0);
     _framebuffer->deactivate();
 }
 
-int ScreenSpaceFramebuffer::id(){
+void ScreenSpaceFramebuffer::createTexture() {
+    glm::vec2 size = _size;
+    _texture = std::make_unique<ghoul::opengl::Texture>(glm::uvec3(size.x, size.y, 1));
+    _texture->uploadTexture();
+    _texture->setFilter(ghoul::opengl::Texture::FilterMode::Linear);
+
+    _framebuffer->activate();
+    _framebuffer->attachTexture(_texture.get(), GL_COLOR_ATTACHMENT0);
+    _framebuffer->deactivate();
+}
+
+int ScreenSpaceFramebuffer::id() {
     static int id = 0;
     return id++;
 }
