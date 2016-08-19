@@ -31,10 +31,21 @@
  #endif
 
 namespace {
+    template <typename Target, typename Callback>
     struct ProgressInformation {
-        openspace::DownloadManager::MemoryFile& file;
-        openspace::DownloadManager::ProgressCallback callback;
+        Target& file;
+        Callback callback;
     };
+
+    using MemoryProgressInformation = ProgressInformation<
+        openspace::DownloadManager::MemoryFile,
+        openspace::DownloadManager::ProgressCallbackMemory
+    >;
+
+    using FileProgressInformation = ProgressInformation<
+        openspace::DownloadManager::File,
+        openspace::DownloadManager::ProgressCallbackFile
+    >;
 
     size_t writeMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp) {
         using MemoryFile = openspace::DownloadManager::MemoryFile;
@@ -53,6 +64,12 @@ namespace {
         return realsize;
     }
 
+    size_t writeFileCallback(void* contents, size_t size, size_t nmemb, FILE* stream) {
+        return fwrite(contents, size, nmemb, stream);
+    }
+
+    // Some duck-typing
+    template <typename Progress>
     int xferinfo(void* ptr, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal,
                  curl_off_t ulnow)
     {
@@ -61,7 +78,7 @@ namespace {
         }
 
         ghoul_assert(ptr, "Passed progress information is nullptr");
-        ProgressInformation* progress = static_cast<ProgressInformation*>(ptr);
+        Progress* progress = static_cast<Progress*>(ptr);
         ghoul_assert(progress, "Passed pointer is not a ProgressInformation");
 
         if (progress->callback) {
@@ -70,24 +87,36 @@ namespace {
         return 0;
     }
 
+    const std::string _loggerCat = "DownloadManager";
+        
+    const std::string RequestIdentifier = "identifier";
+    const std::string RequestFileVersion = "file_version";
+    const std::string RequestApplicationVersion = "application_version";
+
 } // namespace
 
 namespace openspace {
+
+std::string DownloadManager::fileExtension(const std::string& contentType) {
+    std::stringstream ss(contentType);
+    std::string extension;
+    std::getline(ss, extension, '/');
+    std::getline(ss, extension);
+    return extension;
+}
 
 void DownloadManager::initialize() {
     curl_global_init(CURL_GLOBAL_ALL);
 }
 
-
-void DownloadManager::deinitialize() {
-
-}
+void DownloadManager::deinitialize() {}
 
 std::packaged_task<DownloadManager::MemoryFile()> DownloadManager::download(
-    const std::string& url, ProgressCallback progress)
+    const std::string& url, int64_t identifier, ProgressCallbackMemory progress)
 {
-    return std::packaged_task<MemoryFile()>([url, progress]() {
+    return std::packaged_task<MemoryFile()>([url, identifier, progress]() {
         MemoryFile file;
+        file.identifier = identifier;
 
         CURL* curl = curl_easy_init();
         if (!curl) {
@@ -104,13 +133,12 @@ std::packaged_task<DownloadManager::MemoryFile()> DownloadManager::download(
         curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
         // Only set the progress reporting if the user specified a progress callback
-        if (progress) {
-            ProgressInformation p{
-                file,
-                std::move(progress)
-            };
-
-            curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfo);
+        MemoryProgressInformation p{
+            file,
+            std::move(progress)
+        };
+        if (p.callback) {
+            curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfo<MemoryProgressInformation>);
             curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &p);
             curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         }
@@ -131,236 +159,78 @@ std::packaged_task<DownloadManager::MemoryFile()> DownloadManager::download(
             file.errorMessage = curl_easy_strerror(res);
         }
         curl_easy_cleanup(curl);
-        
+
         return std::move(file);
     });
 }
 
+std::packaged_task<DownloadManager::File()> DownloadManager::download(
+    const std::string& url, const std::string& filename, int64_t identifier,
+    ProgressCallbackFile progress)
+{
+    return std::packaged_task<File()>([url, filename, identifier, progress](){
+        File file;
+        file.identifier = identifier;
+        file.filename = std::move(filename);
+
+        FILE* fp = fopen(file.filename.c_str(), "wb");
+
+        CURL* curl = curl_easy_init();
+        if (!curl) {
+            file.errorMessage = "Could not initialize cURL library";
+            return std::move(file);
+        }
+
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeFileCallback);
+
+        FileProgressInformation p{
+            file,
+            std::move(progress)
+        };
+
+        if (p.callback) {
+            curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfo<FileProgressInformation>);
+            curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &p);
+            curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        }
+    
+        CURLcode res = curl_easy_perform(curl);
+        if (res == CURLE_OK) {
+            // ask for the content-type
+            char* ct;
+            res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
+            if (res == CURLE_OK) {
+                file.contentType = std::string(ct);
+            }
+            else {
+                file.errorMessage = curl_easy_strerror(res);
+            }
+        }
+        else {
+            file.errorMessage = curl_easy_strerror(res);
+        }
+        curl_easy_cleanup(curl);
+        fclose(fp);
+
+        return std::move(file);
+    });
+}
+
+DownloadManager::DownloadManager(std::vector<std::string> requestUrls, int appVersion)
+    : _requestUrls(std::move(requestUrls))
+    , _applicationVersion(appVersion) 
+{}
+
+
+
+
 } // namespace openspace
 
 
-    //return [url]() -> DownloadFunction {
-
-
-
-    //    //return std::future<MemoryFile>();
-    //};
-
-//        std::shared_ptr<FileFuture> future = std::make_shared<FileFuture>(file.filename());
-//        errno = 0;
-//        FILE* fp = fopen(file.path().c_str(), "wb"); // write binary
-//        ghoul_assert(fp != nullptr, "Could not open/create file:\n" << file.path().c_str() << " \nerrno: " << errno);
-//    
-//        //LDEBUG("Start downloading file: '" << url << "' into file '" << file.path() << "'");
-//        
-//        auto downloadFunction = [url, finishedCallback, progressCallback, future, fp]() {
-//            CURL* curl = curl_easy_init();
-//            if (curl) {
-//                curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-//                curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-//                curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-//                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeData);
-//                
-//                ProgressInformation p = {
-//                    future,
-//                    std::chrono::system_clock::now(),
-//                    &progressCallback
-//                };
-//                curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfo);
-//                curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &p);
-//                curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-//                
-//                CURLcode res = curl_easy_perform(curl);
-//                curl_easy_cleanup(curl);
-//                fclose(fp);
-//                
-//                if (res == CURLE_OK)
-//                    future->isFinished = true;
-//                else
-//                    future->errorMessage = curl_easy_strerror(res);
-//                
-//                if (finishedCallback)
-//                    finishedCallback(*future);
-//            }
-//        };
-//        
-//        if (_useMultithreadedDownload) {
-//            std::thread t = std::thread(downloadFunction);
-//         
-//    #ifdef WIN32
-//            std::thread::native_handle_type h = t.native_handle();
-//            SetPriorityClass(h, IDLE_PRIORITY_CLASS);
-//            SetThreadPriority(h, THREAD_PRIORITY_LOWEST);
-//    #else
-//            // TODO: Implement thread priority ---abock
-//    #endif
-//            
-//            t.detach();
-//        }
-//        else {
-//            downloadFunction();
-//        }
-//        
-//        return future;
-//
-//}
-//
-//    LDEBUG("Start downloading file: '" << url << "' into memory");
-//    
-//    auto downloadFunction = [url, successCallback, errorCallback]() {
-//        DownloadManager::MemoryFile file;
-//        file.buffer = (char*)malloc(1);
-//        file.size = 0;
-//        file.corrupted = false;
-//
-//        CURL* curl = curl_easy_init();
-//        if (curl) {
-//            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-//            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-//            curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&file);
-//            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
-//            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
-//            // Will fail when response status is 400 or above
-//            curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-//            
-//            CURLcode res = curl_easy_perform(curl);
-//            if(res == CURLE_OK){
-//                // ask for the content-type
-//                char *ct;
-//                res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
-//                if(res == CURLE_OK){
-//                    std::string extension = std::string(ct);
-//                    std::stringstream ss(extension);
-//                    getline(ss, extension ,'/');
-//                    getline(ss, extension);
-//                    file.format = extension;
-//                } else{
-//                    LWARNING("Could not get File extension from file downloaded from: " + url);
-//                }
-//                successCallback(file);
-//                curl_easy_cleanup(curl);
-//                return std::move(file);
-//            } else {
-//                std::string err = curl_easy_strerror(res);
-//                errorCallback(err);
-//                curl_easy_cleanup(curl);
-//                // Throw an error and use try-catch around call to future.get()
-//                //throw std::runtime_error( err );
-//
-//                // or set a boolean variable in MemoryFile to determine if it is valid/corrupted or not.
-//                // Return MemoryFile even if it is not valid, and check if it is after future.get() call.
-//                file.corrupted = true;
-//                return std::move(file);
-//            }
-//        }
-//    };
-//
-//    return std::move( std::async(std::launch::async, downloadFunction) );
-//
-
-//
-//
-//#include <ghoul/filesystem/filesystem.h>
-//#include <ghoul/logging/logmanager.h>
-//#include <ghoul/misc/assert.h>
-//#include <stdio.h>
-//#include <ghoul/misc/thread.h>
-//#include <chrono>
-//#include <fstream>
-//#include <thread>
-//#include <cstring>
-//
-//#ifdef OPENSPACE_CURL_ENABLED
-//#include <curl/curl.h>
-//#endif
-//
-//#ifdef WIN32
-//#include <Windows.h>
-//#endif
-//
-//#define USE_MULTITHREADED_DOWNLOAD
-//
 //namespace {
-//    const std::string _loggerCat = "DownloadManager";
-//    
-//    const std::string RequestIdentifier = "identifier";
-//    const std::string RequestFileVersion = "file_version";
-//    const std::string RequestApplicationVersion = "application_version";
-//    
-//    struct ProgressInformation {
-//        std::shared_ptr<openspace::DownloadManager::FileFuture> future;
-//        std::chrono::system_clock::time_point startTime;
-//        const openspace::DownloadManager::DownloadProgressCallback* callback;
-//    };
-//
-//    size_t writeData(void* ptr, size_t size, size_t nmemb, FILE* stream) {
-//        size_t written;
-//        written = fwrite(ptr, size, nmemb, stream);
-//        return written;
-//    }
-//
-//    size_t writeMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp){
-//        size_t realsize = size * nmemb;
-//        openspace::DownloadManager::MemoryFile *mem = (openspace::DownloadManager::MemoryFile *)userp;
-//
-//        mem->buffer = (char*)realloc(mem->buffer, mem->size + realsize + 1);
-//        if(mem->buffer == NULL) {
-//            /* out of memory! */ 
-//            printf("not enough memory (realloc returned NULL)\n");
-//            return 0;
-//        }
-//
-//        std::memcpy(&(mem->buffer[mem->size]), contents, realsize);
-//        mem->size += realsize;
-//        mem->buffer[mem->size] = 0;
-//
-//        return realsize;
-//    }
-//
-//    int xferinfo(void* p, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal,
-//                 curl_off_t ulnow)
-//    {
-//        if (dltotal == 0)
-//            return 0;
-//
-//        ghoul_assert(p, "Passed progress information is nullptr");
-//        ProgressInformation* i = static_cast<ProgressInformation*>(p);
-//        ghoul_assert(i, "Passed pointer is not a ProgressInformation");
-//        ghoul_assert(i->future, "FileFuture is not initialized");
-//        ghoul_assert(i->callback, "Callback pointer is nullptr");
-//        
-//        if (i->future->abortDownload) {
-//            i->future->isAborted = true;
-//            return 1;
-//        }
-//
-//        i->future->currentSize = dlnow;
-//        i->future->totalSize = dltotal;
-//        i->future->progress = static_cast<float>(dlnow) / static_cast<float>(dltotal);
-//
-//        auto now = std::chrono::system_clock::now();
-//
-//        // Compute time spent transferring.
-//        auto transferTime = now - i->startTime;
-//        // Compute estimated transfer time.
-//        auto estimatedTime = transferTime / i->future->progress;
-//        // Compute estimated time remaining.
-//        auto timeRemaining = estimatedTime - transferTime;
-//
-//        float s = std::chrono::duration_cast<std::chrono::seconds>(timeRemaining).count();
-//
-//        i->future->secondsRemaining = s;
-//
-//        if (*(i->callback)) {
-//            // The callback function is a pointer to an std::function; that is the reason
-//            // for the excessive referencing
-//            (*(i->callback))(*(i->future));
-//        }
-// 
-//        return 0;
-//    }
-//}
-//
 //namespace openspace {
 //
 //DownloadManager::FileFuture::FileFuture(std::string file)

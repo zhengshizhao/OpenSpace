@@ -130,7 +130,6 @@ OpenSpaceEngine::OpenSpaceEngine(std::string programName,
     , _console(new LuaConsole)
     , _moduleEngine(new ModuleEngine)
     , _settingsEngine(new SettingsEngine)
-    , _downloadManager(nullptr)
 #ifdef OPENSPACE_MODULE_ONSCREENGUI_ENABLED
     , _gui(new gui::GUI)
 #endif
@@ -368,12 +367,6 @@ bool OpenSpaceEngine::initialize() {
     }
     SysCap.logCapabilities(verbosity);
     
-    std::string requestURL = "";
-    bool success = configurationManager().getValue(ConfigurationManager::KeyDownloadRequestURL, requestURL);
-    if (success) {
-        _downloadManager = std::make_unique<DownloadManager>(requestURL, DownloadVersion);
-    }
-
     // Register Lua script functions
     LDEBUG("Registering Lua libraries");
     _scriptEngine->addLibrary(OpenSpaceEngine::luaLibrary());
@@ -1032,11 +1025,5 @@ ghoul::fontrendering::FontManager& OpenSpaceEngine::fontManager() {
     ghoul_assert(_fontManager, "Font Manager must not be nullptr");
     return *_fontManager;
 }
-
-DownloadManager& OpenSpaceEngine::downloadManager() {
-    ghoul_assert(_downloadManager, "Download Manager must not be nullptr");
-    return *_downloadManager;
-}
-
 
 }  // namespace openspace

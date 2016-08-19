@@ -42,13 +42,30 @@ namespace openspace {
 class DownloadManager {
 public:
     struct MemoryFile {
+        int64_t identifier;
         std::vector<char> buffer;
         std::string contentType;
         std::string errorMessage;
     };
 
-    using ProgressCallback = std::function<
+    struct File {
+        int64_t identifier;
+        std::string filename;
+        std::string contentType;
+        std::string errorMessage;
+
+    };
+
+    static std::string fileExtension(const std::string& contentType);
+
+
+
+    using ProgressCallbackMemory = std::function<
         void(MemoryFile& f, size_t currentSize, size_t totalSize)
+    >;
+
+    using ProgressCallbackFile = std::function<
+        void(File& f, size_t currentSize, size_t totalSize)
     >;
 
     static void initialize();
@@ -56,8 +73,26 @@ public:
 
     static std::packaged_task<MemoryFile()> download(
         const std::string& url,
-        ProgressCallback progress = ProgressCallback()
+        int64_t identifier = 0,
+        ProgressCallbackMemory progress = ProgressCallbackMemory()
     );
+
+    static std::packaged_task<File()> download(
+        const std::string& url,
+        const std::string& filename,
+        int64_t identifier = 0,
+        ProgressCallbackFile progress = ProgressCallbackFile()
+    );
+
+    
+
+
+
+    DownloadManager(std::vector<std::string> requestUrls, int applicationVersion);
+
+private:
+    std::vector<std::string> _requestUrls;
+    int _applicationVersion;
 };
 
 } // namespace openspace

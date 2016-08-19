@@ -105,7 +105,7 @@ void ScreenSpaceImage::render() {
 }
 
 void ScreenSpaceImage::update() {
-    bool download = _downloadImage ? (_futureImage.valid() && DownloadManager::futureReady(_futureImage)) : true;
+    bool download = _downloadImage ? (_futureImage.valid() && std::is_ready(_futureImage)) : true;
     if (download) {
         loadTexture();
     }
@@ -154,33 +154,32 @@ void ScreenSpaceImage::updateTexture() {
  }
 
  std::unique_ptr<ghoul::opengl::Texture> ScreenSpaceImage::loadFromMemory() {
-    if (_futureImage.valid() && DownloadManager::futureReady(_futureImage)) {
+    if (_futureImage.valid() && std::is_ready(_futureImage)) {
         DownloadManager::MemoryFile imageFile = _futureImage.get();
 
-        if (imageFile.corrupted)
+        if (!imageFile.errorMessage.empty()) {
+            LERROR(imageFile.errorMessage);
             return nullptr;
+        }
 
-        return (ghoul::io::TextureReader::ref().loadTexture(
-            reinterpret_cast<void*>(imageFile.buffer), 
-            imageFile.size, 
-            imageFile.format)
+        return ghoul::io::TextureReader::ref().loadTexture(
+            imageFile.buffer.data(),
+            imageFile.buffer.size(),
+            DownloadManager::fileExtension(imageFile.contentType)
         );
-
     }
  }
 
 std::future<DownloadManager::MemoryFile> ScreenSpaceImage::downloadImageToMemory(
     std::string url)
 {
-    return std::move(OsEng.downloadManager().fetchFile(
-        url,
-        [url](const DownloadManager::MemoryFile& file) {
-            LDEBUG("Download to memory finished for screen space image");
-        },
-        [url](const std::string& err) {
-            LDEBUG("Download to memory failer for screen space image: " +err);
-        }
-    ));
+    // This was changed and is now untested ---abock
+
+    std::packaged_task<DownloadManager::MemoryFile()> t = DownloadManager::download(url);
+    auto future = t.get_future();
+    std::thread thread(std::move(t));
+    thread.detach();
+    return std::move(future);
 }
 
 } // namespace openspace
