@@ -25,6 +25,50 @@
 #ifndef __DOWNLOADMANAGER_H__
 #define __DOWNLOADMANAGER_H__
 
+#include <chrono>
+#include <functional>
+#include <future>
+
+namespace std {
+// This is just temporary until N3857 is implemented 
+template <typename T>
+bool is_ready(const std::future<T>& future) {
+    return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
+} // namespace std
+
+namespace openspace {
+
+class DownloadManager {
+public:
+    struct MemoryFile {
+        std::vector<char> buffer;
+        std::string contentType;
+        std::string errorMessage;
+    };
+
+    using ProgressCallback = std::function<
+        void(MemoryFile& f, size_t currentSize, size_t totalSize)
+    >;
+
+    static void initialize();
+    static void deinitialize();
+
+    static std::packaged_task<MemoryFile()> download(
+        const std::string& url,
+        ProgressCallback progress = ProgressCallback()
+    );
+};
+
+} // namespace openspace
+
+
+#endif // __DOWNLOADMANAGER_H__
+
+/*
+#ifndef __DOWNLOADMANAGER_H__
+#define __DOWNLOADMANAGER_H__
+
 #include <ghoul/filesystem/file.h>
 #include <ghoul/filesystem/directory.h>
 
@@ -76,11 +120,7 @@ public:
     using AsyncDownloadFinishedCallback =
         std::function<void(const std::vector<std::shared_ptr<FileFuture>>&)>;
 
-    //Just a helper function to check if a future is ready to ".get()". Not specific
-    // to DownloadManager but is useful for anyone using the DownloadManager
-    template<typename R>
-    static bool futureReady(std::future<R> const& f)
-    { return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
+
 
     DownloadManager(std::string requestURL, int applicationVersion,
         bool useMultithreadedDownload = true);
@@ -120,3 +160,5 @@ private:
 } // namespace openspace
 
 #endif // __DOWNLOADMANAGER_H__
+
+*/
