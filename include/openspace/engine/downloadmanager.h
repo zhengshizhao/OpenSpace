@@ -25,6 +25,9 @@
 #ifndef __DOWNLOADMANAGER_H__
 #define __DOWNLOADMANAGER_H__
 
+#include <ghoul/filesystem/directory.h>
+#include <ghoul/misc/exception.h>
+
 #include <chrono>
 #include <functional>
 #include <future>
@@ -41,6 +44,10 @@ namespace openspace {
 
 class DownloadManager {
 public:
+    struct DownloadException : public ghoul::RuntimeError {
+        explicit DownloadException(std::string msg);
+    };
+
     struct MemoryFile {
         int64_t identifier;
         std::vector<char> buffer;
@@ -57,8 +64,6 @@ public:
     };
 
     static std::string fileExtension(const std::string& contentType);
-
-
 
     using ProgressCallbackMemory = std::function<
         void(MemoryFile& f, size_t currentSize, size_t totalSize)
@@ -77,6 +82,14 @@ public:
         ProgressCallbackMemory progress = ProgressCallbackMemory()
     );
 
+    static MemoryFile downloadSync(
+        const std::string& url,
+        int64_t identifier = 0,
+        ProgressCallbackMemory progress = ProgressCallbackMemory()
+    );
+
+
+
     static std::packaged_task<File()> download(
         const std::string& url,
         const std::string& filename,
@@ -84,13 +97,31 @@ public:
         ProgressCallbackFile progress = ProgressCallbackFile()
     );
 
+    static File downloadSync(
+        const std::string& url,
+        const std::string& filename,
+        int64_t identifier = 0,
+        ProgressCallbackFile progress = ProgressCallbackFile()
+    );
     
 
 
 
     DownloadManager(std::vector<std::string> requestUrls, int applicationVersion);
+    
+    std::vector<std::packaged_task<File()>> requestFiles(
+        const std::string& identifier,
+        int version,
+        const ghoul::filesystem::Directory& destination = ".",
+        bool overrideFiles = true,
+        ProgressCallbackFile progress = ProgressCallbackFile()
+        
+    );
 
 private:
+    std::string request(const std::string& url, const std::string& identfier, int version);
+    std::string selectRequestUrl();
+
     std::vector<std::string> _requestUrls;
     int _applicationVersion;
 };

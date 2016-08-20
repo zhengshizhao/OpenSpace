@@ -24,7 +24,10 @@
 
 #include <openspace/engine/downloadmanager.h>
 
+#include <ghoul/filesystem/filesystem.h>
 #include <ghoul/misc/assert.h>
+
+#include <random>
 
  #ifdef OPENSPACE_CURL_ENABLED
  #include <curl/curl.h>
@@ -87,15 +90,31 @@ namespace {
         return 0;
     }
 
-    const std::string _loggerCat = "DownloadManager";
-        
-    const std::string RequestIdentifier = "identifier";
-    const std::string RequestFileVersion = "file_version";
-    const std::string RequestApplicationVersion = "application_version";
+    std::vector<std::string> extractLinesFromRequest(std::string reqFile) {
+        std::vector<std::string> res;
+
+        std::string line;
+        std::stringstream ss(reqFile);
+        while (std::getline(ss, line)) {
+            res.push_back(line);
+        }
+
+        return res;
+    }
+
+    std::string fileNameFromUrl(std::string fileUrl) {
+        size_t pos = fileUrl.find_last_of('/');
+        return fileUrl.substr(pos + 1);
+    }
+
 
 } // namespace
 
 namespace openspace {
+
+DownloadManager::DownloadException::DownloadException(std::string msg)
+    : ghoul::RuntimeError(std::move(msg), "DownloadManager")
+{}
 
 std::string DownloadManager::fileExtension(const std::string& contentType) {
     std::stringstream ss(contentType);
@@ -164,6 +183,15 @@ std::packaged_task<DownloadManager::MemoryFile()> DownloadManager::download(
     });
 }
 
+DownloadManager::MemoryFile DownloadManager::downloadSync(const std::string& url,
+    int64_t identifier, ProgressCallbackMemory progress) 
+{
+    std::packaged_task<MemoryFile()> task = download(url, identifier, progress);
+    std::future<MemoryFile> future = task.get_future();
+    task();
+    return future.get();
+}
+
 std::packaged_task<DownloadManager::File()> DownloadManager::download(
     const std::string& url, const std::string& filename, int64_t identifier,
     ProgressCallbackFile progress)
@@ -219,167 +247,86 @@ std::packaged_task<DownloadManager::File()> DownloadManager::download(
     });
 }
 
+DownloadManager::File DownloadManager::downloadSync(const std::string& url,
+    const std::string& filename, int64_t identifier, ProgressCallbackFile progress)
+{
+    std::packaged_task<File()> task = download(url, filename, identifier, progress);
+    std::future<File> future = task.get_future();
+    task();
+    return future.get();
+}
+
 DownloadManager::DownloadManager(std::vector<std::string> requestUrls, int appVersion)
     : _requestUrls(std::move(requestUrls))
     , _applicationVersion(appVersion) 
 {}
 
 
+std::vector<std::packaged_task<DownloadManager::File()>> DownloadManager::requestFiles(
+    const std::string& identifier,
+    int version,
+    const ghoul::filesystem::Directory& destination,
+    bool overrideFiles,
+    ProgressCallbackFile progress)
+{
+
+    std::string url = selectRequestUrl();
+    std::string req = request(url, identifier, version);
+
+    // This should be changed to an asynchronous call when C++ std::future .then is
+    // implemented
+    MemoryFile reqFile = downloadSync(req);
+
+    if (!reqFile.errorMessage.empty()) {
+        throw DownloadException(reqFile.errorMessage);
+    }
+    if (reqFile.contentType != "text/plain") {
+        throw DownloadException("Wrong content type for request: " + reqFile.contentType);
+    }
+
+    std::vector<std::string> fileUrls = extractLinesFromRequest(
+        std::string(reqFile.buffer.begin(), reqFile.buffer.end())
+    );
+
+    std::vector<std::packaged_task<File()>> result;
+    for (const std::string& fileUrl : fileUrls) {
+        std::string file = fileNameFromUrl(fileUrl);
+        std::string fullPath = FileSys.pathByAppendingComponent(destination, file);
+
+        result.push_back(
+            download(fileUrl, fullPath, -1, progress)
+        );
+    }
+
+    return result;
+}
+
+std::string DownloadManager::request(const std::string& url, const std::string& identfier, int version) {
+    const std::string RequestIdentifier = "identifier";
+    const std::string RequestFileVersion = "file_version";
+    const std::string RequestApplicationVersion = "application_version";
+
+    return url +
+        "?" + RequestIdentifier + "=" + identfier +
+        "&" + RequestFileVersion + "=" + std::to_string(version) +
+        "&" + RequestApplicationVersion + "=" + std::to_string(_applicationVersion)
+    ;
+}
+
+std::string DownloadManager::selectRequestUrl() {
+    int n = _requestUrls.size();
+    if (n == 1) {
+        return _requestUrls.front();
+    }
+
+    // Generate a random number uniformly distributed between [0, n-1]
+    int i = std::uniform_int_distribution<>(0, n-1)(std::mt19937(std::random_device()()));
+    return _requestUrls[i];
+}
 
 
 } // namespace openspace
 
-
-//namespace {
-//namespace openspace {
-//
-//DownloadManager::FileFuture::FileFuture(std::string file)
-//    : currentSize(-1)
-//    , totalSize(-1)
-//    , progress(0.f)
-//    , secondsRemaining(-1.f)
-//    , isFinished(false)
-//    , isAborted(false)
-//    , filePath(std::move(file))
-//    , errorMessage("")
-//    , abortDownload(false)
-//{}
-//
-//DownloadManager::DownloadManager(std::string requestURL, int applicationVersion,
-//                                 bool useMultithreadedDownload)
-//    : _applicationVersion(std::move(applicationVersion))
-//    , _useMultithreadedDownload(useMultithreadedDownload)
-//{
-//    curl_global_init(CURL_GLOBAL_ALL);
-//    
-//    _requestURL.push_back(std::move(requestURL));
-//    
-//    // TODO: Check if URL is accessible ---abock
-//    // TODO: Allow for multiple requestURLs
-//}
-//
-//std::shared_ptr<DownloadManager::FileFuture> DownloadManager::downloadFile(
-//    const std::string& url, const ghoul::filesystem::File& file, bool overrideFile,
-//    DownloadFinishedCallback finishedCallback, DownloadProgressCallback progressCallback)
-//{
-//    if (!overrideFile && FileSys.fileExists(file))
-//        return nullptr;
-//
-//    std::shared_ptr<FileFuture> future = std::make_shared<FileFuture>(file.filename());
-//    errno = 0;
-//    FILE* fp = fopen(file.path().c_str(), "wb"); // write binary
-//    ghoul_assert(fp != nullptr, "Could not open/create file:\n" << file.path().c_str() << " \nerrno: " << errno);
-//
-//    //LDEBUG("Start downloading file: '" << url << "' into file '" << file.path() << "'");
-//    
-//    auto downloadFunction = [url, finishedCallback, progressCallback, future, fp]() {
-//        CURL* curl = curl_easy_init();
-//        if (curl) {
-//            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-//            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-//            curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-//            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeData);
-//            
-//            ProgressInformation p = {
-//                future,
-//                std::chrono::system_clock::now(),
-//                &progressCallback
-//            };
-//            curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfo);
-//            curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &p);
-//            curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-//            
-//            CURLcode res = curl_easy_perform(curl);
-//            curl_easy_cleanup(curl);
-//            fclose(fp);
-//            
-//            if (res == CURLE_OK)
-//                future->isFinished = true;
-//            else
-//                future->errorMessage = curl_easy_strerror(res);
-//            
-//            if (finishedCallback)
-//                finishedCallback(*future);
-//        }
-//    };
-//    
-//    if (_useMultithreadedDownload) {
-//        std::thread t = std::thread(downloadFunction);
-//     
-//#ifdef WIN32
-//        std::thread::native_handle_type h = t.native_handle();
-//        SetPriorityClass(h, IDLE_PRIORITY_CLASS);
-//        SetThreadPriority(h, THREAD_PRIORITY_LOWEST);
-//#else
-//        // TODO: Implement thread priority ---abock
-//#endif
-//        
-//        t.detach();
-//    }
-//    else {
-//        downloadFunction();
-//    }
-//    
-//    return future;
-//}
-//
-//std::future<DownloadManager::MemoryFile> DownloadManager::fetchFile(
-//    const std::string& url,
-//    SuccessCallback successCallback, ErrorCallback errorCallback)
-//{
-//    LDEBUG("Start downloading file: '" << url << "' into memory");
-//    
-//    auto downloadFunction = [url, successCallback, errorCallback]() {
-//        DownloadManager::MemoryFile file;
-//        file.buffer = (char*)malloc(1);
-//        file.size = 0;
-//        file.corrupted = false;
-//
-//        CURL* curl = curl_easy_init();
-//        if (curl) {
-//            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-//            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-//            curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&file);
-//            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
-//            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
-//            // Will fail when response status is 400 or above
-//            curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-//            
-//            CURLcode res = curl_easy_perform(curl);
-//            if(res == CURLE_OK){
-//                // ask for the content-type
-//                char *ct;
-//                res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
-//                if(res == CURLE_OK){
-//                    std::string extension = std::string(ct);
-//                    std::stringstream ss(extension);
-//                    getline(ss, extension ,'/');
-//                    getline(ss, extension);
-//                    file.format = extension;
-//                } else{
-//                    LWARNING("Could not get File extension from file downloaded from: " + url);
-//                }
-//                successCallback(file);
-//                curl_easy_cleanup(curl);
-//                return std::move(file);
-//            } else {
-//                std::string err = curl_easy_strerror(res);
-//                errorCallback(err);
-//                curl_easy_cleanup(curl);
-//                // Throw an error and use try-catch around call to future.get()
-//                //throw std::runtime_error( err );
-//
-//                // or set a boolean variable in MemoryFile to determine if it is valid/corrupted or not.
-//                // Return MemoryFile even if it is not valid, and check if it is after future.get() call.
-//                file.corrupted = true;
-//                return std::move(file);
-//            }
-//        }
-//    };
-//
-//    return std::move( std::async(std::launch::async, downloadFunction) );
-//}
-//
 //std::vector<std::shared_ptr<DownloadManager::FileFuture>> DownloadManager::downloadRequestFiles(
 //    const std::string& identifier, const ghoul::filesystem::Directory& destination,
 //    int version, bool overrideFiles, DownloadFinishedCallback finishedCallback,
@@ -465,45 +412,4 @@ DownloadManager::DownloadManager(std::vector<std::string> requestUrls, int appVe
 //    else
 //        downloadFunction();
 //}
-//
-//void DownloadManager::getFileExtension(const std::string& url,
-//    RequestFinishedCallback finishedCallback){
-//
-//    auto requestFunction = [url, finishedCallback]() {
-//        CURL* curl = curl_easy_init();
-//        if (curl) {
-//            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-//            //USING CURLOPT NOBODY
-//            curl_easy_setopt(curl, CURLOPT_NOBODY,1);
-//            CURLcode res = curl_easy_perform(curl);
-//            if(CURLE_OK == res) {
-//                char *ct;
-//                // ask for the content-type
-//                res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);    
-//                if ((res == CURLE_OK) && ct){
-//
-//                    if (finishedCallback)
-//                        finishedCallback(std::string(ct));
-//                }
-//            }
-//            
-///*            else
-//                future->errorMessage = curl_easy_strerror(res);*/
-//            
-//            curl_easy_cleanup(curl);
-//        }
-//    };
-//    if (_useMultithreadedDownload) {
-//        using namespace ghoul::thread;
-//        std::thread t = std::thread(requestFunction);
-//        ghoul::thread::setPriority(
-//            t, ThreadPriorityClass::Idle, ThreadPriorityLevel::Lowest
-//        );
-//        t.detach();
-//    }
-//    else {
-//        requestFunction();
-//    }
-//}
-//
-//} // namespace openspace
+
