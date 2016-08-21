@@ -101,7 +101,6 @@ vector<ModuleInformation> crawlModule(const string& module, const string& sceneP
         }
         );
 
-
         std::transform(
             files.begin(), files.end(),
             std::back_inserter(result),
@@ -138,7 +137,10 @@ vector<DownloadCollection::DirectFile> extractDirectDownloads(
     for (int i = 1; i <= files.size(); ++i) {
         if (!data.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
             LERROR(
-                fmt::format("Index '{}' in file '{}' is not a table", i, module.dataFile)
+                fmt::format(
+                    "Index '{}' in table '{}' in file '{}' is not a table",
+                    i, FileDownloadKey, module.dataFile
+                )
             );
             continue;
         }
@@ -147,8 +149,8 @@ vector<DownloadCollection::DirectFile> extractDirectDownloads(
         if (!d.hasKeyAndValue<std::string>(UrlKey)) {
             LERROR(
                 fmt::format(
-                    "Index '{}' in file '{}' does not have key {}",
-                    i, module.dataFile, UrlKey
+                    "Index '{}' in table '{}' in file '{}' does not have key {}",
+                    i, FileDownloadKey, module.dataFile, UrlKey
                 )
             );
             continue;
@@ -175,14 +177,129 @@ std::vector<DownloadCollection::FileRequest> extractRequests(
     const ModuleInformation& module)
 {
     ghoul_assert(FileSys.fileExists(module.dataFile), "Datafile did not exist");
+    vector<DownloadCollection::FileRequest> result;
 
+    ghoul::Dictionary data;
+    ghoul::lua::loadDictionaryFromFile(module.dataFile, data);
+
+    if (data.hasKey(FileRequestKey) && !data.hasValue<ghoul::Dictionary>(FileRequestKey)) {
+        throw std::runtime_error(FileDownloadKey + " is not a table");
+    }
+
+    if (!data.hasKeyAndValue<ghoul::Dictionary>(FileRequestKey)) {
+        return {};
+    }
+
+    ghoul::Dictionary files = data.value<ghoul::Dictionary>(FileRequestKey);
+    for (int i = 1; i <= files.size(); ++i) {
+        if (!data.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
+            LERROR(
+                fmt::format(
+                    "Index '{}' in table '{}' in file '{}' is not a table", 
+                    i, FileRequestKey, module.dataFile
+                )
+            );
+            continue;
+        }
+
+        // Check for identifier key
+        ghoul::Dictionary d = data.value<ghoul::Dictionary>(std::to_string(i));
+        if (!d.hasKeyAndValue<string>(IdentifierKey)) {
+            LERROR(
+                fmt::format(
+                    "Index '{}' in table '{}' in file '{}' does not have key {}",
+                    i, FileRequestKey, module.dataFile, IdentifierKey
+                )
+            );
+            continue;
+        }
+        // Check for version key
+        if (!d.hasKeyAndValue<double>(VersionKey)) {
+            LERROR(
+                fmt::format(
+                    "Index '{}' in table '{}' in file '{}' does not have key {}",
+                    i, FileRequestKey, module.dataFile, VersionKey
+                )
+            );
+            continue;
+        }
+
+        string identifier = d.value<string>(IdentifierKey);
+        string destination = ".";
+        if (d.hasKeyAndValue<string>(DestinationKey)) {
+            destination = d.value<string>(DestinationKey);
+        }
+        int version = static_cast<int>(d.value<double>(VersionKey));
+
+        result.push_back({
+            module.name,
+            std::move(identifier),
+            std::move(destination),
+            ghoul::filesystem::File(module.dataFile).directoryName(),
+            version
+        });
+    }
+
+    return result;
 }
 
 std::vector<DownloadCollection::TorrentFile> extractTorrents(
     const ModuleInformation& module)
 {
     ghoul_assert(FileSys.fileExists(module.dataFile), "Datafile did not exist");
+    vector<DownloadCollection::TorrentFile> result;
 
+    ghoul::Dictionary data;
+    ghoul::lua::loadDictionaryFromFile(module.dataFile, data);
+
+    if (data.hasKey(TorrentFilesKey) && !data.hasValue<ghoul::Dictionary>(TorrentFilesKey)) {
+        throw std::runtime_error(TorrentFilesKey + " is not a table");
+    }
+
+    if (!data.hasKeyAndValue<ghoul::Dictionary>(TorrentFilesKey)) {
+        return {};
+    }
+
+    ghoul::Dictionary files = data.value<ghoul::Dictionary>(TorrentFilesKey);
+    for (int i = 1; i <= files.size(); ++i) {
+        if (!data.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
+            LERROR(
+                fmt::format(
+                    "Index '{}' in table '{}' in file '{}' is not a table",
+                    i, TorrentFilesKey, module.dataFile
+                )
+            );
+            continue;
+        }
+
+        // Check for file key
+        ghoul::Dictionary d = data.value<ghoul::Dictionary>(std::to_string(i));
+        if (!d.hasKeyAndValue<string>(FileKey)) {
+            LERROR(
+                fmt::format(
+                    "Index '{}' in table '{}' in file '{}' does not have key {}",
+                    i, TorrentFilesKey, module.dataFile, FileKey
+                )
+            );
+            continue;
+        }
+
+        string file = d.value<std::string>(FileKey);
+
+        string destination = ".";
+        if (d.hasKeyAndValue<string>(DestinationKey)) {
+            destination = d.value<string>(DestinationKey);
+        }
+
+        result.push_back({
+            module.name,
+            std::move(file),
+            std::move(destination),
+            ghoul::filesystem::File(module.dataFile).directoryName()
+        });
+    }
+
+    return result;
 }
 
 void DownloadCollection::crawlScene(const string& scene) {
