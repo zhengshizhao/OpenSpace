@@ -52,16 +52,14 @@ public:
         std::string baseDir;
     };
 
-    void crawlScene(const std::string& scene);
+    struct Collection {
+        std::vector<DirectFile> directFiles;
+        std::vector<FileRequest> fileRequests;
+        std::vector<TorrentFile> torrentFiles;
+    };
 
-private:
-
-
-    std::vector<DirectFile> _directFiles;
-    std::vector<FileRequest> _fileRequests;
-    std::vector<TorrentFile> _torrentFiles;
+    static Collection crawlScenes(const std::vector<std::string>& scenes);
 
 };
-
 
 #endif // __DOWNLOADCOLLECTION_H__

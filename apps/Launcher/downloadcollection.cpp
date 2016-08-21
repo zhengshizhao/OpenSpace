@@ -32,6 +32,8 @@
 
 #include <algorithm>
 #include <fmt/format.h>
+#include <functional>
+#include <unordered_set>
 
 namespace {
     struct ModuleInformation {
@@ -54,6 +56,75 @@ namespace {
 
 using std::string;
 using std::vector;
+
+namespace std {
+
+template <>
+struct hash<DownloadCollection::DirectFile> {
+    size_t operator()(const DownloadCollection::DirectFile& key) const {
+
+        return hash<std::string>()(
+            key.module + "|" + key.url + "|" + key.destination + "|" + key.baseDir
+        );
+    }
+};
+
+template <>
+struct hash<DownloadCollection::FileRequest> {
+    size_t operator()(const DownloadCollection::FileRequest& key) const {
+
+        return hash<std::string>()(
+            key.module + "|" + key.identifier + "|" + key.destination + "|" + 
+            key.baseDir + "|" + to_string(key.version)
+        );
+    }
+};
+
+template <>
+struct hash<DownloadCollection::TorrentFile> {
+    size_t operator()(const DownloadCollection::TorrentFile& key) const {
+
+        return hash<std::string>()(
+            key.module + "|" + key.file + "|" + key.destination + "|" + key.baseDir
+        );
+    }
+};
+
+} // namespace std
+
+bool operator==(const DownloadCollection::DirectFile& lhs,
+                const DownloadCollection::DirectFile rhs)
+{
+    return (
+        (lhs.module == rhs.module) &&
+        (lhs.url == rhs.url) &&
+        (lhs.destination == rhs.destination) &&
+        (lhs.baseDir == rhs.baseDir)
+    );
+}
+
+bool operator==(const DownloadCollection::FileRequest& lhs,
+                const DownloadCollection::FileRequest& rhs) 
+{
+    return (
+        (lhs.module == rhs.module) &&
+        (lhs.identifier == rhs.identifier) &&
+        (lhs.destination == rhs.destination) &&
+        (lhs.baseDir == rhs.baseDir) &&
+        (lhs.version == rhs.version)
+    );
+}
+
+bool operator==(const DownloadCollection::TorrentFile& lhs,
+                const DownloadCollection::TorrentFile& rhs) 
+{
+    return (
+        (lhs.module == rhs.module) &&
+        (lhs.file == rhs.file) &&
+        (lhs.destination == rhs.destination) &&
+        (lhs.baseDir == rhs.baseDir)
+    );
+}
 
 ModuleInformation commonModule() {
     return{
@@ -116,11 +187,11 @@ vector<ModuleInformation> crawlModule(const string& module, const string& sceneP
     return result;
 }
 
-vector<DownloadCollection::DirectFile> extractDirectDownloads(
+std::unordered_set<DownloadCollection::DirectFile> extractDirectDownloads(
     const ModuleInformation& module)
 {
     ghoul_assert(FileSys.fileExists(module.dataFile), "Datafile did not exist");
-    vector<DownloadCollection::DirectFile> result;
+    std::unordered_set<DownloadCollection::DirectFile> result;
 
     ghoul::Dictionary data;
     ghoul::lua::loadDictionaryFromFile(module.dataFile, data);
@@ -162,7 +233,7 @@ vector<DownloadCollection::DirectFile> extractDirectDownloads(
             destination = d.value<string>(DestinationKey);
         }
 
-        result.push_back({
+        result.insert({
             module.name,
             std::move(url),
             std::move(destination),
@@ -173,11 +244,11 @@ vector<DownloadCollection::DirectFile> extractDirectDownloads(
     return result;
 }
 
-std::vector<DownloadCollection::FileRequest> extractRequests(
+std::unordered_set<DownloadCollection::FileRequest> extractRequests(
     const ModuleInformation& module)
 {
     ghoul_assert(FileSys.fileExists(module.dataFile), "Datafile did not exist");
-    vector<DownloadCollection::FileRequest> result;
+    std::unordered_set<DownloadCollection::FileRequest> result;
 
     ghoul::Dictionary data;
     ghoul::lua::loadDictionaryFromFile(module.dataFile, data);
@@ -231,7 +302,7 @@ std::vector<DownloadCollection::FileRequest> extractRequests(
         }
         int version = static_cast<int>(d.value<double>(VersionKey));
 
-        result.push_back({
+        result.insert({
             module.name,
             std::move(identifier),
             std::move(destination),
@@ -243,11 +314,11 @@ std::vector<DownloadCollection::FileRequest> extractRequests(
     return result;
 }
 
-std::vector<DownloadCollection::TorrentFile> extractTorrents(
+std::unordered_set<DownloadCollection::TorrentFile> extractTorrents(
     const ModuleInformation& module)
 {
     ghoul_assert(FileSys.fileExists(module.dataFile), "Datafile did not exist");
-    vector<DownloadCollection::TorrentFile> result;
+    std::unordered_set<DownloadCollection::TorrentFile> result;
 
     ghoul::Dictionary data;
     ghoul::lua::loadDictionaryFromFile(module.dataFile, data);
@@ -291,7 +362,7 @@ std::vector<DownloadCollection::TorrentFile> extractTorrents(
             destination = d.value<string>(DestinationKey);
         }
 
-        result.push_back({
+        result.insert({
             module.name,
             std::move(file),
             std::move(destination),
@@ -302,7 +373,11 @@ std::vector<DownloadCollection::TorrentFile> extractTorrents(
     return result;
 }
 
-void DownloadCollection::crawlScene(const string& scene) {
+void crawlScene(const std::string& scene,
+                std::unordered_set<DownloadCollection::DirectFile> directFiles,
+                std::unordered_set<DownloadCollection::FileRequest> fileRequests,
+                std::unordered_set<DownloadCollection::TorrentFile> torrentFiles) 
+{
     std::vector<ModuleInformation> modulesList;
 
     ghoul::Dictionary sceneDictionary;
@@ -329,14 +404,36 @@ void DownloadCollection::crawlScene(const string& scene) {
 
     modulesList.push_back(commonModule());
 
+    // We store the values as sets to prevent duplicates
+    // Get all of the file information from all modules
     for (const ModuleInformation& module : modulesList) {
-        std::vector<DirectFile> df = extractDirectDownloads(module);
-        _directFiles.insert(_directFiles.end(), df.begin(), df.end());
+        std::unordered_set<DownloadCollection::DirectFile> df = extractDirectDownloads(
+            module
+        );
+        directFiles.insert(df.begin(), df.end());
 
-        std::vector<FileRequest> fr = extractRequests(module);
-        _fileRequests.insert(_fileRequests.end(), fr.begin(), fr.end());
+        std::unordered_set<DownloadCollection::FileRequest> fr = extractRequests(module);
+        fileRequests.insert(fr.begin(), fr.end());
 
-        std::vector<TorrentFile> tf = extractTorrents(module);
-        _torrentFiles.insert(_torrentFiles.end(), tf.begin(), tf.end());
+        std::unordered_set<DownloadCollection::TorrentFile> tf = extractTorrents(module);
+        torrentFiles.insert(tf.begin(), tf.end());
     }
+}
+
+DownloadCollection::Collection DownloadCollection::crawlScenes(
+    const vector<string>& scenes) 
+{
+    std::unordered_set<DirectFile> directFiles;
+    std::unordered_set<FileRequest> fileRequests;
+    std::unordered_set<TorrentFile> torrentFiles;
+    
+    for (const std::string& scene : scenes) {
+        crawlScene(scene, directFiles, fileRequests, torrentFiles);
+    }
+
+    return {
+        std::vector<DirectFile>(directFiles.begin(), directFiles.end()),
+        std::vector<FileRequest>(fileRequests.begin(), fileRequests.end()),
+        std::vector<TorrentFile>(torrentFiles.begin(), torrentFiles.end())
+    };
 }

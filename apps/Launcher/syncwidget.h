@@ -77,8 +77,6 @@ private:
     void handleFileRequest();
     void handleTorrentFiles();
 
-    DownloadCollection _downloadCollection;
-
     QMap<QString, QString>  _sceneFiles;
     QString _modulesDirectory;
     QGridLayout* _sceneLayout;
@@ -86,10 +84,6 @@ private:
 
     libtorrent::session* _session;
     QMap<libtorrent::torrent_handle, InfoWidget*> _torrentInfoWidgetMap;
-
-    QList<DirectFile> _directFiles;
-    QList<FileRequest> _fileRequests;
-    QList<TorrentFile> _torrentFiles;
 
     std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>> _futures;
     std::map<std::shared_ptr<openspace::DownloadManager::FileFuture>, InfoWidget*> _futureInfoWidgetMap;
