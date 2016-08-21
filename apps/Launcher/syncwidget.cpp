@@ -356,6 +356,10 @@ void SyncWidget::syncButtonPressed() {
     clear();
 
     for (const QString& scene : selectedScenes()) {
+        _downloadCollection.crawlScene(scene.toStdString());
+
+
+
         LDEBUG(scene.toStdString());
         ghoul::Dictionary sceneDictionary;
         ghoul::lua::loadDictionaryFromFile(
@@ -674,55 +678,6 @@ void SyncWidget::handleTimer() {
         for (torrent_handle h : handles)
             _session->remove_torrent(h);
     }
-
-
-
-
-    //_session->post_torrent_updates();
-    //libtorrent::session_settings settings = _session->settings();
-
-    //qDebug() << "Session";
-    //qDebug() << "nPeers: " << _session->status().num_peers;
-    //qDebug() << "DHT: " << _session->is_dht_running();
-    //qDebug() << "Incoming TCP" << settings.enable_incoming_tcp;
-    //qDebug() << "Outgoing TCP" << settings.enable_outgoing_tcp;
-    //qDebug() << "Incoming UTP" << settings.enable_incoming_utp;
-    //qDebug() << "Outgoing UTP" << settings.enable_outgoing_utp;
-    //qDebug() << "===";
-
-    //qDebug() << "Alerts";
-    //std::deque<alert*> alerts;
-    //_session->pop_alerts(&alerts);
-    //for (alert* a : alerts) {
-    //    qDebug() << QString::fromStdString(a->message());
-
-    //    //if (a->category() == alert::status_notification) {
-    //    //    state_update_alert* sua = static_cast<state_update_alert*>(a);
-    //    //    for (torrent_status s )
-    //    //}
-    //}
-    //qDebug() << "===";
-
-
-    //    qDebug() << "Name: " << QString::fromStdString(h.name());
-    //    //torrent_status s = h.status();
-
-    //    qDebug() << "Error: " << QString::fromStdString(s.error);
-
-    //    qDebug() << "Total Wanted: " << s.total_wanted;
-    //    qDebug() << "Total Wanted Done: " << s.total_wanted_done;
-    //    qDebug() << "Has Incoming: " << s.has_incoming;
-    //    qDebug() << "Connect Candidates: " << s.connect_candidates;
-    //    qDebug() << "Last Seen Complete: " << s.last_seen_complete;
-    //    qDebug() << "List Peers: " << s.list_peers;
-    //    qDebug() << "List Seeds: " << s.list_seeds;
-    //    qDebug() << "Num Pieces: " << s.num_pieces;
-    //    qDebug() << "Download Rate: " << s.download_rate;
-    //    qDebug() << "List Seeds: " << s.list_seeds;
-    //    qDebug() << "Paused: " << s.paused;
-    //    qDebug() << "Progress: " << s.progress;
-
-    //    qDebug() << "";
 }
 
 void SyncWidget::handleFileFutureAddition(

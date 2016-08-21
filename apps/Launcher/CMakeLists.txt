@@ -30,6 +30,7 @@ include (${GHOUL_BASE_DIR}/support/cmake/handle_external_library.cmake)
 set(application_path ${OPENSPACE_APPS_DIR}/Launcher)
 
 set(SOURCE_FILES
+    ${application_path}/downloadcollection.cpp
     ${application_path}/main.cpp
     ${application_path}/infowidget.cpp
     ${application_path}/mainwindow.cpp
@@ -38,6 +39,7 @@ set(SOURCE_FILES
 )
 
 set(HEADER_FILES
+    ${application_path}/downloadcollection.h
     ${application_path}/infowidget.h
     ${application_path}/mainwindow.h
     ${application_path}/shortcutwidget.h
