@@ -108,9 +108,9 @@ namespace openspace {
 const std::string RenderEngine::KeyFontMono = "Mono";
 const std::string RenderEngine::KeyFontLight = "Light";
 const std::vector<RenderEngine::FrametimeType> RenderEngine::FrametimeTypes({
-	RenderEngine::FrametimeType::DtTimeAvg,
-	RenderEngine::FrametimeType::FPS,
-	RenderEngine::FrametimeType::FPSAvg
+    RenderEngine::FrametimeType::DtTimeAvg,
+    RenderEngine::FrametimeType::FPS,
+    RenderEngine::FrametimeType::FPSAvg
 });
 
 RenderEngine::RenderEngine()
@@ -127,8 +127,8 @@ RenderEngine::RenderEngine()
     , _fadeDuration(2.f)
     , _currentFadeTime(0.f)
     , _fadeDirection(0)
-	, _frametimeType(FrametimeType::DtTimeAvg)
-	, _nameOfScene("SolarSystemBarycenter")
+    , _frametimeType(FrametimeType::DtTimeAvg)
+    , _nameOfScene("SolarSystemBarycenter")
     //    , _sgctRenderStatisticsVisible(false)
 {
     _onScreenInformation = {
@@ -355,7 +355,7 @@ void RenderEngine::postSynchronizationPreDraw() {
         }
     }
 
-	
+    
         
 
     bool windowResized = OsEng.windowWrapper().windowHasResized();
@@ -373,13 +373,13 @@ void RenderEngine::postSynchronizationPreDraw() {
         Time::ref().deltaTime(),
         _performanceManager != nullptr
     });
-	if (_mainCamera) {
+    if (_mainCamera) {
 
-		//Sets the camera to its relative position depending on the common parent (when changed from worldPosition to position)
-		//setRelativeOrigin(_mainCamera, scene()); 
-		
-		_mainCamera->postSynchronizationPreDraw();
-	}
+        //Sets the camera to its relative position depending on the common parent (when changed from worldPosition to position)
+        //setRelativeOrigin(_mainCamera, scene()); 
+        
+        _mainCamera->postSynchronizationPreDraw();
+    }
     _sceneGraph->evaluate(_mainCamera);
 
     _renderer->update();
@@ -426,10 +426,10 @@ void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& vi
             screenSpaceRenderable->render();
     }
 
-	_mainCamera->setParent(_nameOfScene);
-	double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
+    _mainCamera->setParent(_nameOfScene);
+    double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
 
-	//_nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
+    //_nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
 }
 
 void RenderEngine::renderShutdownInformation(float timer, float fullTime) {
@@ -748,12 +748,12 @@ scripting::LuaLibrary RenderEngine::luaLibrary() {
                 "bool",
                 "Toggles the showing of render information on-screen text"
             },
-			{
-				"toggleFrametimeType",
-				&luascriptfunctions::toggleFrametimeType,
-				"int",
-				"Toggle showing FPS or Average Frametime in heads up info"
-			},
+            {
+                "toggleFrametimeType",
+                &luascriptfunctions::toggleFrametimeType,
+                "int",
+                "Toggle showing FPS or Average Frametime in heads up info"
+            },
             {
                 "setPerformanceMeasurement",
                 &luascriptfunctions::setPerformanceMeasurement,
