@@ -73,14 +73,23 @@ public:
         void(File& f, size_t currentSize, size_t totalSize)
     >;
 
+    template <typename F, typename Callback>
+    struct Task : public std::packaged_task<F(Callback)> {
+        Task(std::function<F(Callback)> f) : std::packaged_task<F(Callback)>(std::move(f)) {}
+
+        void operator()(Callback cb = Callback()) {
+            std::packaged_task<F(Callback)>::operator()(cb);
+        }
+    };
+
+    using MemoryFileTask = Task<MemoryFile, ProgressCallbackMemory>;
+    using FileTask = Task<File, ProgressCallbackFile>;
+
+
     static void initialize();
     static void deinitialize();
 
-    static std::packaged_task<MemoryFile()> download(
-        const std::string& url,
-        int64_t identifier = 0,
-        ProgressCallbackMemory progress = ProgressCallbackMemory()
-    );
+    static MemoryFileTask download(const std::string& url, int64_t identifier = 0);
 
     static MemoryFile downloadSync(
         const std::string& url,
@@ -90,11 +99,8 @@ public:
 
 
 
-    static std::packaged_task<File()> download(
-        const std::string& url,
-        const std::string& filename,
-        int64_t identifier = 0,
-        ProgressCallbackFile progress = ProgressCallbackFile()
+    static FileTask download(const std::string& url, const std::string& filename,
+        int64_t identifier = 0
     );
 
     static File downloadSync(
@@ -109,18 +115,16 @@ public:
 
     DownloadManager(std::vector<std::string> requestUrls, int applicationVersion);
     
-    std::vector<std::packaged_task<File()>> requestFiles(
+    std::vector<FileTask> requestFiles(
         const std::string& identifier,
         int version,
         const ghoul::filesystem::Directory& destination = ".",
-        bool overrideFiles = true,
-        ProgressCallbackFile progress = ProgressCallbackFile()
-        
-    );
+        bool overrideFiles = true
+    ) const;
 
 private:
-    std::string request(const std::string& url, const std::string& identfier, int version);
-    std::string selectRequestUrl();
+    std::string request(const std::string& url, const std::string& identfier, int version) const;
+    std::string selectRequestUrl() const;
 
     std::vector<std::string> _requestUrls;
     int _applicationVersion;
