@@ -73,23 +73,31 @@ public:
         void(File& f, size_t currentSize, size_t totalSize)
     >;
 
-    template <typename F, typename Callback>
-    struct Task : public std::packaged_task<F(Callback)> {
-        Task(std::function<F(Callback)> f) : std::packaged_task<F(Callback)>(std::move(f)) {}
+    //template <typename F, typename Callback>
+    //struct Task : public std::packaged_task<F(Callback)> {
+    //    //Task(std::function<F(Callback)> f) : std::packaged_task<F(Callback)>(std::move(f)) {}
 
-        void operator()(Callback cb = Callback()) {
-            std::packaged_task<F(Callback)>::operator()(cb);
-        }
-    };
+    //    Task(const Task& rhs) = default;
+    //    Task(Task&& rhs) = default;
 
-    using MemoryFileTask = Task<MemoryFile, ProgressCallbackMemory>;
-    using FileTask = Task<File, ProgressCallbackFile>;
+    //    void operator()(Callback cb = Callback()) {
+    //        std::packaged_task<F(Callback)>::operator()(cb);
+    //    }
+    //};
+
+    //using MemoryFileTask = Task<MemoryFile, ProgressCallbackMemory>;
+    //using FileTask = Task<File, ProgressCallbackFile>;
+
+    using MemoryFileTask = std::packaged_task<MemoryFile()>;
+    using FileTask = std::packaged_task<File()>;
 
 
     static void initialize();
     static void deinitialize();
 
-    static MemoryFileTask download(const std::string& url, int64_t identifier = 0);
+    static MemoryFileTask download(const std::string& url, int64_t identifier = 0,
+        ProgressCallbackMemory progress = ProgressCallbackMemory()
+    );
 
     static MemoryFile downloadSync(
         const std::string& url,
@@ -100,7 +108,7 @@ public:
 
 
     static FileTask download(const std::string& url, const std::string& filename,
-        int64_t identifier = 0
+        int64_t identifier = 0, ProgressCallbackFile progress = ProgressCallbackFile()
     );
 
     static File downloadSync(

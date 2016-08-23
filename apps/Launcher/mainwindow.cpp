@@ -198,8 +198,10 @@ void MainWindow::initialize() {
     std::string configurationFile = _configurationFile;
     
     _configuration = new openspace::ConfigurationManager;
-    configurationFile = _configuration->findConfiguration( configurationFile );
+    configurationFile = _configuration->findConfiguration(configurationFile);
     _configuration->loadFromFile(configurationFile);
+
+
 
     // Load all available scenes
     QString modulesDirectory = QString::fromStdString(absPath("${SCENE}"));

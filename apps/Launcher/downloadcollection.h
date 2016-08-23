@@ -25,6 +25,8 @@
 #ifndef __DOWNLOADCOLLECTION_H__
 #define __DOWNLOADCOLLECTION_H__
 
+#include <openspace/engine/downloadmanager.h>
+
 #include <string>
 #include <vector>
 
@@ -34,14 +36,14 @@ public:
         std::string module;
         std::string url;
         std::string destination;
-        std::string baseDir;
+        //std::string baseDir;
     };
 
     struct FileRequest {
         std::string module;
         std::string identifier;
         std::string destination;
-        std::string baseDir;
+        //std::string baseDir;
         int version;
     };
 
@@ -49,7 +51,7 @@ public:
         std::string module;
         std::string file;
         std::string destination;
-        std::string baseDir;
+        //std::string baseDir;
     };
 
     struct Collection {
@@ -59,6 +61,18 @@ public:
     };
 
     static Collection crawlScenes(const std::vector<std::string>& scenes);
+
+    //static std::vector<openspace::DownloadManager::FileTask> downloadTasks(
+    //    Collection collection, const openspace::DownloadManager& manager
+    //);
+
+    //static uint64_t id(const Collection& collection, const DirectFile& directFile);
+    //static uint64_t id(const Collection& collection, const FileRequest& fileRequest);
+    //static uint64_t id(const Collection& collection, const TorrentFile& torrentFile);
+
+    //static const DirectFile& directFile(const Collection& collection, uint64_t id);
+    //static const FileRequest& fileRequest(const Collection& collection, uint64_t id);
+    //static const TorrentFile& torrentFile(const Collection& collection, uint64_t id);
 
 };
 

@@ -64,7 +64,7 @@ struct hash<DownloadCollection::DirectFile> {
     size_t operator()(const DownloadCollection::DirectFile& key) const {
 
         return hash<std::string>()(
-            key.module + "|" + key.url + "|" + key.destination + "|" + key.baseDir
+            key.module + "|" + key.url + "|" + key.destination
         );
     }
 };
@@ -75,7 +75,7 @@ struct hash<DownloadCollection::FileRequest> {
 
         return hash<std::string>()(
             key.module + "|" + key.identifier + "|" + key.destination + "|" + 
-            key.baseDir + "|" + to_string(key.version)
+            to_string(key.version)
         );
     }
 };
@@ -85,7 +85,7 @@ struct hash<DownloadCollection::TorrentFile> {
     size_t operator()(const DownloadCollection::TorrentFile& key) const {
 
         return hash<std::string>()(
-            key.module + "|" + key.file + "|" + key.destination + "|" + key.baseDir
+            key.module + "|" + key.file + "|" + key.destination
         );
     }
 };
@@ -98,8 +98,7 @@ bool operator==(const DownloadCollection::DirectFile& lhs,
     return (
         (lhs.module == rhs.module) &&
         (lhs.url == rhs.url) &&
-        (lhs.destination == rhs.destination) &&
-        (lhs.baseDir == rhs.baseDir)
+        (lhs.destination == rhs.destination)
     );
 }
 
@@ -110,7 +109,6 @@ bool operator==(const DownloadCollection::FileRequest& lhs,
         (lhs.module == rhs.module) &&
         (lhs.identifier == rhs.identifier) &&
         (lhs.destination == rhs.destination) &&
-        (lhs.baseDir == rhs.baseDir) &&
         (lhs.version == rhs.version)
     );
 }
@@ -121,16 +119,8 @@ bool operator==(const DownloadCollection::TorrentFile& lhs,
     return (
         (lhs.module == rhs.module) &&
         (lhs.file == rhs.file) &&
-        (lhs.destination == rhs.destination) &&
-        (lhs.baseDir == rhs.baseDir)
+        (lhs.destination == rhs.destination)
     );
-}
-
-ModuleInformation commonModule() {
-    return{
-        "common",
-        "common/common.data"
-    };
 }
 
 vector<ModuleInformation> crawlModule(const string& module, const string& scenePath) {
@@ -206,7 +196,7 @@ std::unordered_set<DownloadCollection::DirectFile> extractDirectDownloads(
 
     ghoul::Dictionary files = data.value<ghoul::Dictionary>(FileDownloadKey);
     for (int i = 1; i <= files.size(); ++i) {
-        if (!data.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
+        if (!files.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
             LERROR(
                 fmt::format(
                     "Index '{}' in table '{}' in file '{}' is not a table",
@@ -216,7 +206,7 @@ std::unordered_set<DownloadCollection::DirectFile> extractDirectDownloads(
             continue;
         }
 
-        ghoul::Dictionary d = data.value<ghoul::Dictionary>(std::to_string(i));
+        ghoul::Dictionary d = files.value<ghoul::Dictionary>(std::to_string(i));
         if (!d.hasKeyAndValue<std::string>(UrlKey)) {
             LERROR(
                 fmt::format(
@@ -236,8 +226,6 @@ std::unordered_set<DownloadCollection::DirectFile> extractDirectDownloads(
         result.insert({
             module.name,
             std::move(url),
-            std::move(destination),
-            ghoul::filesystem::File(module.dataFile).directoryName()
         });
     }
 
@@ -261,9 +249,12 @@ std::unordered_set<DownloadCollection::FileRequest> extractRequests(
         return {};
     }
 
+    ghoul::filesystem::Directory previousDirectory = FileSys.currentDirectory();
+    FileSys.setCurrentDirectory(ghoul::filesystem::File(module.dataFile).directoryName());
+
     ghoul::Dictionary files = data.value<ghoul::Dictionary>(FileRequestKey);
     for (int i = 1; i <= files.size(); ++i) {
-        if (!data.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
+        if (!files.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
             LERROR(
                 fmt::format(
                     "Index '{}' in table '{}' in file '{}' is not a table", 
@@ -274,7 +265,7 @@ std::unordered_set<DownloadCollection::FileRequest> extractRequests(
         }
 
         // Check for identifier key
-        ghoul::Dictionary d = data.value<ghoul::Dictionary>(std::to_string(i));
+        ghoul::Dictionary d = files.value<ghoul::Dictionary>(std::to_string(i));
         if (!d.hasKeyAndValue<string>(IdentifierKey)) {
             LERROR(
                 fmt::format(
@@ -305,11 +296,12 @@ std::unordered_set<DownloadCollection::FileRequest> extractRequests(
         result.insert({
             module.name,
             std::move(identifier),
-            std::move(destination),
-            ghoul::filesystem::File(module.dataFile).directoryName(),
+            absPath(destination),
             version
         });
     }
+
+    FileSys.setCurrentDirectory(previousDirectory);
 
     return result;
 }
@@ -331,9 +323,12 @@ std::unordered_set<DownloadCollection::TorrentFile> extractTorrents(
         return {};
     }
 
+    ghoul::filesystem::Directory previousDirectory = FileSys.currentDirectory();
+    FileSys.setCurrentDirectory(ghoul::filesystem::File(module.dataFile).directoryName());
+
     ghoul::Dictionary files = data.value<ghoul::Dictionary>(TorrentFilesKey);
     for (int i = 1; i <= files.size(); ++i) {
-        if (!data.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
+        if (!files.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
             LERROR(
                 fmt::format(
                     "Index '{}' in table '{}' in file '{}' is not a table",
@@ -344,7 +339,7 @@ std::unordered_set<DownloadCollection::TorrentFile> extractTorrents(
         }
 
         // Check for file key
-        ghoul::Dictionary d = data.value<ghoul::Dictionary>(std::to_string(i));
+        ghoul::Dictionary d = files.value<ghoul::Dictionary>(std::to_string(i));
         if (!d.hasKeyAndValue<string>(FileKey)) {
             LERROR(
                 fmt::format(
@@ -365,18 +360,82 @@ std::unordered_set<DownloadCollection::TorrentFile> extractTorrents(
         result.insert({
             module.name,
             std::move(file),
-            std::move(destination),
-            ghoul::filesystem::File(module.dataFile).directoryName()
+            absPath(destination)
         });
     }
+
+    FileSys.setCurrentDirectory(previousDirectory);
 
     return result;
 }
 
+//uint64_t DownloadCollection::id(const Collection& collection,
+//                               const DirectFile& directFile)
+//{
+//    auto it = std::find(
+//        collection.directFiles.begin(), collection.directFiles.end(),
+//        directFile
+//    );
+//    ghoul_assert(
+//        it != collection.directFiles.end(),
+//        "Directfile was not part of the collection"
+//    );
+//
+//    return DirectFileOffset + std::distance(collection.directFiles.begin(), it);
+//}
+//
+//uint64_t DownloadCollection::id(const Collection& collection,
+//                                const FileRequest& fileRequest)
+//{
+//    auto it = std::find(
+//        collection.fileRequests.begin(), collection.fileRequests.end(),
+//        fileRequest
+//    );
+//    ghoul_assert(
+//        it != collection.fileRequests.end(),
+//        "Directfile was not part of the collection"
+//    );
+//
+//    return FileRequestOffset + std::distance(collection.fileRequests.begin(), it);
+//}
+//
+//uint64_t DownloadCollection::id(const Collection& collection,
+//                                const TorrentFile& torrentFile)
+//{
+//    auto it = std::find(
+//        collection.torrentFiles.begin(), collection.torrentFiles.end(),
+//        torrentFile
+//    );
+//    ghoul_assert(
+//        it != collection.torrentFiles.end(),
+//        "Directfile was not part of the collection"
+//    );
+//
+//    return FileRequestOffset + std::distance(collection.torrentFiles.begin(), it);
+//}
+//
+//const DownloadCollection::DirectFile& DownloadCollection::directFile(
+//    const Collection& collection, uint64_t id) 
+//{
+//    return *(collection.directFiles.begin() + id);
+//}
+//
+//const DownloadCollection::FileRequest& DownloadCollection::fileRequest(
+//    const Collection& collection, uint64_t id) 
+//{
+//    return *(collection.fileRequests.begin() + id);
+//}
+//
+//const DownloadCollection::TorrentFile& DownloadCollection::torrentFile(
+//    const Collection& collection, uint64_t id)
+//{
+//    return *(collection.torrentFiles.begin() + id);
+//}
+
 void crawlScene(const std::string& scene,
-                std::unordered_set<DownloadCollection::DirectFile> directFiles,
-                std::unordered_set<DownloadCollection::FileRequest> fileRequests,
-                std::unordered_set<DownloadCollection::TorrentFile> torrentFiles) 
+                std::unordered_set<DownloadCollection::DirectFile>& directFiles,
+                std::unordered_set<DownloadCollection::FileRequest>& fileRequests,
+                std::unordered_set<DownloadCollection::TorrentFile>& torrentFiles) 
 {
     std::vector<ModuleInformation> modulesList;
 
@@ -399,10 +458,14 @@ void crawlScene(const std::string& scene,
         // This could be a composite module name
         string module = modules.value<string>(std::to_string(i));
         std::vector<ModuleInformation> info = crawlModule(module, fullScenePath);
-        modulesList.insert(modulesList.end(), info.begin(), info.end());
+        std::move(info.begin(), info.end(), std::back_inserter(modulesList));
     }
 
-    modulesList.push_back(commonModule());
+    if (sceneDictionary.hasKeyAndValue<std::string>("CommonFolder")) {
+        std::string common = sceneDictionary.value<std::string>("CommonFolder");
+        std::vector<ModuleInformation> c = crawlModule(common, fullScenePath);
+        std::move(c.begin(), c.end(), std::back_inserter(modulesList));
+    }
 
     // We store the values as sets to prevent duplicates
     // Get all of the file information from all modules
@@ -437,3 +500,37 @@ DownloadCollection::Collection DownloadCollection::crawlScenes(
         std::vector<TorrentFile>(torrentFiles.begin(), torrentFiles.end())
     };
 }
+
+//std::vector<openspace::DownloadManager::FileTask> DownloadCollection::downloadTasks(
+//    Collection collection, const openspace::DownloadManager& manager)
+//{
+//    std::vector<openspace::DownloadManager::FileTask> result;
+//
+//    LDEBUG("Direct Files");
+//    for (const DirectFile& df : collection.directFiles) {
+//        LDEBUG(df.url + " -> " + df.destination);
+//
+//        int64_t dfId = id(collection, df);
+//
+//        result.push_back(
+//            openspace::DownloadManager::download(df.url, df.destination, dfId)
+//        );
+//    }
+//
+//    LDEBUG("File Requests");
+//    for (const FileRequest& fr : collection.fileRequests) {
+//        LDEBUG(fmt::format("{}({}) -> {}", fr.identifier, fr.identifier, fr.destination));
+//
+//        //int64_t frId = id(collection, fr);
+//
+//        std::vector<openspace::DownloadManager::FileTask> tasks =
+//            manager.requestFiles(fr.identifier, fr.version, fr.destination);
+//
+//        std::move(tasks.begin(), tasks.end(), std::back_inserter(result));
+//    }
+//
+//    LDEBUG("Torrent Files");
+//
+//
+//    return result;
+//}

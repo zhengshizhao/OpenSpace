@@ -130,10 +130,13 @@ void DownloadManager::initialize() {
 
 void DownloadManager::deinitialize() {}
 
-std::packaged_task<DownloadManager::MemoryFile()> DownloadManager::download(
-    const std::string& url, int64_t identifier, ProgressCallbackMemory progress)
+DownloadManager::MemoryFileTask DownloadManager::download(const std::string& url,
+                                                          int64_t identifier,
+                                                          ProgressCallbackMemory progress)
 {
-    return std::packaged_task<MemoryFile()>([url, identifier, progress]() {
+    return MemoryFileTask(
+        [url, identifier, progress]() {
+        
         MemoryFile file;
         file.identifier = identifier;
 
@@ -186,20 +189,29 @@ std::packaged_task<DownloadManager::MemoryFile()> DownloadManager::download(
 DownloadManager::MemoryFile DownloadManager::downloadSync(const std::string& url,
     int64_t identifier, ProgressCallbackMemory progress) 
 {
-    std::packaged_task<MemoryFile()> task = download(url, identifier, progress);
+    MemoryFileTask task = download(url, identifier, progress);
     std::future<MemoryFile> future = task.get_future();
     task();
     return future.get();
 }
 
-std::packaged_task<DownloadManager::File()> DownloadManager::download(
-    const std::string& url, const std::string& filename, int64_t identifier,
-    ProgressCallbackFile progress)
+DownloadManager::FileTask DownloadManager::download(const std::string& url,
+                                                    const std::string& filename,
+                                                    int64_t identifier,
+                                                    ProgressCallbackFile progress)
 {
-    return std::packaged_task<File()>([url, filename, identifier, progress](){
+    return FileTask(
+        [url, filename, identifier, progress](){
+        
+        FileSys.createDirectory(
+            ghoul::filesystem::File(filename).directoryName(),
+            ghoul::filesystem::FileSystem::Recursive::Yes
+        );
+
         File file;
         file.identifier = identifier;
         file.filename = std::move(filename);
+
 
         FILE* fp = fopen(file.filename.c_str(), "wb");
 
@@ -231,7 +243,9 @@ std::packaged_task<DownloadManager::File()> DownloadManager::download(
             char* ct;
             res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
             if (res == CURLE_OK) {
-                file.contentType = std::string(ct);
+                if (ct != nullptr) {
+                    file.contentType = std::string(ct);
+                }
             }
             else {
                 file.errorMessage = curl_easy_strerror(res);
@@ -250,7 +264,7 @@ std::packaged_task<DownloadManager::File()> DownloadManager::download(
 DownloadManager::File DownloadManager::downloadSync(const std::string& url,
     const std::string& filename, int64_t identifier, ProgressCallbackFile progress)
 {
-    std::packaged_task<File()> task = download(url, filename, identifier, progress);
+    FileTask task = download(url, filename, identifier, progress);
     std::future<File> future = task.get_future();
     task();
     return future.get();
@@ -262,12 +276,11 @@ DownloadManager::DownloadManager(std::vector<std::string> requestUrls, int appVe
 {}
 
 
-std::vector<std::packaged_task<DownloadManager::File()>> DownloadManager::requestFiles(
+std::vector<DownloadManager::FileTask> DownloadManager::requestFiles(
     const std::string& identifier,
     int version,
     const ghoul::filesystem::Directory& destination,
-    bool overrideFiles,
-    ProgressCallbackFile progress)
+    bool overrideFiles) const
 {
 
     std::string url = selectRequestUrl();
@@ -288,20 +301,24 @@ std::vector<std::packaged_task<DownloadManager::File()>> DownloadManager::reques
         std::string(reqFile.buffer.begin(), reqFile.buffer.end())
     );
 
-    std::vector<std::packaged_task<File()>> result;
+    //ghoul::filesystem::Directory d = FileSys.currentDirectory();
+    //FileSys.setCurrentDirectory(f.baseDir.toStdString());
+
+
+    std::vector<FileTask> result;
     for (const std::string& fileUrl : fileUrls) {
         std::string file = fileNameFromUrl(fileUrl);
         std::string fullPath = FileSys.pathByAppendingComponent(destination, file);
 
         result.push_back(
-            download(fileUrl, fullPath, -1, progress)
+            download(fileUrl, fullPath, -1)
         );
     }
 
     return result;
 }
 
-std::string DownloadManager::request(const std::string& url, const std::string& identfier, int version) {
+std::string DownloadManager::request(const std::string& url, const std::string& identfier, int version) const {
     const std::string RequestIdentifier = "identifier";
     const std::string RequestFileVersion = "file_version";
     const std::string RequestApplicationVersion = "application_version";
@@ -313,7 +330,7 @@ std::string DownloadManager::request(const std::string& url, const std::string& 
     ;
 }
 
-std::string DownloadManager::selectRequestUrl() {
+std::string DownloadManager::selectRequestUrl() const {
     int n = _requestUrls.size();
     if (n == 1) {
         return _requestUrls.front();

@@ -33,6 +33,7 @@
 #include "downloadcollection.h"
 
 #include <libtorrent/torrent_handle.hpp>
+#include <ghoul/misc/threadpool.h>
 
 #include <atomic>
 
@@ -71,11 +72,7 @@ private:
     void clear();
     QStringList selectedScenes() const;
 
-    void handleFileFutureAddition(const std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>>& futures);
-
-    void handleDirectFiles();
-    void handleFileRequest();
-    void handleTorrentFiles();
+    //void handleFileFutureAddition(const std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>>& futures);
 
     QMap<QString, QString>  _sceneFiles;
     QString _modulesDirectory;
@@ -85,13 +82,15 @@ private:
     libtorrent::session* _session;
     QMap<libtorrent::torrent_handle, InfoWidget*> _torrentInfoWidgetMap;
 
-    std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>> _futures;
-    std::map<std::shared_ptr<openspace::DownloadManager::FileFuture>, InfoWidget*> _futureInfoWidgetMap;
+    //std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>> _futures;
+    //std::map<std::shared_ptr<openspace::DownloadManager::FileFuture>, InfoWidget*> _futureInfoWidgetMap;
 
-    std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>> _futuresToAdd;
+    //std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>> _futuresToAdd;
     std::atomic_flag _mutex;
 
     std::unique_ptr<openspace::DownloadManager> _downloadManager;
+
+    ghoul::ThreadPool _threadPool;
 
 };
 

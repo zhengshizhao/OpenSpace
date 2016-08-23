@@ -175,7 +175,7 @@ std::future<DownloadManager::MemoryFile> ScreenSpaceImage::downloadImageToMemory
 {
     // This was changed and is now untested ---abock
 
-    std::packaged_task<DownloadManager::MemoryFile()> t = DownloadManager::download(url);
+    auto t = DownloadManager::download(url);
     auto future = t.get_future();
     std::thread thread(std::move(t));
     thread.detach();

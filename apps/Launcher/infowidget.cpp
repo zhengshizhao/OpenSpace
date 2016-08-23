@@ -75,28 +75,43 @@ InfoWidget::InfoWidget(QString name, int totalBytes)
     setLayout(layout);
 }
 
-void InfoWidget::update(std::shared_ptr<openspace::DownloadManager::FileFuture> f) {
+void InfoWidget::update(openspace::DownloadManager::File& f,
+                        size_t currentSize, size_t totalSize
+) 
+{
     _bytes->setText(
-        QString("%1 / %2")
-        .arg(f->currentSize)
-        .arg(f->totalSize)
+        QString("%1 / %2").arg(static_cast<int>(currentSize), static_cast<int>(totalSize))
     );
-    _progress->setValue(static_cast<int>(f->progress * 100));
+    float t = static_cast<float>(currentSize) / static_cast<float>(totalSize);
+    _progress->setValue(
+        static_cast<int>(t * 100.f)
+    );
 
-    if (f->errorMessage.empty()) {
-        QString t = "Time remaining %1 s";
-        _messagesLeft->setText(t.arg(static_cast<int>(f->secondsRemaining)));
-    }
-    else {
-        _messagesLeft->setText(QString::fromStdString(f->errorMessage));
+    if (!f.errorMessage.empty()) {
+        _messagesLeft->setText(QString::fromStdString(f.errorMessage));
     }
 }
 
+//void InfoWidget::update(std::shared_ptr<openspace::DownloadManager::FileFuture> f) {
+//    _bytes->setText(
+//        QString("%1 / %2")
+//        .arg(f->currentSize)
+//        .arg(f->totalSize)
+//    );
+//    _progress->setValue(static_cast<int>(f->progress * 100));
+//
+//    if (f->errorMessage.empty()) {
+//        QString t = "Time remaining %1 s";
+//        _messagesLeft->setText(t.arg(static_cast<int>(f->secondsRemaining)));
+//    }
+//    else {
+//        _messagesLeft->setText(QString::fromStdString(f->errorMessage));
+//    }
+//}
+
 void InfoWidget::update(libtorrent::torrent_status s) {
     _bytes->setText(
-        QString("%1 / %2")
-        .arg(s.total_wanted_done)
-        .arg(s.total_wanted)
+        QString("%1 / %2").arg(s.total_wanted_done, s.total_wanted)
     );
     float progress = static_cast<float>(s.total_wanted_done) / s.total_wanted;
     _progress->setValue(static_cast<int>(progress * 100));
