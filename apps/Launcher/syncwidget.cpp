@@ -183,8 +183,6 @@ SyncWidget::SyncWidget(QWidget* parent, Qt::WindowFlags f)
     _session->add_dht_router({ "router.bittorrent.com", 6881 });
     _session->add_dht_router({ "router.bitcomet.com", 6881 });
 
-
-
     QTimer* timer = new QTimer(this);
     QObject::connect(timer, SIGNAL(timeout()), this, SLOT(handleTimer()));
     timer->start(100);
@@ -356,6 +354,8 @@ void SyncWidget::clear() {
 //}
 
 void SyncWidget::syncButtonPressed() {
+    using DlManager = openspace::DownloadManager;
+
     clear();
 
     std::vector<std::string> scenes;
@@ -369,15 +369,31 @@ void SyncWidget::syncButtonPressed() {
 
     DownloadCollection::Collection collection = DownloadCollection::crawlScenes(scenes);
 
-    std::vector<openspace::DownloadManager::FileTask> result;
+    std::vector<DlManager::FileTask> result;
 
     LDEBUG("Direct Files");
     for (const DownloadCollection::DirectFile& df : collection.directFiles) {
         LDEBUG(df.url + " -> " + df.destination);
 
+        InfoWidget* w = new InfoWidget(QString::fromStdString(df.destination));
+        _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
+
         result.push_back(
-            openspace::DownloadManager::download(df.url, df.destination)
+            DlManager::download(
+                df.url,
+                df.destination,
+                [w](DlManager::File& f, size_t currentSize, size_t totalSize) {
+                    w->update(f, currentSize, totalSize);
+                }
+            )
         );
+        //if (future) {
+        //    InfoWidget* w = new InfoWidget(f.destination);
+        //    _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
+        //
+        //    _futures.push_back(future);
+        //    _futureInfoWidgetMap[future] = w;
+        //}
     }
 
     LDEBUG("File Requests");
@@ -441,7 +457,6 @@ void SyncWidget::syncButtonPressed() {
 
 
     for (openspace::DownloadManager::FileTask& t : result) {
-        //t();
         _threadPool.queue(std::move(t));
     }
 }

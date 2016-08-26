@@ -36,14 +36,12 @@ public:
         std::string module;
         std::string url;
         std::string destination;
-        //std::string baseDir;
     };
 
     struct FileRequest {
         std::string module;
         std::string identifier;
         std::string destination;
-        //std::string baseDir;
         int version;
     };
 
@@ -51,7 +49,6 @@ public:
         std::string module;
         std::string file;
         std::string destination;
-        //std::string baseDir;
     };
 
     struct Collection {

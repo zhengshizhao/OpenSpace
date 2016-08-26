@@ -92,6 +92,12 @@ struct hash<DownloadCollection::TorrentFile> {
 
 } // namespace std
 
+
+std::string fileNameFromUrl(std::string fileUrl) {
+    size_t pos = fileUrl.find_last_of('/');
+    return fileUrl.substr(pos + 1);
+}
+
 bool operator==(const DownloadCollection::DirectFile& lhs,
                 const DownloadCollection::DirectFile rhs)
 {
@@ -194,6 +200,9 @@ std::unordered_set<DownloadCollection::DirectFile> extractDirectDownloads(
         return {};
     }
 
+    ghoul::filesystem::Directory previousDirectory = FileSys.currentDirectory();
+    FileSys.setCurrentDirectory(ghoul::filesystem::File(module.dataFile).directoryName());
+
     ghoul::Dictionary files = data.value<ghoul::Dictionary>(FileDownloadKey);
     for (int i = 1; i <= files.size(); ++i) {
         if (!files.hasKeyAndValue<ghoul::Dictionary>(std::to_string(i))) {
@@ -216,7 +225,10 @@ std::unordered_set<DownloadCollection::DirectFile> extractDirectDownloads(
             );
             continue;
         }
+
         string url = d.value<string>(UrlKey);
+
+        string filename = fileNameFromUrl(url);
 
         string destination = ".";
         if (d.hasKeyAndValue<string>(DestinationKey)) {
@@ -226,8 +238,12 @@ std::unordered_set<DownloadCollection::DirectFile> extractDirectDownloads(
         result.insert({
             module.name,
             std::move(url),
+            absPath(FileSys.pathByAppendingComponent(destination, filename))
+            //absPath(destination)
         });
     }
+    
+    FileSys.setCurrentDirectory(previousDirectory);
 
     return result;
 }
