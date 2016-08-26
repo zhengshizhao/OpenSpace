@@ -24,18 +24,15 @@
 
 #include <modules/globebrowsing/geometry/geodetic2.h>
 
-#include <modules/globebrowsing/tile/tileprovider.h>
-#include <modules/globebrowsing/tile/tileprovidermanager.h>
+#include <modules/globebrowsing/tile/tileprovider/cachingtileprovider.h>
 
 #include <modules/globebrowsing/chunk/chunkindex.h>
-
-#include <openspace/engine/downloadmanager.h>
 
 #include <ghoul/io/texture/texturereader.h>
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/logging/logmanager.h>
 
-#include <sstream>
+#include <openspace/engine/openspaceengine.h>
 
 
 
@@ -47,15 +44,13 @@ namespace {
 
 namespace openspace {
 
-    const Tile Tile::TileUnavailable = {nullptr, nullptr, Tile::Status::Unavailable };
-
-
 
     CachingTileProvider::CachingTileProvider(std::shared_ptr<AsyncTileDataProvider> tileReader, 
         std::shared_ptr<TileCache> tileCache,
         int framesUntilFlushRequestQueue)
         : _asyncTextureDataProvider(tileReader)
         , _tileCache(tileCache)
+        , _framesUntilRequestFlush(framesUntilFlushRequestQueue)
         , _framesSinceLastRequestFlush(0)
     {
         
@@ -67,43 +62,57 @@ namespace openspace {
     }
 
 
-    void CachingTileProvider::prerender() {
+    void CachingTileProvider::update() {
         initTexturesFromLoadedData();
         if (_framesSinceLastRequestFlush++ > _framesUntilRequestFlush) {
             clearRequestQueue();
         }
     }
 
-    std::shared_ptr<AsyncTileDataProvider> CachingTileProvider::getAsyncTileReader() {
-        return _asyncTextureDataProvider;
+    void CachingTileProvider::reset() {
+        _tileCache->clear();
+        _asyncTextureDataProvider->reset();
+    }
+
+    int CachingTileProvider::maxLevel() {
+        return _asyncTextureDataProvider->getTextureDataProvider()->maxChunkLevel();
     }
 
     Tile CachingTileProvider::getTile(const ChunkIndex& chunkIndex) {
         Tile tile = Tile::TileUnavailable;
 
-        auto tileDataset = _asyncTextureDataProvider->getTextureDataProvider();
-        if (chunkIndex.level > tileDataset->getMaximumLevel()) {
+        
+        if (chunkIndex.level > maxLevel()) {
             tile.status = Tile::Status::OutOfRange;
             return tile;
         }
 
-        HashKey key = chunkIndex.hashKey();
+        ChunkHashKey key = chunkIndex.hashKey();
 
         if (_tileCache->exist(key)) {
             return _tileCache->get(key);
         }
         else {
-            _asyncTextureDataProvider->enqueueTextureData(chunkIndex);
+            _asyncTextureDataProvider->enqueueTileIO(chunkIndex);
         }
         
         return tile;
     }
 
+    Tile CachingTileProvider::getDefaultTile() {
+        if (_defaultTile.texture == nullptr) {
+            _defaultTile = createTile(_asyncTextureDataProvider->getTextureDataProvider()->defaultTileData());
+        }
+        return _defaultTile;
+    }
+
 
     void CachingTileProvider::initTexturesFromLoadedData() {
-        while (_asyncTextureDataProvider->hasLoadedTextureData()) {
-            std::shared_ptr<TileIOResult> tileIOResult = _asyncTextureDataProvider->nextTileIOResult();
-            initializeAndAddToCache(tileIOResult);
+        auto readyTileIOResults = _asyncTextureDataProvider->getTileIOResults();
+        for(auto tileIOResult : readyTileIOResults){
+            ChunkHashKey key = tileIOResult->chunkIndex.hashKey();
+            Tile tile = createTile(tileIOResult);
+            _tileCache->put(key, tile);
         }
     }
 
@@ -114,11 +123,11 @@ namespace openspace {
 
     Tile::Status CachingTileProvider::getTileStatus(const ChunkIndex& chunkIndex) {
         auto tileDataset = _asyncTextureDataProvider->getTextureDataProvider();
-        if (chunkIndex.level > tileDataset->getMaximumLevel()) {
+        if (chunkIndex.level > tileDataset->maxChunkLevel()) {
             return Tile::Status::OutOfRange;
         }
 
-        HashKey key = chunkIndex.hashKey();
+        ChunkHashKey key = chunkIndex.hashKey();
 
         if (_tileCache->exist(key)) {
             return _tileCache->get(key).status;
@@ -129,12 +138,12 @@ namespace openspace {
 
 
     Tile CachingTileProvider::getOrStartFetchingTile(ChunkIndex chunkIndex) {
-        HashKey hashkey = chunkIndex.hashKey();
+        ChunkHashKey hashkey = chunkIndex.hashKey();
         if (_tileCache->exist(hashkey)) {
             return _tileCache->get(hashkey);
         }
         else {
-            _asyncTextureDataProvider->enqueueTextureData(chunkIndex);
+            _asyncTextureDataProvider->enqueueTileIO(chunkIndex);
             return Tile::TileUnavailable;
         }
     }
@@ -144,9 +153,9 @@ namespace openspace {
     }
 
 
-    void CachingTileProvider::initializeAndAddToCache(std::shared_ptr<TileIOResult> tileIOResult) {
-        HashKey key = tileIOResult->chunkIndex.hashKey();
-        TileDataset::DataLayout dataLayout = _asyncTextureDataProvider->getTextureDataProvider()->getDataLayout();
+    Tile CachingTileProvider::createTile(std::shared_ptr<TileIOResult> tileIOResult) {
+        ChunkHashKey key = tileIOResult->chunkIndex.hashKey();
+        TileDataLayout dataLayout = _asyncTextureDataProvider->getTextureDataProvider()->getDataLayout();
         Texture* texturePtr = new Texture(
             tileIOResult->imageData,
             tileIOResult->dimensions,
@@ -155,13 +164,13 @@ namespace openspace {
             dataLayout.glType,
             Texture::FilterMode::Linear,
             Texture::WrappingMode::ClampToEdge);
-        
+
         // The texture should take ownership of the data
         std::shared_ptr<Texture> texture = std::shared_ptr<Texture>(texturePtr);
-        //texture->setFilter(ghoul::opengl::Texture::FilterMode::AnisotropicMipMap);
-
-        texture->uploadTexture();
         
+        texture->uploadTexture();
+        // AnisotropicMipMap must be set after texture is uploaded. Why?!
+        texture->setFilter(ghoul::opengl::Texture::FilterMode::AnisotropicMipMap);
 
         Tile tile = {
             texture,
@@ -169,7 +178,7 @@ namespace openspace {
             tileIOResult->error == CE_None ? Tile::Status::OK : Tile::Status::IOError
         };
 
-        _tileCache->put(key, tile);
+        return tile;
     }
 
 

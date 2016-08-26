@@ -96,6 +96,9 @@ RenderableDebugPlane::RenderableDebugPlane(const ghoul::Dictionary& dictionary)
         _billboard = billboard;
     }
 
+    int texture;
+    if (dictionary.getValue("Texture", texture))
+        _texture = texture;
     addProperty(_texture);
 
     addProperty(_billboard);

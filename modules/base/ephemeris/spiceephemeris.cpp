@@ -73,7 +73,7 @@ SpiceEphemeris::SpiceEphemeris(const ghoul::Dictionary& dictionary)
     }
 }
     
-const psc& SpiceEphemeris::position() const {
+const glm::dvec3& SpiceEphemeris::position() const {
     return _position;
 }
 
@@ -82,7 +82,8 @@ void SpiceEphemeris::update(const UpdateData& data) {
         return;
 
     double lightTime = 0.0;
-    glm::dvec3 position = SpiceManager::ref().targetPosition(_targetName, _originName, "GALACTIC", {}, data.time, lightTime);
+    glm::dvec3 position = SpiceManager::ref().targetPosition(
+        _targetName, _originName, "GALACTIC", {}, data.time, lightTime);
     
     //double interval = openspace::ImageSequencer::ref().getIntervalLength();
     //if (_ghosting == "TRUE" && interval > 60){
@@ -91,8 +92,11 @@ void SpiceEphemeris::update(const UpdateData& data) {
     //        "GALACTIC", "NONE", _time, position, lightTime);
     //}
     //
-    _position = psc::CreatePowerScaledCoordinate(position.x, position.y, position.z);
-    _position[3] += 3;
+    
+    
+    //_position = psc::CreatePowerScaledCoordinate(position.x, position.y, position.z);
+    //_position[3] += 3;
+    _position = position * glm::pow(10.0, 3.0);
 }
 
 } // namespace openspace

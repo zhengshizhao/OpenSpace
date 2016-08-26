@@ -22,120 +22,56 @@
 * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
 ****************************************************************************************/
 
-#ifndef __TILE_PROVIDER_H__
-#define __TILE_PROVIDER_H__
-
-#include <gdal_priv.h>
-
-#include <openspace/engine/downloadmanager.h>
-#include <set>
+#ifndef __CHUNK_INDEX_TILE_PROVIDER_H__
+#define __CHUNK_INDEX_TILE_PROVIDER_H__
 
 #include <ghoul/logging/logmanager.h>
 #include <ghoul/filesystem/filesystem.h> // absPath
 #include <ghoul/opengl/texture.h>
+
 #include <ghoul/io/texture/texturereader.h>
 
-#include <modules/globebrowsing/geometry/geodetic2.h>
+#include <ghoul/font/fontrenderer.h>
+#include <ghoul/font/fontmanager.h>
 
 #include <modules/globebrowsing/tile/asynctilereader.h>
-
+#include <modules/globebrowsing/tile/tileprovider/tileprovider.h>
 #include <modules/globebrowsing/other/lrucache.h>
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
-//									TILE PROVIDER									    //
+//                                    TILE PROVIDER                                        //
 //////////////////////////////////////////////////////////////////////////////////////////
 
+
 namespace openspace {
-    using namespace ghoul::opengl;
-
     
-
-
-    struct Tile {
-        std::shared_ptr<Texture> texture;
-        std::shared_ptr<TilePreprocessData> preprocessData;
-
-        enum class Status { Unavailable, OutOfRange, IOError, OK } status;
     
-        static const Tile TileUnavailable;
-    };
-
-
-    
-    class TileProvider {
+    class ChunkIndexTileProvider : public TileProvider {
     public:
-        virtual ~TileProvider() { }
+        ChunkIndexTileProvider(const glm::uvec2& textureSize = {512, 512}, size_t fontSize = 48);
+        virtual ~ChunkIndexTileProvider();
 
-        virtual Tile getTile(const ChunkIndex& chunkIndex) = 0;
-        virtual Tile::Status getTileStatus(const ChunkIndex& index) = 0;
-        virtual TileDepthTransform depthTransform() = 0;
-        virtual void prerender() = 0;
-        virtual std::shared_ptr<AsyncTileDataProvider> getAsyncTileReader() = 0;
-    };
-
-
-    typedef LRUCache<HashKey, Tile> TileCache;
-
-
-    /**
-        Provides tiles through GDAL datasets which can be defined with xml files
-        for example for wms.
-    */
-    class CachingTileProvider : public TileProvider {
-    public:
-
-
-        CachingTileProvider(
-            std::shared_ptr<AsyncTileDataProvider> tileReader, 
-            std::shared_ptr<TileCache> tileCache,
-            int framesUntilFlushRequestQueue);
-
-        virtual ~CachingTileProvider();
-        
         virtual Tile getTile(const ChunkIndex& chunkIndex);
+        virtual Tile getDefaultTile();
         virtual Tile::Status getTileStatus(const ChunkIndex& index);
         virtual TileDepthTransform depthTransform();
-        virtual void prerender();
-        virtual std::shared_ptr<AsyncTileDataProvider> getAsyncTileReader();
-
-
+        virtual void update();
+        virtual void reset();
+        virtual int maxLevel();
     private:
+        Tile createChunkIndexTile(const ChunkIndex& chunkIndex);
 
-
-        //////////////////////////////////////////////////////////////////////////////////
-        //                                Helper functions                              //
-        //////////////////////////////////////////////////////////////////////////////////
+        std::shared_ptr<ghoul::fontrendering::Font> _font;
+        std::unique_ptr<ghoul::fontrendering::FontRenderer> _fontRenderer;
         
-        Tile getOrStartFetchingTile(ChunkIndex chunkIndex);
-
-
+        TileCache _tileCache;
+        glm::uvec2 _textureSize;
+        size_t _fontSize;
         
-        /**
-            Creates an OpenGL texture and pushes the data to the GPU.
-        */
-        void initializeAndAddToCache(std::shared_ptr<TileIOResult> uninitedTexture);
+        GLuint _fbo;
 
-        void clearRequestQueue();
-
-        void initTexturesFromLoadedData();
-
-
-
-        //////////////////////////////////////////////////////////////////////////////////
-        //                                Member variables                              //
-        //////////////////////////////////////////////////////////////////////////////////
-
-        std::shared_ptr<TileCache> _tileCache;
-
-        int _framesSinceLastRequestFlush;
-        int _framesUntilRequestFlush;
-
-
-        std::shared_ptr<AsyncTileDataProvider> _asyncTextureDataProvider;
     };
-
-    
 
 
 }  // namespace openspace
@@ -143,4 +79,4 @@ namespace openspace {
 
 
 
-#endif  // __TILE_PROVIDER_H__
+#endif  // __CHUNK_INDEX_TILE_PROVIDER_H__
