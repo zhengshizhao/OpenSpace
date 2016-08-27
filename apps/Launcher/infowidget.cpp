@@ -75,10 +75,7 @@ InfoWidget::InfoWidget(QString name, int totalBytes)
     setLayout(layout);
 }
 
-void InfoWidget::update(openspace::DownloadManager::File& f,
-                        size_t currentSize, size_t totalSize
-) 
-{
+void InfoWidget::update(size_t currentSize, size_t totalSize, std::string errorMessage) {
     _bytes->setText(
         QString("%1 / %2").arg(static_cast<int>(currentSize), static_cast<int>(totalSize))
     );
@@ -87,27 +84,10 @@ void InfoWidget::update(openspace::DownloadManager::File& f,
         static_cast<int>(t * 100.f)
     );
 
-    if (!f.errorMessage.empty()) {
-        _messagesLeft->setText(QString::fromStdString(f.errorMessage));
+    if (!errorMessage.empty()) {
+        _messagesLeft->setText(QString::fromStdString(errorMessage));
     }
 }
-
-//void InfoWidget::update(std::shared_ptr<openspace::DownloadManager::FileFuture> f) {
-//    _bytes->setText(
-//        QString("%1 / %2")
-//        .arg(f->currentSize)
-//        .arg(f->totalSize)
-//    );
-//    _progress->setValue(static_cast<int>(f->progress * 100));
-//
-//    if (f->errorMessage.empty()) {
-//        QString t = "Time remaining %1 s";
-//        _messagesLeft->setText(t.arg(static_cast<int>(f->secondsRemaining)));
-//    }
-//    else {
-//        _messagesLeft->setText(QString::fromStdString(f->errorMessage));
-//    }
-//}
 
 void InfoWidget::update(libtorrent::torrent_status s) {
     _bytes->setText(

@@ -40,7 +40,7 @@ Q_OBJECT
 public:
     InfoWidget(QString name, int totalBytes = -1);
 
-    void update(openspace::DownloadManager::File& f, size_t currentSize, size_t totalSize);
+    void update(size_t currentSize, size_t totalSize, std::string errorMessage);
     void update(libtorrent::torrent_status s);
 
     void error(QString message);

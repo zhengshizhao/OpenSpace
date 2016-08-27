@@ -63,14 +63,18 @@ private slots:
     void closeEvent(QCloseEvent* event);
 
 private:
-    struct ModuleInformation {
-        QString moduleName;
-        QString moduleDatafile;
-        QString modulePath;
-    };
-
     void clear();
     QStringList selectedScenes() const;
+
+    struct UpdateInformation {
+        InfoWidget* widget;
+        std::string errorMessage;
+        size_t currentSize;
+        size_t totalSize;
+    };
+    std::mutex _updateInformationMutex;
+    std::vector<UpdateInformation> _updateInformation;
+
 
     //void handleFileFutureAddition(const std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>>& futures);
 
