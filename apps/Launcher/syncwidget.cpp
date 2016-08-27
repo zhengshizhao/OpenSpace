@@ -427,29 +427,38 @@ void SyncWidget::syncButtonPressed() {
     LDEBUG("Torrent Files");
     for (const DownloadCollection::TorrentFile& tf : collection.torrentFiles) {
         LDEBUG(tf.file + " -> " + tf.destination);
-        if (!FileSys.fileExists(tf.file)) {
-            LERROR(fmt::format("Torrent file '{}' did not exist", tf.file));
+
+        ghoul::filesystem::Directory d = FileSys.currentDirectory();
+        FileSys.setCurrentDirectory(tf.destination);
+        
+        std::string fullFile = absPath(tf.file);
+        std::string fullDestination = absPath(tf.destination);
+        
+        FileSys.setCurrentDirectory(d);
+
+        if (!FileSys.fileExists(fullFile)) {
+            LERROR(fmt::format("Torrent file '{}' did not exist", fullFile));
             continue;
         }
 
         libtorrent::error_code ec;
         libtorrent::add_torrent_params p;
 
-        p.save_path = tf.destination;
+        p.save_path = fullDestination;
 
         //p.save_path = absPath(f.destination.toStdString());
 
-        p.ti = new libtorrent::torrent_info(tf.file, ec);
+        p.ti = new libtorrent::torrent_info(fullFile, ec);
         p.name = tf.file;
         p.storage_mode = libtorrent::storage_mode_allocate;
         p.auto_managed = true;
         if (ec) {
-            LERROR(tf.file << ": " << ec.message());
+            LERROR(fullFile << ": " << ec.message());
             continue;
         }
         libtorrent::torrent_handle h = _session->add_torrent(p, ec);
         if (ec) {
-            LERROR(tf.file << ": " << ec.message());
+            LERROR(fullFile << ": " << ec.message());
             continue;
         }
 
@@ -461,7 +470,7 @@ void SyncWidget::syncButtonPressed() {
             //fileString = tf. f.module + "/" + fileString;
 
             InfoWidget* w = new InfoWidget(
-                QString::fromStdString(tf.file),
+                QString::fromStdString(fullFile),
                 h.status().total_wanted
             );
             _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
