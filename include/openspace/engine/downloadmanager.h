@@ -44,6 +44,11 @@ namespace openspace {
 
 class DownloadManager {
 public:
+    enum class OverrideFiles {
+        Yes = 0,
+        No
+    };
+
     struct DownloadException : public ghoul::RuntimeError {
         explicit DownloadException(std::string msg);
     };
@@ -73,24 +78,8 @@ public:
         void(File& f, size_t currentSize, size_t totalSize)
     >;
 
-    //template <typename F, typename Callback>
-    //struct Task : public std::packaged_task<F(Callback)> {
-    //    //Task(std::function<F(Callback)> f) : std::packaged_task<F(Callback)>(std::move(f)) {}
-
-    //    Task(const Task& rhs) = default;
-    //    Task(Task&& rhs) = default;
-
-    //    void operator()(Callback cb = Callback()) {
-    //        std::packaged_task<F(Callback)>::operator()(cb);
-    //    }
-    //};
-
-    //using MemoryFileTask = Task<MemoryFile, ProgressCallbackMemory>;
-    //using FileTask = Task<File, ProgressCallbackFile>;
-
     using MemoryFileTask = std::packaged_task<MemoryFile()>;
     using FileTask = std::packaged_task<File()>;
-
 
     static void initialize();
     static void deinitialize();
@@ -127,7 +116,8 @@ public:
         const std::string& identifier,
         int version,
         const ghoul::filesystem::Directory& destination = ".",
-        bool overrideFiles = true
+        OverrideFiles overrideFiles = OverrideFiles::Yes,
+        ProgressCallbackFile progress = ProgressCallbackFile()
     ) const;
 
 private:

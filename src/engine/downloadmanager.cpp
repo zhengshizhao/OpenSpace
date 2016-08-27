@@ -280,7 +280,8 @@ std::vector<DownloadManager::FileTask> DownloadManager::requestFiles(
     const std::string& identifier,
     int version,
     const ghoul::filesystem::Directory& destination,
-    bool overrideFiles) const
+    OverrideFiles overrideFiles,
+    ProgressCallbackFile progress) const
 {
 
     std::string url = selectRequestUrl();
@@ -301,17 +302,13 @@ std::vector<DownloadManager::FileTask> DownloadManager::requestFiles(
         std::string(reqFile.buffer.begin(), reqFile.buffer.end())
     );
 
-    //ghoul::filesystem::Directory d = FileSys.currentDirectory();
-    //FileSys.setCurrentDirectory(f.baseDir.toStdString());
-
-
     std::vector<FileTask> result;
     for (const std::string& fileUrl : fileUrls) {
         std::string file = fileNameFromUrl(fileUrl);
         std::string fullPath = FileSys.pathByAppendingComponent(destination, file);
 
         result.push_back(
-            download(fileUrl, fullPath, -1)
+            download(fileUrl, fullPath, -1, progress)
         );
     }
 
