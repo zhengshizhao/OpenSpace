@@ -74,8 +74,16 @@ public:
         void(MemoryFile& f, size_t currentSize, size_t totalSize)
     >;
 
+    using FinishedCallbackMemory = std::function<
+        void(MemoryFile& f)
+    >;
+
     using ProgressCallbackFile = std::function<
         void(File& f, size_t currentSize, size_t totalSize)
+    >;
+
+    using FinishedCallbackFile = std::function<
+        void(File& f)
     >;
 
     using MemoryFileTask = std::packaged_task<MemoryFile()>;
@@ -85,7 +93,8 @@ public:
     static void deinitialize();
 
     static MemoryFileTask download(const std::string& url, int64_t identifier = 0,
-        ProgressCallbackMemory progress = ProgressCallbackMemory()
+        ProgressCallbackMemory progress = ProgressCallbackMemory(),
+        FinishedCallbackMemory finished = FinishedCallbackMemory()
     );
 
     static MemoryFile downloadSync(
@@ -97,7 +106,8 @@ public:
 
 
     static FileTask download(const std::string& url, const std::string& filename,
-        int64_t identifier = 0, ProgressCallbackFile progress = ProgressCallbackFile()
+        int64_t identifier = 0, ProgressCallbackFile progress = ProgressCallbackFile(),
+        FinishedCallbackFile finished = FinishedCallbackFile()
     );
 
     static File downloadSync(
@@ -119,6 +129,11 @@ public:
         OverrideFiles overrideFiles = OverrideFiles::Yes,
         ProgressCallbackFile progress = ProgressCallbackFile()
     ) const;
+
+    std::vector<std::string> requestFiles(
+        const std::string& identifier,
+        int version
+    );
 
 private:
     std::string request(const std::string& url, const std::string& identfier, int version) const;

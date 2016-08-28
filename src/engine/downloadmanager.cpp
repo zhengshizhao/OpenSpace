@@ -132,10 +132,11 @@ void DownloadManager::deinitialize() {}
 
 DownloadManager::MemoryFileTask DownloadManager::download(const std::string& url,
                                                           int64_t identifier,
-                                                          ProgressCallbackMemory progress)
+                                                          ProgressCallbackMemory progress,
+                                                          FinishedCallbackMemory finished)
 {
     return MemoryFileTask(
-        [url, identifier, progress]() {
+        [url, identifier, progress, finished]() {
         
         MemoryFile file;
         file.identifier = identifier;
@@ -180,6 +181,10 @@ DownloadManager::MemoryFileTask DownloadManager::download(const std::string& url
         else {
             file.errorMessage = curl_easy_strerror(res);
         }
+
+        if (finished) {
+            finished(file);
+        }
         curl_easy_cleanup(curl);
 
         return std::move(file);
@@ -198,10 +203,11 @@ DownloadManager::MemoryFile DownloadManager::downloadSync(const std::string& url
 DownloadManager::FileTask DownloadManager::download(const std::string& url,
                                                     const std::string& filename,
                                                     int64_t identifier,
-                                                    ProgressCallbackFile progress)
+                                                    ProgressCallbackFile progress,
+                                                    FinishedCallbackFile finished)
 {
     return FileTask(
-        [url, filename, identifier, progress](){
+        [url, filename, identifier, progress, finished](){
         
         FileSys.createDirectory(
             ghoul::filesystem::File(filename).directoryName(),
@@ -254,8 +260,13 @@ DownloadManager::FileTask DownloadManager::download(const std::string& url,
         else {
             file.errorMessage = curl_easy_strerror(res);
         }
+        if (finished) {
+            finished(file);
+        }
+
         curl_easy_cleanup(curl);
         fclose(fp);
+
 
         return std::move(file);
     });
@@ -302,6 +313,7 @@ std::vector<DownloadManager::FileTask> DownloadManager::requestFiles(
         std::string(reqFile.buffer.begin(), reqFile.buffer.end())
     );
 
+
     std::vector<FileTask> result;
     for (const std::string& fileUrl : fileUrls) {
         std::string file = fileNameFromUrl(fileUrl);
@@ -313,6 +325,31 @@ std::vector<DownloadManager::FileTask> DownloadManager::requestFiles(
     }
 
     return result;
+}
+
+std::vector<std::string> DownloadManager::requestFiles(const std::string& identifier,
+                                                       int version)
+{
+
+    std::string url = selectRequestUrl();
+    std::string req = request(url, identifier, version);
+
+    // This should be changed to an asynchronous call when C++ std::future .then is
+    // implemented
+    MemoryFile reqFile = downloadSync(req);
+
+    if (!reqFile.errorMessage.empty()) {
+        throw DownloadException(reqFile.errorMessage);
+    }
+    if (reqFile.contentType != "text/plain") {
+        throw DownloadException("Wrong content type for request: " + reqFile.contentType);
+    }
+
+    std::vector<std::string> fileUrls = extractLinesFromRequest(
+        std::string(reqFile.buffer.begin(), reqFile.buffer.end())
+    );
+
+    return fileUrls;
 }
 
 std::string DownloadManager::request(const std::string& url, const std::string& identfier, int version) const {
