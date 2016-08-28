@@ -240,12 +240,37 @@ void SyncWidget::clear() {
     {
         delete i.value();
     }
+
+    _updateInformation.clear();
+    _finishedInformation.clear();
+
     _torrentInfoWidgetMap.clear();
     _session->abort();
 }
 
 void SyncWidget::syncButtonPressed() {
     using DlManager = openspace::DownloadManager;
+
+    auto downloadFile = [this](std::string url, std::string destination, InfoWidget* w) {
+        return DlManager::download(
+            url,
+            destination,
+            0,
+            [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
+                std::lock_guard<std::mutex> lock(_updateInformationMutex);
+                _updateInformation[w] = {
+                    f.errorMessage,
+                    currentSize,
+                    totalSize
+                };
+            },
+            [this, w](DlManager::File& f) {
+                std::lock_guard<std::mutex> lock(_updateInformationMutex);
+                _finishedInformation.push_back(w);
+            }
+        );
+    };
+
 
     clear();
 
@@ -270,25 +295,7 @@ void SyncWidget::syncButtonPressed() {
         InfoWidget* w = new InfoWidget(QString::fromStdString(df.destination));
         _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
 
-        result.push_back(
-            DlManager::download(
-                df.url,
-                df.destination,
-                0,
-                [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
-                    std::lock_guard<std::mutex> lock(_updateInformationMutex);
-                    _updateInformation[w] = {
-                        f.errorMessage,
-                        currentSize,
-                        totalSize
-                    };
-                },
-                [this, w](DlManager::File& f) {
-                    std::lock_guard<std::mutex> lock(_updateInformationMutex);
-                    _finishedInformation.push_back(w);
-                }
-            )
-        );
+        result.push_back(downloadFile(df.url, df.destination, w));
     }
 
     LDEBUG("File Requests");
@@ -306,26 +313,11 @@ void SyncWidget::syncButtonPressed() {
             InfoWidget* w = new InfoWidget(QString::fromStdString(file));
             _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
 
-
-            result.push_back(
-                DlManager::download(
-                    url,
-                    FileSys.pathByAppendingComponent(fr.destination, file),
-                    0,
-                    [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
-                        std::lock_guard<std::mutex> lock(_updateInformationMutex);
-                        _updateInformation[w] = {
-                            f.errorMessage,
-                            currentSize,
-                            totalSize
-                        };
-                    },
-                    [this, w](DlManager::File& f) {
-                        std::lock_guard<std::mutex> lock(_updateInformationMutex);
-                        _finishedInformation.push_back(w);
-                    }
-                )
-            );
+            result.push_back(downloadFile(
+                url,
+                FileSys.pathByAppendingComponent(fr.destination, file),
+                w
+            ));
         }
     }
 
