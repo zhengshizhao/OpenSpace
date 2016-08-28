@@ -358,12 +358,6 @@ void SyncWidget::syncButtonPressed() {
         }
 
         if (_torrentInfoWidgetMap.find(h) == _torrentInfoWidgetMap.end()) {
-            //QString fileString = QString::fromStdString(tf.file);
-            //QString t = QString(".torrent");
-            //fileString.replace(fileString.indexOf(t), t.size(), "");
-
-            //fileString = tf. f.module + "/" + fileString;
-
             InfoWidget* w = new InfoWidget(
                 QString::fromStdString(fullFile),
                 h.status().total_wanted

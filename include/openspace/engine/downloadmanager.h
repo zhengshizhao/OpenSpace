@@ -68,8 +68,6 @@ public:
 
     };
 
-    static std::string fileExtension(const std::string& contentType);
-
     using ProgressCallbackMemory = std::function<
         void(MemoryFile& f, size_t currentSize, size_t totalSize)
     >;
@@ -92,6 +90,8 @@ public:
     static void initialize();
     static void deinitialize();
 
+    static std::string fileExtension(const std::string& contentType);
+
     static MemoryFileTask download(const std::string& url, int64_t identifier = 0,
         ProgressCallbackMemory progress = ProgressCallbackMemory(),
         FinishedCallbackMemory finished = FinishedCallbackMemory()
@@ -102,8 +102,6 @@ public:
         int64_t identifier = 0,
         ProgressCallbackMemory progress = ProgressCallbackMemory()
     );
-
-
 
     static FileTask download(const std::string& url, const std::string& filename,
         int64_t identifier = 0, ProgressCallbackFile progress = ProgressCallbackFile(),
@@ -118,7 +116,7 @@ public:
     );
     
 
-
+    // non-static methods
 
     DownloadManager(std::vector<std::string> requestUrls, int applicationVersion);
     
@@ -137,103 +135,4 @@ private:
 
 } // namespace openspace
 
-
 #endif // __DOWNLOADMANAGER_H__
-
-/*
-#ifndef __DOWNLOADMANAGER_H__
-#define __DOWNLOADMANAGER_H__
-
-#include <ghoul/filesystem/file.h>
-#include <ghoul/filesystem/directory.h>
-
-#include <functional>
-#include <memory>
-#include <string>
-#include <vector>
-#include <future>
-
-namespace openspace {
-
-// Multithreaded
-class DownloadManager {
-public:
-    struct FileFuture {
-        // Since the FileFuture object will be used from multiple threads, we have to be
-        // careful about the access pattern, that is, no values should be read and written
-        // by both the DownloadManager and the outside threads.
-        FileFuture(std::string file);
-
-        // Values that are written by the DownloadManager to be consumed by others
-        long long currentSize;
-        long long totalSize;
-        float progress; // [0,1]
-        float secondsRemaining;
-        bool isFinished;
-        bool isAborted;
-        std::string filePath;
-        std::string errorMessage;
-        std::string format;
-        // Values set by others to be consumed by the DownloadManager
-        bool abortDownload;
-    };
-
-    struct MemoryFile {
-        char* buffer;
-        size_t size;
-        std::string format;
-        bool corrupted;
-    };
-
-    using DownloadProgressCallback = std::function<void(const FileFuture&)>;
-    using DownloadFinishedCallback = std::function<void(const FileFuture&)>;
-
-    using SuccessCallback = std::function<void(const MemoryFile&)>;
-    using ErrorCallback = std::function<void(const std::string&)>;
-
-    using RequestFinishedCallback = std::function<void(std::string)>;
-    using AsyncDownloadFinishedCallback =
-        std::function<void(const std::vector<std::shared_ptr<FileFuture>>&)>;
-
-
-
-    DownloadManager(std::string requestURL, int applicationVersion,
-        bool useMultithreadedDownload = true);
-
-    // callbacks happen on a different thread
-    std::shared_ptr<FileFuture> downloadFile(const std::string& url, const ghoul::filesystem::File& file,
-        bool overrideFile = true,
-        DownloadFinishedCallback finishedCallback = DownloadFinishedCallback(),
-        DownloadProgressCallback progressCallback = DownloadProgressCallback()
-    );
-
-    std::future<MemoryFile> fetchFile(
-    const std::string& url,
-    SuccessCallback successCallback = SuccessCallback(), ErrorCallback errorCallback = ErrorCallback());
-
-    std::vector<std::shared_ptr<FileFuture>> downloadRequestFiles(const std::string& identifier,
-        const ghoul::filesystem::Directory& destination, int version,
-        bool overrideFiles = true,
-        DownloadFinishedCallback finishedCallback = DownloadFinishedCallback(),
-        DownloadProgressCallback progressCallback = DownloadProgressCallback()
-    );
-
-    void downloadRequestFilesAsync(const std::string& identifier,
-        const ghoul::filesystem::Directory& destination, int version,
-        bool overrideFiles, AsyncDownloadFinishedCallback callback
-    );
-
-    void getFileExtension(const std::string& url,
-        RequestFinishedCallback finishedCallback = RequestFinishedCallback());
-
-private:
-    std::vector<std::string> _requestURL;
-    int _applicationVersion;
-    bool _useMultithreadedDownload;
-};
-
-} // namespace openspace
-
-#endif // __DOWNLOADMANAGER_H__
-
-*/
