@@ -287,46 +287,6 @@ DownloadManager::DownloadManager(std::vector<std::string> requestUrls, int appVe
 {}
 
 
-std::vector<DownloadManager::FileTask> DownloadManager::requestFiles(
-    const std::string& identifier,
-    int version,
-    const ghoul::filesystem::Directory& destination,
-    OverrideFiles overrideFiles,
-    ProgressCallbackFile progress) const
-{
-
-    std::string url = selectRequestUrl();
-    std::string req = request(url, identifier, version);
-
-    // This should be changed to an asynchronous call when C++ std::future .then is
-    // implemented
-    MemoryFile reqFile = downloadSync(req);
-
-    if (!reqFile.errorMessage.empty()) {
-        throw DownloadException(reqFile.errorMessage);
-    }
-    if (reqFile.contentType != "text/plain") {
-        throw DownloadException("Wrong content type for request: " + reqFile.contentType);
-    }
-
-    std::vector<std::string> fileUrls = extractLinesFromRequest(
-        std::string(reqFile.buffer.begin(), reqFile.buffer.end())
-    );
-
-
-    std::vector<FileTask> result;
-    for (const std::string& fileUrl : fileUrls) {
-        std::string file = fileNameFromUrl(fileUrl);
-        std::string fullPath = FileSys.pathByAppendingComponent(destination, file);
-
-        result.push_back(
-            download(fileUrl, fullPath, -1, progress)
-        );
-    }
-
-    return result;
-}
-
 std::vector<std::string> DownloadManager::requestFiles(const std::string& identifier,
                                                        int version)
 {

@@ -122,14 +122,6 @@ public:
 
     DownloadManager(std::vector<std::string> requestUrls, int applicationVersion);
     
-    std::vector<FileTask> requestFiles(
-        const std::string& identifier,
-        int version,
-        const ghoul::filesystem::Directory& destination = ".",
-        OverrideFiles overrideFiles = OverrideFiles::Yes,
-        ProgressCallbackFile progress = ProgressCallbackFile()
-    ) const;
-
     std::vector<std::string> requestFiles(
         const std::string& identifier,
         int version
