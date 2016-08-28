@@ -58,19 +58,6 @@ public:
     };
 
     static Collection crawlScenes(const std::vector<std::string>& scenes);
-
-    //static std::vector<openspace::DownloadManager::FileTask> downloadTasks(
-    //    Collection collection, const openspace::DownloadManager& manager
-    //);
-
-    //static uint64_t id(const Collection& collection, const DirectFile& directFile);
-    //static uint64_t id(const Collection& collection, const FileRequest& fileRequest);
-    //static uint64_t id(const Collection& collection, const TorrentFile& torrentFile);
-
-    //static const DirectFile& directFile(const Collection& collection, uint64_t id);
-    //static const FileRequest& fileRequest(const Collection& collection, uint64_t id);
-    //static const TorrentFile& torrentFile(const Collection& collection, uint64_t id);
-
 };
 
 #endif // __DOWNLOADCOLLECTION_H__

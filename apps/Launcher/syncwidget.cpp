@@ -233,9 +233,6 @@ void SyncWidget::setSceneFiles(QMap<QString, QString> sceneFiles) {
 }
 
 void SyncWidget::clear() {
-    //for (std::shared_ptr<openspace::DownloadManager::FileFuture> f : _futures)
-    //    f->abortDownload = true;
-
     using libtorrent::torrent_handle;
     for (QMap<torrent_handle, InfoWidget*>::iterator i = _torrentInfoWidgetMap.begin();
          i != _torrentInfoWidgetMap.end();
@@ -245,114 +242,7 @@ void SyncWidget::clear() {
     }
     _torrentInfoWidgetMap.clear();
     _session->abort();
-
-
-    //_directFiles.clear();
-    //_fileRequests.clear();
-    //_torrentFiles.clear();
 }
-
-//void SyncWidget::handleDirectFiles() {
-//    LDEBUG("Direct Files");
-//    for (const DirectFile& f : _directFiles) {
-//        LDEBUG(f.url.toStdString() << " -> " << f.destination.toStdString());
-//
-//        std::shared_ptr<openspace::DownloadManager::FileFuture> future = _downloadManager->downloadFile(
-//            f.url.toStdString(),
-//            absPath("${SCENE}/" + f.module.toStdString() + "/" + f.destination.toStdString()),
-//            OverwriteFiles
-//        );
-//        if (future) {
-//            InfoWidget* w = new InfoWidget(f.destination);
-//            _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
-//
-//            _futures.push_back(future);
-//            _futureInfoWidgetMap[future] = w;
-//        }
-//    }
-//}
-//
-//void SyncWidget::handleFileRequest() {
-//    LDEBUG("File Requests");
-//    for (const FileRequest& f : _fileRequests) {
-//        LDEBUG(f.identifier.toStdString() << " (" << f.version << ") -> " << f.destination.toStdString()); 
-//
-//        ghoul::filesystem::Directory d = FileSys.currentDirectory();
-////        std::string thisDirectory = absPath("${SCENE}/" + f.module.toStdString() + "/");
-//        FileSys.setCurrentDirectory(f.baseDir.toStdString());
-//
-//
-//        std::string identifier =  f.identifier.toStdString();
-//        std::string path = absPath(f.destination.toStdString());
-//        int version = f.version;
-//
-//        _downloadManager->downloadRequestFilesAsync(
-//            identifier,
-//            path,
-//            version,
-//            OverwriteFiles,
-//            std::bind(&SyncWidget::handleFileFutureAddition, this, std::placeholders::_1)
-//        );
-//
-//        FileSys.setCurrentDirectory(d);
-//    }
-//}
-//
-//void SyncWidget::handleTorrentFiles() {
-//    LDEBUG("Torrent Files");
-//    for (const TorrentFile& f : _torrentFiles) {
-//        LDEBUG(f.file.toStdString() << " -> " << f.destination.toStdString());
-//
-//        ghoul::filesystem::Directory d = FileSys.currentDirectory();
-////        std::string thisDirectory = absPath("${SCENE}/" + f.module.toStdString() + "/");
-//        FileSys.setCurrentDirectory(f.baseDir.toStdString());
-////        FileSys.setCurrentDirectory(thisDirectory);
-//
-//        QString file = QString::fromStdString(absPath(f.file.toStdString()));
-//
-//        if (!QFileInfo(file).exists()) {
-//            LERROR(file.toStdString() << " does not exist");
-//            continue;
-//        }
-//
-//        libtorrent::error_code ec;
-//        libtorrent::add_torrent_params p;
-//
-//        //if (f.destination.isEmpty())
-//            //p.save_path = absPath(fullPath(f.module, ".").toStdString());
-//        //else
-//            //p.save_path = 
-//        p.save_path = absPath(f.destination.toStdString());
-//
-//        p.ti = new libtorrent::torrent_info(file.toStdString(), ec);
-//        p.name = f.file.toStdString();
-//        p.storage_mode = libtorrent::storage_mode_allocate;
-//        p.auto_managed = true;
-//        if (ec) {
-//            LERROR(f.file.toStdString() << ": " << ec.message());
-//            continue;
-//        }
-//        libtorrent::torrent_handle h = _session->add_torrent(p, ec);
-//        if (ec) {
-//            LERROR(f.file.toStdString() << ": " << ec.message());
-//            continue;
-//        }
-//
-//        if (_torrentInfoWidgetMap.find(h) == _torrentInfoWidgetMap.end()) {
-//            QString fileString = f.file;
-//            QString t = QString(".torrent");
-//            fileString.replace(fileString.indexOf(t), t.size(), "");
-//
-//            fileString = f.module + "/" + fileString;
-//
-//            InfoWidget* w = new InfoWidget(fileString, h.status().total_wanted);
-//            _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
-//            _torrentInfoWidgetMap[h] = w;
-//        }
-//
-//        FileSys.setCurrentDirectory(d);
-//    }
-//}
 
 void SyncWidget::syncButtonPressed() {
     using DlManager = openspace::DownloadManager;
@@ -392,12 +282,6 @@ void SyncWidget::syncButtonPressed() {
                         currentSize,
                         totalSize
                     };
-                    //_updateInformation.push_back({
-                    //    w,
-                    //    f.errorMessage,
-                    //    currentSize,
-                    //    totalSize
-                    //});
                 },
                 [this, w](DlManager::File& f) {
                     std::lock_guard<std::mutex> lock(_updateInformationMutex);
@@ -435,12 +319,6 @@ void SyncWidget::syncButtonPressed() {
                             currentSize,
                             totalSize
                         };
-                        //_updateInformation.push_back({
-                        //    w,
-                        //    f.errorMessage,
-                        //    currentSize,
-                        //    totalSize
-                        //});
                     },
                     [this, w](DlManager::File& f) {
                         std::lock_guard<std::mutex> lock(_updateInformationMutex);
@@ -449,30 +327,6 @@ void SyncWidget::syncButtonPressed() {
                 )
             );
         }
-
-
-        //std::vector<DlManager::FileTask> tasks = _downloadManager->requestFiles(
-        //    fr.identifier,
-        //    fr.version,
-        //    fr.destination,
-        //    DlManager::OverrideFiles::Yes,
-        //    [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
-        //        std::lock_guard<std::mutex> lock(_updateInformationMutex);
-        //        _updateInformation.push_back({
-        //            w,
-        //            f.errorMessage,
-        //            currentSize,
-        //            totalSize
-        //        });
-        //    },
-        //    [this, w](DlManager::File& f) {
-        //        std::lock_guard<std::mutex> lock(_updateInformationMutex);
-        //        _finishedInformation.push_back(w);
-        //    }
-
-        //);
-
-        //std::move(tasks.begin(), tasks.end(), std::back_inserter(result));
     }
 
     LDEBUG("Torrent Files");
@@ -496,8 +350,6 @@ void SyncWidget::syncButtonPressed() {
         libtorrent::add_torrent_params p;
 
         p.save_path = fullDestination;
-
-        //p.save_path = absPath(f.destination.toStdString());
 
         p.ti = new libtorrent::torrent_info(fullFile, ec);
         p.name = tf.file;
@@ -561,7 +413,6 @@ QStringList SyncWidget::selectedScenes() const {
 void SyncWidget::handleTimer() {
     using namespace libtorrent;
     
-    //std::vector<UpdateInformation> updateInformation;
     std::map<InfoWidget*, UpdateInformation> updateInformation;
     std::vector<InfoWidget*> finishedInformation;
     {
@@ -574,28 +425,7 @@ void SyncWidget::handleTimer() {
         _finishedInformation.clear();
     }
 
-    //std::stable_sort(
-    //    updateInformation.begin(),
-    //    updateInformation.end(),
-    //    [](const UpdateInformation& lhs, const UpdateInformation& rhs) {
-    //        return lhs.widget < rhs.widget;
-    //    }
-    //);
-
-    //updateInformation.erase(
-    //    std::unique(
-    //        updateInformation.begin(),
-    //        updateInformation.end(),
-    //        [](const UpdateInformation& lhs, const UpdateInformation& rhs) {
-    //            return lhs.widget == rhs.widget;
-    //        }
-    //    ),
-    //    updateInformation.end()
-    //);
-
     for (const std::pair<InfoWidget*, UpdateInformation> p : updateInformation) {
-    //for (const UpdateInformation& info : updateInformation) {
-        //info.widget->update(info.currentSize, info.totalSize, info.errorMessage);
         p.first->update(p.second.currentSize, p.second.totalSize, p.second.errorMessage);
     }
 
@@ -603,41 +433,6 @@ void SyncWidget::handleTimer() {
         _downloadLayout->removeWidget(w);
         delete w;
     }
-
-
-    
-    
-    //using FileFuture = openspace::DownloadManager::FileFuture;
-
-    //std::vector<std::shared_ptr<FileFuture>> toRemove;
-    //for (std::shared_ptr<FileFuture> f : _futures) {
-    //    InfoWidget* w = _futureInfoWidgetMap[f];
-
-    //    if (CleanInfoWidgets && (f->isFinished || f->isAborted)) {
-    //        toRemove.push_back(f);
-    //        _downloadLayout->removeWidget(w);
-    //        _futureInfoWidgetMap.erase(f);
-    //        delete w;
-    //    }
-    //    else
-    //        w->update(f);
-    //}
-
-    //for (std::shared_ptr<FileFuture> f : toRemove) {
-    //    _futures.erase(std::remove(_futures.begin(), _futures.end(), f), _futures.end()); 
-    //}
-
-    //while (_mutex.test_and_set()) {}
-    //for (std::shared_ptr<FileFuture> f : _futuresToAdd) {
-    //    InfoWidget* w = new InfoWidget(QString::fromStdString(f->filePath), -1);
-    //    _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
-
-    //    _futureInfoWidgetMap[f] = w;
-    //    _futures.push_back(f);
-    //}
-    //_futuresToAdd.clear();
-    //_mutex.clear();
-
 
     std::vector<torrent_handle> handles = _session->get_torrents();
     for (torrent_handle h : handles) {
@@ -665,12 +460,3 @@ void SyncWidget::handleTimer() {
             _session->remove_torrent(h);
     }
 }
-
-//void SyncWidget::handleFileFutureAddition(
-//    const std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>>& futures)
-//{
-//    while (_mutex.test_and_set()) {}
-//    _futuresToAdd.insert(_futuresToAdd.end(), futures.begin(), futures.end());
-//    _mutex.clear();
-//}
-
