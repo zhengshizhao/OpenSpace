@@ -76,9 +76,8 @@ InfoWidget::InfoWidget(QString name, int totalBytes)
 }
 
 void InfoWidget::update(size_t currentSize, size_t totalSize, std::string errorMessage) {
-    _bytes->setText(
-        QString("%1 / %2").arg(static_cast<int>(currentSize), static_cast<int>(totalSize))
-    );
+    std::string text = std::to_string(currentSize) + " / " + std::to_string(totalSize);
+    _bytes->setText(QString::fromStdString(text));
     float t = static_cast<float>(currentSize) / static_cast<float>(totalSize);
     _progress->setValue(
         static_cast<int>(t * 100.f)
@@ -90,9 +89,10 @@ void InfoWidget::update(size_t currentSize, size_t totalSize, std::string errorM
 }
 
 void InfoWidget::update(libtorrent::torrent_status s) {
-    _bytes->setText(
-        QString("%1 / %2").arg(s.total_wanted_done, s.total_wanted)
-    );
+    std::string text =
+        std::to_string(s.total_wanted_done) + " / " + std::to_string(s.total_wanted);
+    _bytes->setText(QString::fromStdString(text));
+
     float progress = static_cast<float>(s.total_wanted_done) / s.total_wanted;
     _progress->setValue(static_cast<int>(progress * 100));
 
