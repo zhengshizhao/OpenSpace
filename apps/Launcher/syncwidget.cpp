@@ -187,8 +187,6 @@ SyncWidget::SyncWidget(QWidget* parent, Qt::WindowFlags f)
     QTimer* timer = new QTimer(this);
     QObject::connect(timer, SIGNAL(timeout()), this, SLOT(handleTimer()));
     timer->start(100);
-
-    _mutex.clear();
 }
 
 SyncWidget::~SyncWidget() {
@@ -208,12 +206,11 @@ SyncWidget::~SyncWidget() {
     f.write(buffer.data(), buffer.size());
 
     ghoul::deinitialize();
-    delete _session;
 }
 
 void SyncWidget::closeEvent(QCloseEvent* event) {
     std::vector<libtorrent::torrent_handle> handles = _session->get_torrents();
-    for (libtorrent::torrent_handle h : handles) {
+    for (libtorrent::torrent_handle& h : handles) {
         h.flush_cache();
         _session->remove_torrent(h);
     }
@@ -226,7 +223,8 @@ void SyncWidget::setSceneFiles(QMap<QString, QString> sceneFiles) {
         const QString& sceneName = keys[i];
 
         QCheckBox* checkbox = new QCheckBox(sceneName);
-        checkbox->setChecked(true);
+        //checkbox->setChecked(true);
+        checkbox->setChecked(sceneName == "download");
 
         _sceneLayout->addWidget(checkbox, i / nColumns, i % nColumns);
     }

@@ -47,7 +47,6 @@ namespace libtorrent {
     struct torrent_handle;
 }
 
-
 class SyncWidget : public QWidget {
 Q_OBJECT
 public:
@@ -67,32 +66,21 @@ private:
     QStringList selectedScenes() const;
 
     struct UpdateInformation {
-        //InfoWidget* widget;
         std::string errorMessage;
         size_t currentSize;
         size_t totalSize;
     };
     std::mutex _updateInformationMutex;
-    //std::vector<UpdateInformation> _updateInformation;
     std::map<InfoWidget*, UpdateInformation> _updateInformation;
     std::vector<InfoWidget*> _finishedInformation;
 
-
-    //void handleFileFutureAddition(const std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>>& futures);
-
-    QMap<QString, QString>  _sceneFiles;
+    QMap<QString, QString> _sceneFiles;
     QString _modulesDirectory;
     QGridLayout* _sceneLayout;
     QBoxLayout* _downloadLayout;
 
-    libtorrent::session* _session;
+    std::unique_ptr<libtorrent::session> _session;
     QMap<libtorrent::torrent_handle, InfoWidget*> _torrentInfoWidgetMap;
-
-    //std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>> _futures;
-    //std::map<std::shared_ptr<openspace::DownloadManager::FileFuture>, InfoWidget*> _futureInfoWidgetMap;
-
-    //std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>> _futuresToAdd;
-    std::atomic_flag _mutex;
 
     std::unique_ptr<openspace::DownloadManager> _downloadManager;
 

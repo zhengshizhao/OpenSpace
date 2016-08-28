@@ -325,6 +325,9 @@ std::string DownloadManager::request(const std::string& url, const std::string& 
 }
 
 std::string DownloadManager::selectRequestUrl() const {
+    // TODO: This function should check if the selected request URL is actually available
+    // and if it is not, should probably take the next index instead ---abock
+
     int n = _requestUrls.size();
     if (n == 1) {
         return _requestUrls.front();
