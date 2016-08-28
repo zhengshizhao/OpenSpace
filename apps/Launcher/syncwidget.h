@@ -67,13 +67,15 @@ private:
     QStringList selectedScenes() const;
 
     struct UpdateInformation {
-        InfoWidget* widget;
+        //InfoWidget* widget;
         std::string errorMessage;
         size_t currentSize;
         size_t totalSize;
     };
     std::mutex _updateInformationMutex;
-    std::vector<UpdateInformation> _updateInformation;
+    //std::vector<UpdateInformation> _updateInformation;
+    std::map<InfoWidget*, UpdateInformation> _updateInformation;
+    std::vector<InfoWidget*> _finishedInformation;
 
 
     //void handleFileFutureAddition(const std::vector<std::shared_ptr<openspace::DownloadManager::FileFuture>>& futures);

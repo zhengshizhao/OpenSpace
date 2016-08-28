@@ -387,12 +387,21 @@ void SyncWidget::syncButtonPressed() {
                 0,
                 [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
                     std::lock_guard<std::mutex> lock(_updateInformationMutex);
-                    _updateInformation.push_back({
-                        w,
+                    _updateInformation[w] = {
                         f.errorMessage,
                         currentSize,
                         totalSize
-                    });
+                    };
+                    //_updateInformation.push_back({
+                    //    w,
+                    //    f.errorMessage,
+                    //    currentSize,
+                    //    totalSize
+                    //});
+                },
+                [this, w](DlManager::File& f) {
+                    std::lock_guard<std::mutex> lock(_updateInformationMutex);
+                    _finishedInformation.push_back(w);
                 }
             )
         );
@@ -402,26 +411,68 @@ void SyncWidget::syncButtonPressed() {
     for (const DownloadCollection::FileRequest& fr : collection.fileRequests) {
         LDEBUG(fmt::format("{}({}) -> {}", fr.identifier, fr.identifier, fr.destination));
 
-        InfoWidget* w = new InfoWidget(QString::fromStdString(fr.destination));
-        _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
-
-        std::vector<DlManager::FileTask> tasks = _downloadManager->requestFiles(
+        std::vector<std::string> urls = _downloadManager->requestFiles(
             fr.identifier,
-            fr.version,
-            fr.destination,
-            DlManager::OverrideFiles::Yes,
-            [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
-                std::lock_guard<std::mutex> lock(_updateInformationMutex);
-                _updateInformation.push_back({
-                    w,
-                    f.errorMessage,
-                    currentSize,
-                    totalSize
-                });
-            }
+            fr.version
         );
 
-        std::move(tasks.begin(), tasks.end(), std::back_inserter(result));
+        for (const std::string& url : urls) {
+            std::string file = url.substr(url.find_last_of('/') + 1);
+
+            InfoWidget* w = new InfoWidget(QString::fromStdString(file));
+            _downloadLayout->insertWidget(_downloadLayout->count() - 1, w);
+
+
+            result.push_back(
+                DlManager::download(
+                    url,
+                    FileSys.pathByAppendingComponent(fr.destination, file),
+                    0,
+                    [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
+                        std::lock_guard<std::mutex> lock(_updateInformationMutex);
+                        _updateInformation[w] = {
+                            f.errorMessage,
+                            currentSize,
+                            totalSize
+                        };
+                        //_updateInformation.push_back({
+                        //    w,
+                        //    f.errorMessage,
+                        //    currentSize,
+                        //    totalSize
+                        //});
+                    },
+                    [this, w](DlManager::File& f) {
+                        std::lock_guard<std::mutex> lock(_updateInformationMutex);
+                        _finishedInformation.push_back(w);
+                    }
+                )
+            );
+        }
+
+
+        //std::vector<DlManager::FileTask> tasks = _downloadManager->requestFiles(
+        //    fr.identifier,
+        //    fr.version,
+        //    fr.destination,
+        //    DlManager::OverrideFiles::Yes,
+        //    [this, w](DlManager::File& f, size_t currentSize, size_t totalSize) {
+        //        std::lock_guard<std::mutex> lock(_updateInformationMutex);
+        //        _updateInformation.push_back({
+        //            w,
+        //            f.errorMessage,
+        //            currentSize,
+        //            totalSize
+        //        });
+        //    },
+        //    [this, w](DlManager::File& f) {
+        //        std::lock_guard<std::mutex> lock(_updateInformationMutex);
+        //        _finishedInformation.push_back(w);
+        //    }
+
+        //);
+
+        //std::move(tasks.begin(), tasks.end(), std::back_inserter(result));
     }
 
     LDEBUG("Torrent Files");
@@ -480,8 +531,13 @@ void SyncWidget::syncButtonPressed() {
     }
 
     for (openspace::DownloadManager::FileTask& t : result) {
-        _threadPool.queue(std::move(t));
+        std::thread th(std::move(t));
+        th.detach();
     }
+
+    //for (openspace::DownloadManager::FileTask& t : result) {
+    //    _threadPool.queue(std::move(t));
+    //}
 }
 
 QStringList SyncWidget::selectedScenes() const {
@@ -506,11 +562,17 @@ void SyncWidget::handleTimer() {
     using namespace libtorrent;
     
     //std::vector<UpdateInformation> updateInformation;
-    //{
-    //    std::lock_guard<std::mutex> lock(_updateInformationMutex);
-    //    updateInformation = _updateInformation;
-    //    _updateInformation.clear();
-    //}
+    std::map<InfoWidget*, UpdateInformation> updateInformation;
+    std::vector<InfoWidget*> finishedInformation;
+    {
+        std::lock_guard<std::mutex> lock(_updateInformationMutex);
+
+        updateInformation = _updateInformation;
+        _updateInformation.clear();
+
+        finishedInformation = _finishedInformation;
+        _finishedInformation.clear();
+    }
 
     //std::stable_sort(
     //    updateInformation.begin(),
@@ -519,6 +581,7 @@ void SyncWidget::handleTimer() {
     //        return lhs.widget < rhs.widget;
     //    }
     //);
+
     //updateInformation.erase(
     //    std::unique(
     //        updateInformation.begin(),
@@ -530,11 +593,16 @@ void SyncWidget::handleTimer() {
     //    updateInformation.end()
     //);
 
-
+    for (const std::pair<InfoWidget*, UpdateInformation> p : updateInformation) {
     //for (const UpdateInformation& info : updateInformation) {
-    //    info.widget->update(info.currentSize, info.totalSize, info.errorMessage);
-    //}
+        //info.widget->update(info.currentSize, info.totalSize, info.errorMessage);
+        p.first->update(p.second.currentSize, p.second.totalSize, p.second.errorMessage);
+    }
 
+    for (InfoWidget* w : finishedInformation) {
+        _downloadLayout->removeWidget(w);
+        delete w;
+    }
 
 
     
@@ -571,31 +639,31 @@ void SyncWidget::handleTimer() {
     //_mutex.clear();
 
 
-    //std::vector<torrent_handle> handles = _session->get_torrents();
-    //for (torrent_handle h : handles) {
-    //    torrent_status s = h.status();
-    //    InfoWidget* w = _torrentInfoWidgetMap[h];
+    std::vector<torrent_handle> handles = _session->get_torrents();
+    for (torrent_handle h : handles) {
+        torrent_status s = h.status();
+        InfoWidget* w = _torrentInfoWidgetMap[h];
 
-    //    if (w)
-    //        w->update(s);
+        if (w)
+            w->update(s);
 
-    //    if (CleanInfoWidgets && (s.state == torrent_status::finished || s.state == torrent_status::seeding)) {
-    //        _torrentInfoWidgetMap.remove(h);
-    //        delete w;
-    //    }
-    //}
+        if (CleanInfoWidgets && (s.state == torrent_status::finished || s.state == torrent_status::seeding)) {
+            _torrentInfoWidgetMap.remove(h);
+            delete w;
+        }
+    }
 
-    //// Only close every torrent if all torrents are finished
-    //bool allSeeding = true;
-    //for (torrent_handle h : handles) {
-    //    torrent_status s = h.status();
-    //    allSeeding &= (s.state == torrent_status::seeding);
-    //}
+    // Only close every torrent if all torrents are finished
+    bool allSeeding = true;
+    for (torrent_handle h : handles) {
+        torrent_status s = h.status();
+        allSeeding &= (s.state == torrent_status::seeding);
+    }
 
-    //if (allSeeding) {
-    //    for (torrent_handle h : handles)
-    //        _session->remove_torrent(h);
-    //}
+    if (allSeeding) {
+        for (torrent_handle h : handles)
+            _session->remove_torrent(h);
+    }
 }
 
 //void SyncWidget::handleFileFutureAddition(
