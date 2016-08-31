@@ -185,7 +185,7 @@ namespace openspace {
                 Mat4(sgctInternal.viewMatrix()) *
                 Mat4(viewRotationMatrix()) *
                 cameraTranslation;
-            _cachedCombinedViewMatrix.isDirty = true;
+            _cachedCombinedViewMatrix.isDirty = false;
         }
         return _cachedCombinedViewMatrix.datum;
     }

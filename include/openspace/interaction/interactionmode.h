@@ -96,6 +96,7 @@ public:
 
     virtual void updateMouseStatesFromInput(const InputState& inputState, double deltaTime) = 0;
     virtual void updateCameraStateFromMouseStates(Camera& camera) = 0;
+    virtual void updateCameraStateFromFocusNodePositionDifferance(Camera& camera) = 0;
 
 protected:
     /**
@@ -166,11 +167,8 @@ public:
 
     virtual void updateMouseStatesFromInput(const InputState& inputState, double deltaTime);
     virtual void updateCameraStateFromMouseStates(Camera& camera);
+    virtual void updateCameraStateFromFocusNodePositionDifferance(Camera& camera);
 
-    // Need implementation
-
-    virtual void serialize(SyncBuffer* syncBuffer) {};
-    virtual void deserialize(SyncBuffer* syncBuffer) {};
 private:
     double _currentKeyframeTime;
 };
@@ -196,11 +194,11 @@ public:
         void setSensitivity(double sensitivity);
         void setVelocityScaleFactor(double scaleFactor);
 
-        glm::dvec2 synchedGlobalRotationMouseVelocity();
-        glm::dvec2 synchedLocalRotationMouseVelocity();
-        glm::dvec2 synchedTruckMovementMouseVelocity();
-        glm::dvec2 synchedLocalRollMouseVelocity();
-        glm::dvec2 synchedGlobalRollMouseVelocity();
+        glm::dvec2 globalRotationMouseVelocity();
+        glm::dvec2 localRotationMouseVelocity();
+        glm::dvec2 truckMovementMouseVelocity();
+        glm::dvec2 localRollMouseVelocity();
+        glm::dvec2 globalRollMouseVelocity();
 
     private:
         double _sensitivity;
@@ -217,6 +215,8 @@ public:
 
     virtual void updateMouseStatesFromInput(const InputState& inputState, double deltaTime);
     virtual void updateCameraStateFromMouseStates(Camera& camera);
+    virtual void updateCameraStateFromFocusNodePositionDifferance(Camera& camera);
+
 protected:
     std::shared_ptr<MouseStates> _mouseStates;
 };
@@ -229,6 +229,7 @@ public:
 
     virtual void setFocusNode(SceneGraphNode* focusNode);
     virtual void updateCameraStateFromMouseStates(Camera& camera);
+    virtual void updateCameraStateFromFocusNodePositionDifferance(Camera& camera);
 
 private:
     RenderableGlobe* _globe;

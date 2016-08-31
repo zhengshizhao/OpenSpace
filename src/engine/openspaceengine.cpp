@@ -766,7 +766,7 @@ void OpenSpaceEngine::preSynchronization() {
         _renderEngine->preSynchronization();
 
         // Update the mouse velocities for interaction handler
-        _interactionHandler->update(dt);
+        _interactionHandler->preSynchronization(dt);
 
         _renderEngine->camera()->preSynchronization();
 
@@ -791,6 +791,7 @@ void OpenSpaceEngine::postSynchronizationPreDraw() {
     // Sync the camera to match the previous frame
     _renderEngine->camera()->postSynchronizationPreDraw();
 
+    _interactionHandler->postSynchronizationPreDraw();
     _renderEngine->camera()->preSynchronization();
     _renderEngine->camera()->postSynchronizationPreDraw();
 

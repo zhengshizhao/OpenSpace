@@ -182,6 +182,10 @@ void KeyframeInteractionMode::updateCameraStateFromMouseStates(Camera& camera) {
 
 }
 
+void KeyframeInteractionMode::updateCameraStateFromFocusNodePositionDifferance(Camera& camera) {
+
+}
+
 // OrbitalInteractionMode
 OrbitalInteractionMode::MouseStates::MouseStates(double sensitivity, double velocityScaleFactor)
     : _sensitivity(sensitivity)
@@ -290,23 +294,23 @@ void OrbitalInteractionMode::MouseStates::setVelocityScaleFactor(double scaleFac
     _globalRollMouseState.setVelocityScaleFactor(scaleFactor);
 }
 
-glm::dvec2 OrbitalInteractionMode::MouseStates::synchedGlobalRotationMouseVelocity() {
+glm::dvec2 OrbitalInteractionMode::MouseStates::globalRotationMouseVelocity() {
     return _globalRotationMouseState.velocity.get();
 }
 
-glm::dvec2 OrbitalInteractionMode::MouseStates::synchedLocalRotationMouseVelocity() {
+glm::dvec2 OrbitalInteractionMode::MouseStates::localRotationMouseVelocity() {
     return _localRotationMouseState.velocity.get();
 }
 
-glm::dvec2 OrbitalInteractionMode::MouseStates::synchedTruckMovementMouseVelocity() {
+glm::dvec2 OrbitalInteractionMode::MouseStates::truckMovementMouseVelocity() {
     return _truckMovementMouseState.velocity.get();
 }
 
-glm::dvec2 OrbitalInteractionMode::MouseStates::synchedLocalRollMouseVelocity() {
+glm::dvec2 OrbitalInteractionMode::MouseStates::localRollMouseVelocity() {
     return _localRollMouseState.velocity.get();
 }
 
-glm::dvec2 OrbitalInteractionMode::MouseStates::synchedGlobalRollMouseVelocity() {
+glm::dvec2 OrbitalInteractionMode::MouseStates::globalRollMouseVelocity() {
     return _globalRollMouseState.velocity.get();
 }
 
@@ -356,17 +360,17 @@ void OrbitalInteractionMode::updateCameraStateFromMouseStates(Camera& camera) {
 
         { // Do local roll
             glm::dquat cameraRollRotation =
-                glm::angleAxis(_mouseStates->synchedLocalRollMouseVelocity().x, dvec3(0, 0, 1));
+                glm::angleAxis(_mouseStates->localRollMouseVelocity().x, dvec3(0, 0, 1));
             localCameraRotation = localCameraRotation * cameraRollRotation;
         }
         { // Do local rotation
-            dvec3 eulerAngles(_mouseStates->synchedLocalRotationMouseVelocity().y, _mouseStates->synchedLocalRotationMouseVelocity().x, 0);
+            dvec3 eulerAngles(_mouseStates->localRotationMouseVelocity().y, _mouseStates->localRotationMouseVelocity().x, 0);
             dquat rotationDiff = dquat(eulerAngles);
 
             localCameraRotation = localCameraRotation * rotationDiff;
         }
         { // Do global rotation
-            dvec2 smoothMouseVelocity = _mouseStates->synchedGlobalRotationMouseVelocity();
+            dvec2 smoothMouseVelocity = _mouseStates->globalRotationMouseVelocity();
             dvec3 eulerAngles(-smoothMouseVelocity.y, -smoothMouseVelocity.x, 0);
             dquat rotationDiffCamSpace = dquat(eulerAngles);
 
@@ -391,11 +395,11 @@ void OrbitalInteractionMode::updateCameraStateFromMouseStates(Camera& camera) {
                 -directionToCenter *
                 boundingSphere;
             camPos += -(centerToCamera - centerToBoundingSphere) *
-                _mouseStates->synchedTruckMovementMouseVelocity().y;
+                _mouseStates->truckMovementMouseVelocity().y;
         }
         { // Roll around sphere normal
             dquat cameraRollRotation =
-                angleAxis(_mouseStates->synchedGlobalRollMouseVelocity().x, -directionToCenter);
+                angleAxis(_mouseStates->globalRollMouseVelocity().x, -directionToCenter);
             globalCameraRotation = cameraRollRotation * globalCameraRotation;
         }
         { // Push up to surface
@@ -415,6 +419,22 @@ void OrbitalInteractionMode::updateCameraStateFromMouseStates(Camera& camera) {
 void OrbitalInteractionMode::updateMouseStatesFromInput(const InputState& inputState, double deltaTime) {
     _mouseStates->updateMouseStatesFromInput(inputState, deltaTime);
 }
+
+void OrbitalInteractionMode::updateCameraStateFromFocusNodePositionDifferance(Camera& camera) {
+    using namespace glm;
+    dvec3 camPos = camera.positionVec3();
+    dquat rotation = camera.rotationQuaternion();
+
+    dvec3 centerPos = _focusNode->worldPosition();
+    // Follow focus nodes movement
+    dvec3 focusNodeDiff = centerPos - _previousFocusNodePosition;
+    _previousFocusNodePosition = centerPos;
+    camPos += focusNodeDiff;
+
+    camera.setPositionVec3(camPos);
+    camera.setRotation(rotation);
+}
+
 
 GlobeBrowsingInteractionMode::GlobeBrowsingInteractionMode(std::shared_ptr<MouseStates> mouseStates)
     : OrbitalInteractionMode(mouseStates) 
@@ -502,19 +522,19 @@ void GlobeBrowsingInteractionMode::updateCameraStateFromMouseStates(Camera& came
 
         { // Do local roll
             glm::dquat cameraRollRotation =
-                glm::angleAxis(_mouseStates->synchedLocalRollMouseVelocity().x, dvec3(0, 0, 1));
+                glm::angleAxis(_mouseStates->localRollMouseVelocity().x, dvec3(0, 0, 1));
             localCameraRotation = localCameraRotation * cameraRollRotation;
         }
         { // Do local rotation
-            glm::dvec3 eulerAngles(_mouseStates->synchedLocalRotationMouseVelocity().y, _mouseStates->synchedLocalRotationMouseVelocity().x, 0);
+            glm::dvec3 eulerAngles(_mouseStates->localRotationMouseVelocity().y, _mouseStates->localRotationMouseVelocity().x, 0);
             glm::dquat rotationDiff = glm::dquat(eulerAngles);
 
             localCameraRotation = localCameraRotation * rotationDiff;
         }
         { // Do global rotation (horizontal movement)
             glm::dvec3 eulerAngles = glm::dvec3(
-                -_mouseStates->synchedGlobalRotationMouseVelocity().y,
-                -_mouseStates->synchedGlobalRotationMouseVelocity().x,
+                -_mouseStates->globalRotationMouseVelocity().y,
+                -_mouseStates->globalRotationMouseVelocity().x,
                 0) * glm::clamp(distFromEllipsoidSurfaceToCamera / distFromCenterToSurface, 0.0, 1.0);
             glm::dquat rotationDiffCamSpace = glm::dquat(eulerAngles);
 
@@ -563,11 +583,11 @@ void GlobeBrowsingInteractionMode::updateCameraStateFromMouseStates(Camera& came
         { // Move position towards or away from focus node
             distFromEllipsoidSurfaceToCamera = glm::length(ellipsoidSurfaceToCamera);
             camPos += -directionFromSurfaceToCamera * distFromEllipsoidSurfaceToCamera *
-                _mouseStates->synchedTruckMovementMouseVelocity().y;
+                _mouseStates->truckMovementMouseVelocity().y;
         }
         { // Roll around ellipsoid normal
             glm::dquat cameraRollRotation =
-                glm::angleAxis(_mouseStates->synchedGlobalRollMouseVelocity().x, directionFromSurfaceToCamera);
+                glm::angleAxis(_mouseStates->globalRollMouseVelocity().x, directionFromSurfaceToCamera);
             globalCameraRotation = cameraRollRotation * globalCameraRotation;
         }
         { // Push up to surface
@@ -593,6 +613,31 @@ void GlobeBrowsingInteractionMode::updateCameraStateFromMouseStates(Camera& came
     }
 #endif // OPENSPACE_MODULE_GLOBEBROWSING_ENABLED
 }
+
+void GlobeBrowsingInteractionMode::updateCameraStateFromFocusNodePositionDifferance(Camera& camera) {
+#ifdef OPENSPACE_MODULE_GLOBEBROWSING_ENABLED
+    using namespace glm;
+    if (_focusNode && _globe) {
+        using namespace glm;
+        dvec3 camPos = camera.positionVec3();
+        dvec3 centerPos = _focusNode->worldPosition();
+        dquat rotation = camera.rotationQuaternion();
+
+        // Follow focus nodes movement
+        dvec3 focusNodeDiff = centerPos - _previousFocusNodePosition;
+        _previousFocusNodePosition = centerPos;
+        camPos += focusNodeDiff;
+
+        // Rotate with the globe
+        // TODO: rotate with the globe
+
+        // Update the camera state
+        camera.setPositionVec3(camPos);
+        camera.setRotation(rotation);
+    }
+#endif // OPENSPACE_MODULE_GLOBEBROWSING_ENABLED
+}
+
 
 } // namespace interaction
 } // namespace openspace
