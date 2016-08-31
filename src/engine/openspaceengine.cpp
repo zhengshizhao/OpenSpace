@@ -766,7 +766,7 @@ void OpenSpaceEngine::preSynchronization() {
         _renderEngine->preSynchronization();
 
         // Update the mouse velocities for interaction handler
-        _interactionHandler->preSynchronization(dt);
+        _interactionHandler->update(dt);
 
         _renderEngine->camera()->preSynchronization();
 
@@ -790,11 +790,6 @@ void OpenSpaceEngine::postSynchronizationPreDraw() {
     
     // Sync the camera to match the previous frame
     _renderEngine->camera()->postSynchronizationPreDraw();
-
-    // Step the camera using the current mouse velocities which are synced
-    _interactionHandler->postSynchronizationPreDraw();
-
-    // Update the synched variables in the camera class
 
     _renderEngine->camera()->preSynchronization();
     _renderEngine->camera()->postSynchronizationPreDraw();
@@ -937,7 +932,6 @@ void OpenSpaceEngine::encode() {
         Time::ref().serialize(_syncBuffer.get());
         _scriptEngine->serialize(_syncBuffer.get());
         _renderEngine->serialize(_syncBuffer.get());
-        _interactionHandler->serialize(_syncBuffer.get());
         
         _syncBuffer->write();
     }
@@ -952,7 +946,6 @@ void OpenSpaceEngine::decode() {
         Time::ref().deserialize(_syncBuffer.get());
         _scriptEngine->deserialize(_syncBuffer.get());
         _renderEngine->deserialize(_syncBuffer.get());
-        _interactionHandler->deserialize(_syncBuffer.get());
 
     }
 }

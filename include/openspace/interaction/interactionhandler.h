@@ -172,13 +172,7 @@ public:
     void lockControls();
     void unlockControls();
 
-    //void update(double deltaTime);
-
-    void preSynchronization(double deltaTime);
-    void postSynchronizationPreDraw();
-
-    void serialize(SyncBuffer* syncBuffer);
-    void deserialize(SyncBuffer* syncBuffer);
+    void update(double deltaTime);
 
     // Accessors
     ghoul::Dictionary getCameraStateDictionary();
