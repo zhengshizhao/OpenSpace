@@ -94,7 +94,7 @@ public:
     const Renderable* renderable() const;
     Renderable* renderable();
 
-    void SceneGraphNode::setSceneRadius(float SceneRadius);
+    void setSceneRadius(float SceneRadius);
     const float& sceneRadius() const;
 
     // @TODO Remove once the scalegraph is in effect ---abock
