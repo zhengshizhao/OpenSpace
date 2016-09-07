@@ -3,7 +3,8 @@ return {
     {
         Name = "EarthBarycenter",
         Parent = "SolarSystemBarycenter",
-		SceneRadius = 40000000.0,
+        -- SceneRadius unit is KM                
+		SceneRadius = 40000000.0, 
         Static = true,
         Ephemeris = {
             Type = "Spice",
@@ -19,7 +20,7 @@ return {
     {   
         Name = "Earth",
         Parent = "EarthBarycenter",
-		SceneRadius = 500000.0,
+		SceneRadius = 100000.0,
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_EARTH",
