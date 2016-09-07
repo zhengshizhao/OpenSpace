@@ -69,7 +69,7 @@ SceneGraphNode* SceneGraphNode::createFromDictionary(const ghoul::Dictionary& di
     dictionary.getValue(KeyName, name);
     result->setName(name);
 
-    float sceneRadius;
+    double sceneRadius;
     dictionary.getValue(KeySceneRadius, sceneRadius);
     result->setSceneRadius(sceneRadius);
 
@@ -319,7 +319,7 @@ void SceneGraphNode::addChild(SceneGraphNode* child) {
 //    return false;
 //}
 
-void SceneGraphNode::setSceneRadius(float sceneRadius) {
+void SceneGraphNode::setSceneRadius(double sceneRadius) {
 
     _sceneRadius = std::move(sceneRadius);
 
@@ -462,7 +462,7 @@ void SceneGraphNode::updateCamera(Camera* camera) const{
     //printf("target: %f, %f, %f, %f\n", target.vec4().x, target.vec4().y, target.vec4().z, target.vec4().w);
     
 }
-const float& SceneGraphNode::sceneRadius() const {
+const double& SceneGraphNode::sceneRadius() const {
     return _sceneRadius;
 }
 
