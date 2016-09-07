@@ -1,3 +1,26 @@
+/*****************************************************************************************
+*                                                                                       *
+* OpenSpace                                                                             *
+*                                                                                       *
+* Copyright (c) 2014-2016                                                               *
+*                                                                                       *
+* Permission is hereby granted, free of charge, to any person obtaining a copy of this  *
+* software and associated documentation files (the "Software"), to deal in the Software *
+* without restriction, including without limitation the rights to use, copy, modify,    *
+* merge, publish, distribute, sublicense, and/or sell copies of the Software, and to    *
+* permit persons to whom the Software is furnished to do so, subject to the following   *
+* conditions:                                                                           *
+*                                                                                       *
+* The above copyright notice and this permission notice shall be included in all copies *
+* or substantial portions of the Software.                                              *
+*                                                                                       *
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,   *
+* INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A         *
+* PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT    *
+* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF  *
+* CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  *
+* OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
+****************************************************************************************/
 
 #ifndef __DISTANCETOOBJ_H__
 #define __DISTANCETOOBJ_H__
@@ -10,48 +33,43 @@
 #include <iostream>
 namespace openspace {
 
-    class DistanceToObject {
+class DistanceToObject {
+public:
+    static bool initialize();
+    static void deinitialize();
+    static int sceneNrPub;
+
+    /*
+    * Returns the reference to the distance singleton object.
+    * \return The reference to the distance singleton object
+    */
+
+    static DistanceToObject& ref();
+
+    // static bool isInitialized(); Not working?
 
 
-    public:
+    //float distanceCalc(); //psc& camerapos
+    //const psc& camera
+    //const distancefromcamerato(int a);
 
-        static bool initialize();
-        static void deinitialize();
-        static int sceneNrPub;
+    //float distanceCalc(const psc& position, psc targetPos); //psc& camerapos //const ?
+    double distanceCalc(const psc& position, psc targetPos);
+private:
+    /// Creates the distance object. Only used in the initialize() method
+    DistanceToObject();
+    double distToScene = 500000.0;
+    DistanceToObject(const DistanceToObject& src) = delete;
 
-        /*
-        * Returns the reference to the distance singleton object.
-        * \return The reference to the distance singleton object
-        */
+    DistanceToObject& operator=(const DistanceToObject& rhs) = delete;
+    double distance;
+    static DistanceToObject* _distInstance; ///< The singleton instance
+                                            //float distance;
 
-        static DistanceToObject& ref();
+                                            //float _distancefromcamera;
+                                            //static DistanceToObject* _distancefromcamera; ///< The singleton instance
 
-        // static bool isInitialized(); Not working?
-
-
-        //float distanceCalc(); //psc& camerapos
-        //const psc& camera
-        //const distancefromcamerato(int a);
-
-        //float distanceCalc(const psc& position, psc targetPos); //psc& camerapos //const ?
-        double distanceCalc(const psc& position, psc targetPos);
-    private:
-        /// Creates the distance object. Only used in the initialize() method
-        DistanceToObject();
-        float distToScene = 500000.0;
-        DistanceToObject(const DistanceToObject& src) = delete;
-
-        DistanceToObject& operator=(const DistanceToObject& rhs) = delete;
-        float distance;
-        static DistanceToObject* _distInstance; ///< The singleton instance
-                                                //float distance;
-
-                                                //float _distancefromcamera;
-                                                //static DistanceToObject* _distancefromcamera; ///< The singleton instance
-
-    };
-
-
+};
 
     /**
     * Returns the reference to the Time singleton object.
