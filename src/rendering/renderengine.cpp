@@ -375,8 +375,9 @@ void RenderEngine::postSynchronizationPreDraw() {
     });
     if (_mainCamera) {
 
+        // New DynamicRootGraph System in action:
         //Sets the camera to its relative position depending on the common parent (when changed from worldPosition to position)
-        //setRelativeOrigin(_mainCamera, scene()); 
+        setRelativeOrigin(_mainCamera, scene()); 
         
         _mainCamera->postSynchronizationPreDraw();
     }
@@ -407,6 +408,22 @@ void RenderEngine::postSynchronizationPreDraw() {
 }
 
 void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix){
+    // DEBUG: (JCC)
+    std::string oldNameOfScene(_nameOfScene);
+    //double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
+    _nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
+
+    // New DynamicRootGraph system in action:
+    _mainCamera->setParent(_nameOfScene);
+    
+    // DEBUG: (JCC)
+    if (_nameOfScene.compare(oldNameOfScene)) {
+        std::cout << "==== Name of Scene: " << _nameOfScene << " ====" << std::endl;
+        //double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
+        //InteractionMode::focusNode() {
+        std::string focusNodeName(OsEng.interactionHandler().focusNode()->name());
+        setNewViewMatrix(_mainCamera->getParent(), OsEng.interactionHandler().focusNode(), scene());
+    }
     _mainCamera->sgctInternal.setViewMatrix(viewMatrix);
     _mainCamera->sgctInternal.setProjectionMatrix(projectionMatrix);
 
@@ -426,10 +443,22 @@ void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& vi
             screenSpaceRenderable->render();
     }
 
-    _mainCamera->setParent(_nameOfScene);
-    double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
-
+    //// New DynamicRootGraph system in action:
+    //_mainCamera->setParent(_nameOfScene);
+    //// DEBUG: (JCC)
+    //std::string oldNameOfScene(_nameOfScene);
+    ////double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
     //_nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
+    //// DEBUG: (JCC)
+    //if (_nameOfScene.compare(oldNameOfScene)) {
+    //    std::cout << "==== Name of Scene: " << _nameOfScene << " ====" << std::endl;
+    //    //double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
+    //    //InteractionMode::focusNode() {
+    //    std::string focusNodeName(OsEng.interactionHandler().focusNode()->name());
+    //    setNewViewMatrix(_mainCamera->getParent(), OsEng.interactionHandler().focusNode(), scene());
+    //}
+
+
 }
 
 void RenderEngine::renderShutdownInformation(float timer, float fullTime) {
@@ -929,50 +958,58 @@ void RenderEngine::changeViewPoint(std::string origin) {
     }
     if (origin == "Sun") {
         solarSystemBarycenterNode->setParent(scene()->sceneGraphNode("SolarSystem"));
+        solarSystemBarycenterNode->setEphemeris(new StaticEphemeris);
 
-        if (plutoBarycenterNode)
+        if (plutoBarycenterNode) {
             plutoBarycenterNode->setParent(solarSystemBarycenterNode);
-        jupiterBarycenterNode->setParent(solarSystemBarycenterNode);
-        if (newHorizonsNode)
+
+            ghoul::Dictionary plutoDictionary =
+            {
+                { std::string("Type"), std::string("Spice") },
+                { std::string("Body"), std::string("PLUTO BARYCENTER") },
+                { std::string("Reference"), std::string("GALACTIC") },
+                { std::string("Observer"), std::string("SUN") },
+                { std::string("Kernels"), ghoul::Dictionary() }
+            };
+
+            plutoBarycenterNode->setEphemeris(new SpiceEphemeris(plutoDictionary));
+        }
+
+        if (jupiterBarycenterNode) {
+            jupiterBarycenterNode->setParent(solarSystemBarycenterNode);
+
+            ghoul::Dictionary jupiterDictionary =
+            {
+                { std::string("Type"), std::string("Spice") },
+                { std::string("Body"), std::string("JUPITER BARYCENTER") },
+                { std::string("Reference"), std::string("GALACTIC") },
+                { std::string("Observer"), std::string("SUN") },
+                { std::string("Kernels"), ghoul::Dictionary() }
+            };
+
+            jupiterBarycenterNode->setEphemeris(new SpiceEphemeris(jupiterDictionary));
+        }
+
+        if (newHorizonsNode) {
             newHorizonsNode->setParent(solarSystemBarycenterNode);
+
+            ghoul::Dictionary newHorizonsDictionary =
+            {
+                { std::string("Type"), std::string("Spice") },
+                { std::string("Body"), std::string("NEW HORIZONS") },
+                { std::string("Reference"), std::string("GALACTIC") },
+                { std::string("Observer"), std::string("SUN") },
+                { std::string("Kernels"), ghoul::Dictionary() }
+            };
+
+            newHorizonsNode->setEphemeris(new SpiceEphemeris(newHorizonsDictionary));
+        }
         //newHorizonsGhostNode->setParent(solarSystemBarycenterNode);
 
         //newHorizonsTrailNode->setParent(solarSystemBarycenterNode);
         //dawnNode->setParent(solarSystemBarycenterNode);
         //vestaNode->setParent(solarSystemBarycenterNode);
 
-        ghoul::Dictionary plutoDictionary =
-        {
-            { std::string("Type"), std::string("Spice") },
-            { std::string("Body"), std::string("PLUTO BARYCENTER") },
-            { std::string("Reference"), std::string("GALACTIC") },
-            { std::string("Observer"), std::string("SUN") },
-            { std::string("Kernels"), ghoul::Dictionary() }
-        };
-        ghoul::Dictionary jupiterDictionary =
-        {
-            { std::string("Type"), std::string("Spice") },
-            { std::string("Body"), std::string("JUPITER BARYCENTER") },
-            { std::string("Reference"), std::string("GALACTIC") },
-            { std::string("Observer"), std::string("SUN") },
-            { std::string("Kernels"), ghoul::Dictionary() }
-        };
-        
-        solarSystemBarycenterNode->setEphemeris(new StaticEphemeris);
-        jupiterBarycenterNode->setEphemeris(new SpiceEphemeris(jupiterDictionary));
-        if (plutoBarycenterNode)
-            plutoBarycenterNode->setEphemeris(new SpiceEphemeris(plutoDictionary));
-
-        ghoul::Dictionary newHorizonsDictionary =
-        {
-            { std::string("Type"), std::string("Spice") },
-            { std::string("Body"), std::string("NEW HORIZONS") },
-            { std::string("Reference"), std::string("GALACTIC") },
-            { std::string("Observer"), std::string("SUN") },
-            { std::string("Kernels"), ghoul::Dictionary() }
-        };
-        if (newHorizonsNode)
-            newHorizonsNode->setEphemeris(new SpiceEphemeris(newHorizonsDictionary));
         //newHorizonsTrailNode->setEphemeris(new SpiceEphemeris(newHorizonsDictionary));
 
         
