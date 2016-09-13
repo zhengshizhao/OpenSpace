@@ -37,6 +37,8 @@
 namespace openspace {
     std::string setScene(Scene* scene, Camera* camera, std::string _nameOfScene);
 
+    const glm::dvec3 vectorPosition(const std::string & cameraParent, const SceneGraphNode* target, const Scene* scene);
+
     const glm::mat4 setNewViewMatrix(const std::string & cameraParent, SceneGraphNode* target, Scene*);
 
     glm::vec3 pathCollector(const std::vector<SceneGraphNode*> & path, const std::string & commonParent, const bool inverse);
@@ -49,7 +51,7 @@ namespace openspace {
 
     std::string commonParent(std::vector<SceneGraphNode*> t1, std::vector<SceneGraphNode*> t2);
 
-    SceneGraphNode* findCommonParentNode(const std::string & firstPath, const std::string & secondPath, Scene* scene);
+    SceneGraphNode* findCommonParentNode(const std::string & firstPath, const std::string & secondPath, const Scene* scene);
 
     std::vector<SceneGraphNode*> pathTo(SceneGraphNode* node);
     
