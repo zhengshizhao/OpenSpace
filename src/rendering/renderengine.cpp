@@ -415,6 +415,9 @@ void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& vi
 
     // New DynamicRootGraph system in action:
     _mainCamera->setParent(_nameOfScene);
+    //glm::vec3 displacementVector(_mainCamera->position().vec3() - OsEng.interactionHandler().focusNode()->worldPosition().vec3());
+    glm::vec3 displacementVector(_mainCamera->position().vec3() - scene()->sceneGraphNode(_mainCamera->getParent())->worldPosition().vec3());
+    _mainCamera->setDisplacementVector(displacementVector);
     
     // DEBUG: (JCC)
     if (_nameOfScene.compare(oldNameOfScene)) {
@@ -423,6 +426,8 @@ void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& vi
         //InteractionMode::focusNode() {
         std::string focusNodeName(OsEng.interactionHandler().focusNode()->name());
         setNewViewMatrix(_mainCamera->getParent(), OsEng.interactionHandler().focusNode(), scene());
+
+        std::cout << "==== Displacement Vector: " << displacementVector << " ====" << std::endl;
     }
     _mainCamera->sgctInternal.setViewMatrix(viewMatrix);
     _mainCamera->sgctInternal.setProjectionMatrix(projectionMatrix);
