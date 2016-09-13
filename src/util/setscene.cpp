@@ -89,9 +89,11 @@ namespace openspace {
         while (!childrenScene.empty() && !outsideAllChildScenes) {
 
             for (size_t i = 0; i < nrOfChildren; ++i) {
-                //	SceneGraphNode* tempChild = childrenScene.at(i);
-                double _childDistance = DistanceToObject::ref().distanceCalc(camera->position(), 
-                    childrenScene.at(static_cast<int>(i))->worldPosition());
+                /*double _childDistance = DistanceToObject::ref().distanceCalc(camera->position(), 
+                    childrenScene.at(static_cast<int>(i))->worldPosition());*/
+                
+                double _childDistance = DistanceToObject::ref().distanceCalc(camera->position(),
+                    childrenScene.at(static_cast<int>(i))->dynamicWorldPosition(*camera, childrenScene.at(static_cast<int>(i)), scene));
 
                 double childSceneRadius = childrenScene.at(i)->sceneRadius();
                 if (_childDistance < childSceneRadius ) {
