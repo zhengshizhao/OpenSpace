@@ -377,7 +377,8 @@ void RenderEngine::postSynchronizationPreDraw() {
 
         // New DynamicRootGraph System in action:
         //Sets the camera to its relative position depending on the common parent (when changed from worldPosition to position)
-        setRelativeOrigin(_mainCamera, scene()); 
+        //setRelativeOrigin(_mainCamera, scene()); 
+        scene()->setRelativeOrigin(_mainCamera);
         
         _mainCamera->postSynchronizationPreDraw();
     }
@@ -407,28 +408,13 @@ void RenderEngine::postSynchronizationPreDraw() {
 
 }
 
-void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix){
-    // DEBUG: (JCC)
-    std::string oldNameOfScene(_nameOfScene);
-    //double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
-    _nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
-
+void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix) {    
     // New DynamicRootGraph system in action:
+    _nameOfScene = scene()->currentSceneName(_mainCamera, _nameOfScene);       
     _mainCamera->setParent(_nameOfScene);
-    //glm::vec3 displacementVector(_mainCamera->position().vec3() - OsEng.interactionHandler().focusNode()->worldPosition().vec3());
     glm::vec3 displacementVector(_mainCamera->position().vec3() - scene()->sceneGraphNode(_mainCamera->getParent())->worldPosition().vec3());
-    _mainCamera->setDisplacementVector(displacementVector);
-    
-    // DEBUG: (JCC)
-    if (_nameOfScene.compare(oldNameOfScene)) {
-        std::cout << "==== Name of Scene: " << _nameOfScene << " ====" << std::endl;
-        //double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
-        //InteractionMode::focusNode() {
-        std::string focusNodeName(OsEng.interactionHandler().focusNode()->name());
-        setNewViewMatrix(_mainCamera->getParent(), OsEng.interactionHandler().focusNode(), scene());
 
-        std::cout << "==== Displacement Vector: " << displacementVector << " ====" << std::endl;
-    }
+    _mainCamera->setDisplacementVector(displacementVector);    
     _mainCamera->sgctInternal.setViewMatrix(viewMatrix);
     _mainCamera->sgctInternal.setProjectionMatrix(projectionMatrix);
 
@@ -447,23 +433,6 @@ void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& vi
         if (screenSpaceRenderable->isEnabled() && screenSpaceRenderable->isReady())
             screenSpaceRenderable->render();
     }
-
-    //// New DynamicRootGraph system in action:
-    //_mainCamera->setParent(_nameOfScene);
-    //// DEBUG: (JCC)
-    //std::string oldNameOfScene(_nameOfScene);
-    ////double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
-    //_nameOfScene = setScene(scene(), _mainCamera, _nameOfScene);
-    //// DEBUG: (JCC)
-    //if (_nameOfScene.compare(oldNameOfScene)) {
-    //    std::cout << "==== Name of Scene: " << _nameOfScene << " ====" << std::endl;
-    //    //double distance = DistanceToObject::ref().distanceCalc(_mainCamera->position(), _mainCamera->focusPosition());
-    //    //InteractionMode::focusNode() {
-    //    std::string focusNodeName(OsEng.interactionHandler().focusNode()->name());
-    //    setNewViewMatrix(_mainCamera->getParent(), OsEng.interactionHandler().focusNode(), scene());
-    //}
-
-
 }
 
 void RenderEngine::renderShutdownInformation(float timer, float fullTime) {

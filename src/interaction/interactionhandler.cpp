@@ -841,10 +841,10 @@ void OrbitalInteractionMode::updateCameraStateFromMouseStates() {
         //glm::dvec3 camPos = _camera->positionVec3();
         
         // JCC: Distance from camera's parent node. It is now the current position of the camera.
-        //glm::dvec3 dynamicCamPos = OsEng.renderEngine().scene()->sceneGraphNode(_camera->getParent())->worldPosition().vec3() + _camera->getDisplacementVector();
-        //glm::dvec3 dynamicCamPos = _camera->getDisplacementVector();
-        //glm::dvec3 camPos = _camera->getDisplacementVector();
-        glm::dvec3 camPos = OsEng.renderEngine().scene()->sceneGraphNode(_camera->getParent())->worldPosition().vec3() + _camera->getDisplacementVector();
+        // Working
+        //glm::dvec3 camPos = OsEng.renderEngine().scene()->sceneGraphNode(_camera->getParent())->worldPosition().vec3() + _camera->getDisplacementVector();
+        glm::dvec3 camPos = OsEng.renderEngine().scene()->sceneGraphNode(_camera->getParent())->worldPosition().dvec3() + 
+            _camera->displacementVector();
         glm::dvec3 centerPos = _focusNode->dynamicWorldPosition(*_camera, _focusNode, OsEng.renderEngine().scene()).dvec3();
 
         glm::dvec3 posDiff = camPos - centerPos;

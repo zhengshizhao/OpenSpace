@@ -92,7 +92,6 @@ set(OPENSPACE_SOURCE
     ${OPENSPACE_BASE_DIR}/src/util/powerscaledsphere.cpp
     ${OPENSPACE_BASE_DIR}/src/util/progressbar.cpp
     ${OPENSPACE_BASE_DIR}/src/util/screenlog.cpp
-    ${OPENSPACE_BASE_DIR}/src/util/setscene.cpp
     ${OPENSPACE_BASE_DIR}/src/util/spicemanager.cpp
     ${OPENSPACE_BASE_DIR}/src/util/spicemanager_lua.inl
     ${OPENSPACE_BASE_DIR}/src/util/syncbuffer.cpp
@@ -179,7 +178,6 @@ set(OPENSPACE_HEADER
     ${OPENSPACE_BASE_DIR}/include/openspace/util/powerscaledsphere.h
     ${OPENSPACE_BASE_DIR}/include/openspace/util/progressbar.h
     ${OPENSPACE_BASE_DIR}/include/openspace/util/screenlog.h
-    ${OPENSPACE_BASE_DIR}/include/openspace/util/setscene.h
     ${OPENSPACE_BASE_DIR}/include/openspace/util/spicemanager.h
     ${OPENSPACE_BASE_DIR}/include/openspace/util/syncbuffer.h
     ${OPENSPACE_BASE_DIR}/include/openspace/util/time.h

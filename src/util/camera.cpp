@@ -42,7 +42,7 @@ namespace openspace {
         : _maxFov(0.f)
         , _focusPosition()
         , _parent("SolarSystemBarycenter")
-        , _displacementvector(0, 0, 0)
+        , _displacementvector(0.0, 0.0, 0.0)
 
     {
         _scaling.local = glm::vec2(1.f, 0.f);
@@ -65,7 +65,7 @@ namespace openspace {
 
     // Mutators
 
-    void Camera::setDisplacementVector(glm::vec3 distv)
+    void Camera::setDisplacementVector(const glm::dvec3 & distv)
     {
         _displacementvector = distv;
     }
@@ -180,7 +180,7 @@ namespace openspace {
         return _cachedCombinedViewMatrix.datum;
     }
     
-    glm::vec3 Camera::getDisplacementVector() const {
+    glm::dvec3 Camera::displacementVector() const {
         return _displacementvector;
     }
     // Synchronization

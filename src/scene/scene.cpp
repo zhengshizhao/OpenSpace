@@ -33,6 +33,7 @@
 #include <openspace/scripting/scriptengine.h>
 #include <openspace/scripting/script_helper.h>
 #include <openspace/util/time.h>
+#include <openspace/util/distancetoobject.h>
 
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/io/texture/texturereader.h>
@@ -62,6 +63,8 @@ namespace {
     const std::string _moduleExtension = ".mod";
     const std::string _defaultCommonDirectory = "common";
     const std::string _commonModuleToken = "${COMMON_MODULE}";
+    const std::string _mostProbableSceneName = "SolarSystemBarycenter";
+    const std::string _parentOfAllNodes = "Root";
 
     const std::string KeyCamera = "Camera";
     const std::string KeyFocusObject = "Focus";
@@ -533,6 +536,211 @@ std::vector<SceneGraphNode*> Scene::allSceneGraphNodes() const {
 
 SceneGraph& Scene::sceneGraph() {
     return _graph;
+}
+
+std::string Scene::currentSceneName(Camera* camera, std::string _nameOfScene) const {
+    if (camera == nullptr || _nameOfScene.empty()) {
+        LERROR("Camera object not allocated or empty name scene passed to the method.");
+        return _mostProbableSceneName; // This choice is controversal. Better to avoid a crash.
+    }
+    const SceneGraphNode* node = sceneGraphNode(_nameOfScene);
+
+    if (node == nullptr) {
+        std::stringstream ss;
+        ss << "There is no scenegraph node with name: " << _nameOfScene;
+        LERROR(ss.str());
+    }
+
+    //Starts in the last scene we kow we were in, checks if we are still inside, if not check parent, continue until we are inside a scene
+    double _distance = (DistanceToObject::ref().distanceCalc(camera->position(), node->worldPosition()));
+
+    std::vector<SceneGraphNode*> childrenScene(node->children());
+    size_t nrOfChildren = childrenScene.size();
+
+    // Traverses the scenetree to find a scene we are within. 
+    while (_distance > node->sceneRadius()) {
+        if (node->parent() != nullptr) {
+            node          = node->parent();
+            _nameOfScene  = node->name();
+            childrenScene = node->children();
+            nrOfChildren  = childrenScene.size();
+            _distance     = (DistanceToObject::ref().distanceCalc(camera->position(), node->worldPosition()));
+            break;
+        } else if (node->parent() == nullptr) {
+            // We have reached the root. 
+            //node = scene->allSceneGraphNodes()[0];
+            _nameOfScene  = node->name();
+            childrenScene = node->children();
+            nrOfChildren  = childrenScene.size();
+            break;
+        }
+    }
+
+    //Check if we are inside a child scene of the current scene. 
+    bool outsideAllChildScenes = false;
+
+    while (!childrenScene.empty() && !outsideAllChildScenes) {
+        for (size_t i = 0; i < nrOfChildren; ++i) {
+            SceneGraphNode * childNode = childrenScene.at(i);
+            //double _childDistance = DistanceToObject::ref().distanceCalc(camera->position(), childNode->worldPosition());
+            double _childDistance = DistanceToObject::ref().distanceCalc(camera->position(), childNode->dynamicWorldPosition(*camera, childNode, this));            
+            double childSceneRadius = childNode->sceneRadius();
+
+            // Set the new scene that we are inside the scene radius.
+            if (_childDistance < childSceneRadius) {
+                node          = childNode;
+                childrenScene = node->children();
+                _nameOfScene  = node->name();
+                nrOfChildren  = childrenScene.size();
+                break;
+            }
+
+            if (nrOfChildren - 1 == i) {
+                outsideAllChildScenes = true;
+            }
+        }
+    }
+
+    return _nameOfScene;
+}
+const glm::dvec3 Scene::currentDisplacementPosition(const std::string & cameraParent,
+    const SceneGraphNode* target) const {
+    if (target != nullptr) {
+
+        std::vector<SceneGraphNode*> cameraPath;
+        std::vector<SceneGraphNode*> targetPath;
+
+        SceneGraphNode* cameraParentNode = sceneGraphNode(cameraParent);
+        SceneGraphNode* commonParentNode;
+        std::vector<SceneGraphNode*> commonParentPath;
+
+        //Find common parent for camera and object
+        std::string commonParentName(cameraParent);  // initiates to camera parent in case 
+                                                     // other path is not found
+        cameraPath = pathTo(cameraParentNode);
+        targetPath = pathTo(sceneGraphNode(target->name()));
+
+        commonParentNode = findCommonParentNode(cameraParent, target->name());
+        commonParentName = commonParentNode->name();
+        commonParentPath = pathTo(commonParentNode);
+
+        //Find the path from the camera to the common parent
+
+        glm::dvec3 collectorCamera(pathCollector(cameraPath, commonParentName, true));
+        glm::dvec3 collectorTarget(pathCollector(targetPath, commonParentName, false));
+
+        return collectorTarget + collectorCamera;
+    }
+    else {
+        LERROR("Target scenegraph node is null.");
+        return glm::dvec3(0.0, 0.0, 0.0);
+    }
+}
+
+SceneGraphNode* Scene::findCommonParentNode(const std::string & firstPath, const std::string & secondPath) const {
+    if (firstPath.empty() || secondPath.empty()) {
+        LERROR("Empty scenegraph node name passed to the method.");
+        return sceneGraphNode(_parentOfAllNodes); // This choice is controversal. Better to avoid a crash.
+    }
+    std::vector<SceneGraphNode*> firstPathNode  = pathTo(sceneGraphNode(firstPath));
+    std::vector<SceneGraphNode*> secondPathNode = pathTo(sceneGraphNode(secondPath));
+    std::string strCommonParent = commonParent(firstPathNode, secondPathNode);
+
+    return sceneGraphNode(strCommonParent);
+}
+
+std::vector<SceneGraphNode*> Scene::pathTo(SceneGraphNode* node) const {
+    std::vector<SceneGraphNode*> path;
+
+    if (node == nullptr) {
+        LERROR("Invalid (null) scenegraph node name passed to pathTo() method.");
+        return path;
+    }
+        
+    while (node->parent() != nullptr) {
+        path.push_back(node);
+        node = node->parent();
+    }
+    path.push_back(node);
+
+    return path;
+}
+
+std::string Scene::commonParent(std::vector<SceneGraphNode*> t1, std::vector<SceneGraphNode*> t2) const {
+    if (t1.empty() && t2.empty()) {
+        LERROR("Empty paths passed to commonParent method.");
+        return _parentOfAllNodes;
+    }
+
+    std::string commonParentReturn(_mostProbableSceneName);
+    int iterator = 0;
+    int min = std::min(t1.size(), t2.size());
+    while (iterator < min && t1.back()->name() == t2.back()->name()) {
+        commonParentReturn = t1.back()->name();
+        t1.pop_back();
+        t2.pop_back();
+        iterator++;
+    }
+    
+    return commonParentReturn;
+}
+
+glm::dvec3 Scene::pathCollector(const std::vector<SceneGraphNode*> & path, const std::string & commonParentName, 
+    const bool inverse) const {
+    if (path.empty() || commonParentName.empty()) {
+        LERROR("Empty path or common parent name passed to pathCollector method.");
+        return glm::dvec3();
+    }
+
+    SceneGraphNode* firstElement = path.front();
+    glm::dvec3 collector(path.back()->position().vec3());
+
+    int depth = 0;
+    // adds all elements to the collector, continues untill commomParent is found.
+    while (firstElement->name() != commonParentName) {
+        if (inverse)
+            collector = collector - firstElement->position().dvec3();
+        else
+            collector = collector + firstElement->position().dvec3();
+        
+        firstElement = path[++depth];
+    }
+
+    return collector;
+}
+
+void Scene::setRelativeOrigin(Camera* camera) const {
+    if (camera == nullptr) {
+        LERROR("Camera object not allocated. Relative origin not set.");
+        return;
+    }
+    std::string target                            = camera->getParent();
+    SceneGraphNode* commonParentNode              = sceneGraphNode(target);
+    std::vector<SceneGraphNode*> commonParentPath = pathTo(commonParentNode);
+
+    newCameraOrigin(commonParentPath, camera);
+}
+
+void Scene::newCameraOrigin(const std::vector<SceneGraphNode*> & commonParentPath, Camera* camera) const {
+    if (commonParentPath.empty() || camera == nullptr) {
+        LERROR("Empty common parent path or not allocated camera passed to newCameraOrigin method.");
+        return;
+    }
+    glm::dvec3 displacementVector = camera->positionVec3();
+    if (commonParentPath.size() > 1) { // <1 if in root system. 
+        glm::dvec3 tempDvector;
+        for (int i = commonParentPath.size() - 1; i >= 1; i--) {
+            tempDvector        = commonParentPath[i - 1]->worldPosition().dvec3() - commonParentPath[i]->worldPosition().dvec3();
+            displacementVector = displacementVector - tempDvector;
+        }
+    }
+
+    //Move the camera to the position of the common parent (The new origin)
+    //Then add the distance from the displacementVector to get the camera into correct position
+    glm::dvec3 origin = commonParentPath[0]->position().dvec3();    
+    camera->setDisplacementVector(displacementVector);
+    glm::dvec3 newOrigin(origin + displacementVector);
+    camera->setPositionVec3(newOrigin);
 }
 
 void Scene::writePropertyDocumentation(const std::string& filename, const std::string& type) {

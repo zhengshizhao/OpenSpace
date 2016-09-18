@@ -3,6 +3,8 @@ return {
     {
         Name = "JupiterBarycenter",
         Parent = "SolarSystemBarycenter",
+         -- SceneRadius unit is KM                
+		SceneRadius = 2.0E+6,
         Ephemeris = {
             Type = "Spice",
             Body = "JUPITER BARYCENTER",
@@ -17,13 +19,15 @@ return {
     {   
         Name = "Jupiter",
         Parent = "JupiterBarycenter",
+         -- SceneRadius unit is KM
+		SceneRadius = 7.0E+5,
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_JUPITER",
             Body = "JUPITER BARYCENTER",
             Geometry = {
                 Type = "SimpleSphere",
-                Radius = { 0.71492, 8 },
+                Radius = { 6.9911, 7 },
                 Segments = 200
             },
             Textures = {
@@ -31,9 +35,9 @@ return {
                 Color = "textures/jupiter.jpg",
             },
         },
-        Ephemeris = {
-            Type = "Static" -- jupiter is at its barycenter
-        },
+        --Ephemeris = {
+        --    Type = "Static" -- jupiter is at its barycenter
+        --},
         Rotation = {
             Type = "Spice",
             Frame = "IAU_JUPITER",

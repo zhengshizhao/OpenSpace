@@ -3,6 +3,8 @@ return {
     {   
         Name = "Ganymede",
         Parent = "JupiterBarycenter",
+         -- SceneRadius unit is KM                
+		SceneRadius = 2.0E+4,
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_GANYMEDE", -- should exist. 

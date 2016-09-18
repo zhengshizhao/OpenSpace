@@ -80,7 +80,7 @@ public:
     const psc& position() const;
     psc worldPosition() const;
     psc dynamicWorldPosition(const Camera& camera,
-        SceneGraphNode* target, Scene* scene) const;
+        SceneGraphNode* target, const Scene* scene) const;
 
     SceneGraphNode* parent() const;
     const std::vector<SceneGraphNode*>& children() const;

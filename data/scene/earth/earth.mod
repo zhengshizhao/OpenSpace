@@ -4,7 +4,7 @@ return {
         Name = "EarthBarycenter",
         Parent = "SolarSystemBarycenter",
         -- SceneRadius unit is KM                
-		SceneRadius = 40000000.0, 
+		SceneRadius = 4.0E+5, 
         Static = true,
         Ephemeris = {
             Type = "Spice",
@@ -20,7 +20,8 @@ return {
     {   
         Name = "Earth",
         Parent = "EarthBarycenter",
-		SceneRadius = 100000.0,
+        -- SceneRadius unit is KM
+		SceneRadius = 1.0E+5,
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_EARTH",
@@ -40,7 +41,11 @@ return {
                 Clouds = "textures/earth_clouds.jpg"
             }
         },
-        
+        Rotation = {
+            Type = "Spice",
+            Frame = "IAU_EARTH",
+            Reference = "ECLIPJ2000"
+        },
         GuiName = "/Solar/Planets/Earth"
     },
     -- EarthTrail module

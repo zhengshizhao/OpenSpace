@@ -355,10 +355,10 @@ psc SceneGraphNode::worldPosition() const
     }
 }
 
-psc SceneGraphNode::dynamicWorldPosition(const Camera& camera, SceneGraphNode* target, Scene* scene) const
+psc SceneGraphNode::dynamicWorldPosition(const Camera& camera, SceneGraphNode* target, const Scene* scene) const
 {
-    glm::dvec3 currentDynamicPosition = vectorPosition(camera.getParent(), this, scene);
-    currentDynamicPosition -= camera.getDisplacementVector();
+    glm::dvec3 currentDynamicPosition = scene->currentDisplacementPosition(camera.getParent(), this);
+    currentDynamicPosition -= camera.displacementVector();
     return PowerScaledCoordinate::CreatePowerScaledCoordinate(currentDynamicPosition.x,
         currentDynamicPosition.y,
         currentDynamicPosition.z);

@@ -3,15 +3,28 @@ return {
     {
         Name = "VenusBarycenter",
         Parent = "SolarSystemBarycenter",
+        -- Scene Radius in KM:
+        SceneRadius = 1.0E+5,
+        -- Ephemeris = {
+        --     Type = "Static"
+        -- }
         Ephemeris = {
-            Type = "Static"
-        }
+            Type = "Spice",
+            Body = "VENUS BARYCENTER",
+            Reference = "ECLIPJ2000",
+            Observer = "SUN",
+            Kernels = {
+                "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+            }
+        },
     },
 
     -- Venus module
     {   
         Name = "Venus",
         Parent = "VenusBarycenter",
+        -- Scene Radius in KM:
+        SceneRadius = 5.0E+4,
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_VENUS",
@@ -26,15 +39,15 @@ return {
                 Color = "textures/venus.jpg",
             },
         },
-        Ephemeris = {
-            Type = "Spice",
-            Body = "VENUS",
-            Reference = "ECLIPJ2000",
-            Observer = "SUN",
-            Kernels = {
-                "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-            }
-        },
+        --Ephemeris = {
+        --    Type = "Spice",
+        --    Body = "VENUS",
+        --    Reference = "ECLIPJ2000",
+        --    Observer = "SUN",
+        --    Kernels = {
+        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+        --    }
+        --},
         Rotation = {
             Type = "Spice",
             Frame = "IAU_VENUS",
@@ -45,7 +58,8 @@ return {
     -- VenusTrail module
     {   
         Name = "VenusTrail",
-        Parent = "VenusBarycenter",
+        --Parent = "VenusBarycenter",
+        Parent = "SolarSystemBarycenter",
         Renderable = {
             Type = "RenderableTrail",
             Body = "VENUS",

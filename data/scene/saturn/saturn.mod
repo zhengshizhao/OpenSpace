@@ -3,29 +3,11 @@ return {
     {
         Name = "SaturnBarycenter",
         Parent = "SolarSystemBarycenter",
-        Ephemeris = {
-            Type = "Static"
-        }
-    },
-
-    -- Saturn module
-    {   
-        Name = "Saturn",
-        Parent = "SaturnBarycenter",
-        Renderable = {
-            Type = "RenderablePlanet",
-            Frame = "IAU_SATURN",
-            Body = "SATURN BARYCENTER",
-            Geometry = {
-                Type = "SimpleSphere",
-                Radius = { 5.8232, 7 },
-                Segments = 100
-            },
-            Textures = {
-                Type = "simple",
-                Color = "textures/saturn.jpg",
-            },
-        },
+        -- Scene Radius in KM:
+        SceneRadius = 1.0E+6,
+        --Ephemeris = {
+        --    Type = "Static"
+        --}
         Ephemeris = {
             Type = "Spice",
             Body = "SATURN BARYCENTER",
@@ -35,6 +17,37 @@ return {
                 "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
             }
         },
+    },
+
+    -- Saturn module
+    {   
+        Name = "Saturn",
+        Parent = "SaturnBarycenter",
+        -- Scene Radius in KM:
+        SceneRadius = 6.0E+5,
+        Renderable = {
+            Type = "RenderablePlanet",
+            Frame = "IAU_SATURN",
+            Body = "SATURN BARYCENTER",
+            Geometry = {
+                Type = "SimpleSphere",
+                Radius = { 6.0268, 7 },
+                Segments = 100
+            },
+            Textures = {
+                Type = "simple",
+                Color = "textures/saturn.jpg",
+            },
+        },
+        --Ephemeris = {
+        --    Type = "Spice",
+        --    Body = "SATURN BARYCENTER",
+        --    Reference = "ECLIPJ2000",
+        --    Observer = "SUN",
+        --    Kernels = {
+        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+        --    }
+        --},
         Rotation = {
             Type = "Spice",
             Frame = "IAU_SATURN",
@@ -60,7 +73,8 @@ return {
     -- SaturnTrail module
     {   
         Name = "SaturnTrail",
-        Parent = "SaturnBarycenter",
+        --Parent = "SaturnBarycenter",
+        Parent = "SolarSystemBarycenter",
         Renderable = {
             Type = "RenderableTrail",
             Body = "SATURN BARYCENTER",
