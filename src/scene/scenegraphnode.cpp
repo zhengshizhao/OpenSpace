@@ -349,19 +349,8 @@ void SceneGraphNode::render(const RenderData& data, RendererTasks& tasks) {
     
     // JCC: Implement a cache sytem to avoid calculate the same path while in the same camera parent.
     // Just update the displacement vector to the sum.
-    //const psc dynamicThisPosition = dynamicWorldPosition(data.camera, this, OsEng.renderEngine().scene());
-    const psc thisPosition = dynamicWorldPosition(data.camera, this, OsEng.renderEngine().scene());
+    //const psc thisPosition = dynamicWorldPosition(data.camera, this, OsEng.renderEngine().scene());
     
-    // DEBUG: (JCC)
-    //std::cout << "=== Node: " << this->name() << " dynamicThisPosition: " << thisPosition.vec3() << " ===" << std::endl;
-    //if (this->name().compare("Moon") == 0)
-    //{
-    //    std::cout << "=== Moon dynamicThisPosition: " << dynamicThisPosition.vec3() << " ===" << std::endl;
-    //}
-    //else if (this->name().compare("Earth") == 0)
-    //{
-    //    std::cout << "=== Earth dynamicThisPosition: " << dynamicThisPosition.vec3() << " ===" << std::endl;
-    //}
     const psc thisPositionPSC = psc::CreatePowerScaledCoordinate(_worldPositionCached.x, _worldPositionCached.y, _worldPositionCached.z);
 
     RenderData newData = {
