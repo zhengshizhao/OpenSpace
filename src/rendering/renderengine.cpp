@@ -390,10 +390,9 @@ void RenderEngine::postSynchronizationPreDraw() {
     });
 
     if (_mainCamera) {
-
         // New DynamicRootGraph System in action:
         //Sets the camera to its relative position depending on the common parent (when changed from worldPosition to position)
-        //scene()->setRelativeOrigin(_mainCamera);
+        scene()->setRelativeOrigin(_mainCamera);
         
         _mainCamera->postSynchronizationPreDraw();
     }
@@ -424,10 +423,18 @@ void RenderEngine::postSynchronizationPreDraw() {
 }
 
 void RenderEngine::render(const glm::mat4& projectionMatrix, const glm::mat4& viewMatrix) {    
+    // DEBUG (JCC):
+    std::string oldSceneName(_nameOfScene);
     // New DynamicRootGraph system in action:
     _nameOfScene = scene()->currentSceneName(_mainCamera, _nameOfScene);       
     _mainCamera->setParent(_nameOfScene);
-    glm::vec3 displacementVector(_mainCamera->positionVec3() - scene()->sceneGraphNode(_mainCamera->getParent())->worldPosition());
+    glm::dvec3 displacementVector(_mainCamera->positionVec3() - scene()->sceneGraphNode(_mainCamera->getParent())->worldPosition());
+
+    // DEBUG (JCC):
+    if (oldSceneName.compare(_nameOfScene)) {
+        std::cout << "=== New Scene Name (Camera's parent): " << _nameOfScene << " ===" << std::endl;
+        std::cout << "=== Displacement Vector: " << glm::vec3(displacementVector) << " ===" << std::endl;
+    }
 
     _mainCamera->setDisplacementVector(displacementVector);    
     _mainCamera->sgctInternal.setViewMatrix(viewMatrix);
