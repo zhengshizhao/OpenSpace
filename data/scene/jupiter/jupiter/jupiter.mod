@@ -5,15 +5,6 @@ return {
         Parent = "SolarSystemBarycenter",
          -- SceneRadius unit is KM                
 		SceneRadius = 2.0E+6,
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "JUPITER BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --}
         Transform = {
             Translation = {
                 Type = "SpiceEphemeris",
@@ -45,11 +36,6 @@ return {
                 Type = "simple",
                 Color = "textures/jupiter.jpg",
             },
-            Atmosphere = {
-                Type = "Nishita", -- for example, values missing etc etc
-                MieFactor = 1.0,
-                MieColor = {1.0, 1.0, 1.0}
-            }
         },
         Transform = {
             Translation = {

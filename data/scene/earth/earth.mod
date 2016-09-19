@@ -5,16 +5,17 @@ return {
         Parent = "SolarSystemBarycenter",
         -- SceneRadius unit is KM                
 		SceneRadius = 4.0E+5, 
-        --Static = true,
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "EARTH BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --},
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "EARTH BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+        },
     },
     -- Earth module
     {   
@@ -43,7 +44,8 @@ return {
                 Type = "SpiceEphemeris",
                 Body = "EARTH",
                 Reference = "ECLIPJ2000",
-                Observer = "SUN",
+                --Observer = "SUN",
+                Observer = "EARTH BARYCENTER",
                 Kernels = {
                     "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
                 }
@@ -63,7 +65,8 @@ return {
     -- EarthTrail module
     {   
         Name = "EarthTrail",
-        Parent = "EarthBarycenter",
+        --Parent = "EarthBarycenter",
+        Parent = "SolarSystemBarycenter",
         Renderable = {
             Type = "RenderableTrail",
             Body = "EARTH",

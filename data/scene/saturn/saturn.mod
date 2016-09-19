@@ -5,18 +5,17 @@ return {
         Parent = "SolarSystemBarycenter",
         -- Scene Radius in KM:
         SceneRadius = 1.0E+6,
-        --Ephemeris = {
-        --    Type = "Static"
-        --}
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "SATURN BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --},
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "SATURN BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+        },
     },
 
     -- Saturn module
@@ -28,7 +27,7 @@ return {
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_SATURN",
-            Body = "SATURN BARYCENTER",
+            Body = "SATURN",
             Geometry = {
                 Type = "SimpleSphere",
                 Radius = { 6.0268, 7 },
@@ -44,7 +43,7 @@ return {
                 Type = "SpiceEphemeris",
                 Body = "SATURN BARYCENTER",
                 Reference = "ECLIPJ2000",
-                Observer = "SUN",
+                Observer = "SATURN BARYCENTER",
                 Kernels = {
                     "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
                 }

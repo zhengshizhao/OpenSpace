@@ -5,18 +5,17 @@ return {
         Parent = "SolarSystemBarycenter",
         -- Scene Radius in KM:
         SceneRadius = 1.0E+5,        
-        -- Ephemeris = {
-        --     Type = "Static"
-        -- }
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "MARS BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --},
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "MARS BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+        },
     },
     -- Mars module
     {   
@@ -27,7 +26,7 @@ return {
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_MARS",
-            Body = "MARS BARYCENTER",
+            Body = "MARS",
             Geometry = {
                 Type = "SimpleSphere",
                 Radius = { 3.3895, 6 },
@@ -37,12 +36,13 @@ return {
                 Type = "simple",
                 Color = "textures/mars.jpg",
             },
+        },
         Transform = {
             Translation = {
                 Type = "SpiceEphemeris",
                 Body = "MARS BARYCENTER",
                 Reference = "ECLIPJ2000",
-                Observer = "SUN",
+                Observer = "MARS BARYCENTER",
                 Kernels = {
                     "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
                 }
@@ -62,7 +62,6 @@ return {
     -- MarsTrail module
     {   
         Name = "MarsTrail",
-        --Parent = "MarsBarycenter",
         Parent = "SolarSystemBarycenter",
         Renderable = {
             Type = "RenderableTrail",

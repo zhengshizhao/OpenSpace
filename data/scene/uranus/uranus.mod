@@ -5,18 +5,17 @@ return {
         Parent = "SolarSystemBarycenter",
          -- SceneRadius unit is KM                
 		SceneRadius = 1.0E+6,
-        --Ephemeris = {
-        --    Type = "Static"
-        --}
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "URANUS BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --},
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "URANUS BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+        },
     },
 
     -- Uranus module
@@ -28,7 +27,7 @@ return {
         Renderable = {
             Type = "RenderablePlanet",
             Frame = "IAU_URANUS",
-            Body = "URANUS BARYCENTER",
+            Body = "URANUS",
             Geometry = {
                 Type = "SimpleSphere",
                 Radius = { 2.5559, 7 },
@@ -44,7 +43,7 @@ return {
                 Type = "SpiceEphemeris",
                 Body = "URANUS BARYCENTER",
                 Reference = "ECLIPJ2000",
-                Observer = "SUN",
+                Observer = "URANUS BARYCENTER",
                 Kernels = {
                     "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
                 }
@@ -64,7 +63,6 @@ return {
     -- UranusTrail module
     {   
         Name = "UranusTrail",
-        --Parent = "UranusBarycenter",
         Parent = "SolarSystemBarycenter",
         Renderable = {
             Type = "RenderableTrail",

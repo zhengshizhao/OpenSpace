@@ -5,18 +5,17 @@ return {
         Parent = "SolarSystemBarycenter",
         -- Scene Radius in KM:
         SceneRadius = 1.0E+5,
-        -- Ephemeris = {
-        --    Type = "Static"
-        -- }
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "MERCURY BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --},
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "MERCURY BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+        },
     },
     -- Mercury module
     {   
@@ -43,7 +42,7 @@ return {
                 Type = "SpiceEphemeris",
                 Body = "MERCURY",
                 Reference = "ECLIPJ2000",
-                Observer = "SUN",
+                Observer = "MERCURY BARYCENTER",
                 Kernels = {
                     "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
                 }
@@ -63,7 +62,6 @@ return {
     -- MercuryTrail module
     {   
         Name = "MercuryTrail",
-        --Parent = "MercuryBarycenter",
         Parent = "SolarSystemBarycenter",
         Renderable = {
             Type = "RenderableTrail",
