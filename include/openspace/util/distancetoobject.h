@@ -46,6 +46,7 @@ public:
 
     static DistanceToObject& ref();
     double distanceCalc(const psc & position, const psc & targetPos) const;
+    double distanceCalc(const glm::dvec3 & position, const glm::dvec3 & targetPos) const;
 private:
     /// Creates the distance object. Only used in the initialize() method
     DistanceToObject();

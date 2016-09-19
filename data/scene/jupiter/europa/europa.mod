@@ -19,19 +19,25 @@ return {
                 Color = "textures/europa.jpg",
             },
         },
-        Ephemeris = {
-            Type = "Spice",
-            Body = "EUROPA",
-            Reference = "ECLIPJ2000",
-            Observer = "JUPITER BARYCENTER",
-            Kernels = {
-                "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-            }
-        },
-        Rotation = {
-            Type = "Spice",
-            Frame = "IAU_JUPITER",
-            Reference = "ECLIPJ2000"
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "EUROPA",
+                Reference = "ECLIPJ2000",
+                Observer = "JUPITER BARYCENTER",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/jup260.bsp"
+                }
+            },
+            Rotation = {
+                Type = "SpiceRotation",
+                SourceFrame = "IAU_EUROPA",
+                DestinationFrame = "IAU_JUPITER",
+            },
+            Scale = {
+                Type = "StaticScale",
+                Scale = 1,
+            },
         },
         GuiName = "/Solar/Planets/EUROPA"
     },

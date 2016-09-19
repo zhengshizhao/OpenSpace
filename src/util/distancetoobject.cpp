@@ -75,6 +75,13 @@ namespace openspace {
         return glm::length(diffVec);
     }
 
+    double DistanceToObject::distanceCalc(const glm::dvec3 & position, const glm::dvec3 & targetPos) const
+    {
+        // JCC: Changed the distance calculations from meters to killometers.
+        glm::dvec3 diffVec = (position / 1000.0) - (targetPos / 1000.0);
+
+        return glm::length(diffVec);
+    }
 
 
 }

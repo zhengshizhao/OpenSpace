@@ -8,17 +8,16 @@ return {
         -- Ephemeris = {
         --     Type = "Static"
         -- }
-        Ephemeris = {
-            Type = "Spice",
-            Body = "MARS BARYCENTER",
-            Reference = "ECLIPJ2000",
-            Observer = "SUN",
-            Kernels = {
-                "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-            }
-        },
+        --Ephemeris = {
+        --    Type = "Spice",
+        --    Body = "MARS BARYCENTER",
+        --    Reference = "ECLIPJ2000",
+        --    Observer = "SUN",
+        --    Kernels = {
+        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+        --    }
+        --},
     },
-
     -- Mars module
     {   
         Name = "Mars",
@@ -38,20 +37,25 @@ return {
                 Type = "simple",
                 Color = "textures/mars.jpg",
             },
-        },
-        -- Ephemeris = {
-        --     Type = "Spice",
-        --     Body = "MARS BARYCENTER",
-        --     Reference = "ECLIPJ2000",
-        --     Observer = "SUN",
-        --     Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        -- },
-        Rotation = {
-            Type = "Spice",
-            Frame = "IAU_MARS",
-            Reference = "ECLIPJ2000"
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "MARS BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+            Rotation = {
+                Type = "SpiceRotation",
+                SourceFrame = "IAU_MARS",
+                DestinationFrame = "ECLIPJ2000",
+            },
+            Scale = {
+                Type = "StaticScale",
+                Scale = 1,
+            },
         },
         GuiName = "/Solar/Planets/Mars"
     },

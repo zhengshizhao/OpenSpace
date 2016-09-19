@@ -54,7 +54,8 @@ return {
             Size = {1.3, 10.5},
             Origin = "Center",
             Billboard = true,
-            Texture = "textures/sun-glare.png"
+            Texture = "textures/sun-glare.png",
+            BlendMode = "Additive"
         },
         Ephemeris = {
             Type = "Spice",
@@ -74,7 +75,8 @@ return {
             Size = {3.0, 11.0},
             Origin = "Center",
             Billboard = true,
-            Texture = "textures/marker.png"
+            Texture = "textures/marker.png",
+            BlendMode = "Additive"
         },
         Ephemeris = {
             Type = "Static",

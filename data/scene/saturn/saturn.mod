@@ -8,15 +8,15 @@ return {
         --Ephemeris = {
         --    Type = "Static"
         --}
-        Ephemeris = {
-            Type = "Spice",
-            Body = "SATURN BARYCENTER",
-            Reference = "ECLIPJ2000",
-            Observer = "SUN",
-            Kernels = {
-                "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-            }
-        },
+        --Ephemeris = {
+        --    Type = "Spice",
+        --    Body = "SATURN BARYCENTER",
+        --    Reference = "ECLIPJ2000",
+        --    Observer = "SUN",
+        --    Kernels = {
+        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+        --    }
+        --},
     },
 
     -- Saturn module
@@ -39,36 +39,27 @@ return {
                 Color = "textures/saturn.jpg",
             },
         },
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "SATURN BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --},
-        Rotation = {
-            Type = "Spice",
-            Frame = "IAU_SATURN",
-            Reference = "ECLIPJ2000"
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "SATURN BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+            Rotation = {
+                Type = "SpiceRotation",
+                SourceFrame = "IAU_SATURN",
+                DestinationFrame = "ECLIPJ2000",
+            },
+            Scale = {
+                Type = "StaticScale",
+                Scale = 1,
+            },
         },
         GuiName = "/Solar/Planets/Saturn"
-    },
-    -- The rings of Saturn
-    -- Using the 'Saturn's rings dark side mosaic' as a basis
-    {
-        Name = "SaturnRings",
-        Parent = "Saturn",
-        Renderable = {
-            Type = "RenderableRings",
-            Body = "SATURN BARYCENTER",
-            Frame = "IAU_SATURN",
-            Texture = "textures/saturn_rings.png",
-            Size = { 0.140445100671159, 9.0 }, -- 140445.100671159km
-            Offset = { 74500 / 140445.100671159, 1.0 } -- min / max extend
-        },
-
     },
     -- SaturnTrail module
     {   

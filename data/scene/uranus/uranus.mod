@@ -8,15 +8,15 @@ return {
         --Ephemeris = {
         --    Type = "Static"
         --}
-        Ephemeris = {
-            Type = "Spice",
-            Body = "URANUS BARYCENTER",
-            Reference = "ECLIPJ2000",
-            Observer = "SUN",
-            Kernels = {
-                "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-            }
-        },
+        --Ephemeris = {
+        --    Type = "Spice",
+        --    Body = "URANUS BARYCENTER",
+        --    Reference = "ECLIPJ2000",
+        --    Observer = "SUN",
+        --    Kernels = {
+        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+        --    }
+        --},
     },
 
     -- Uranus module
@@ -39,19 +39,25 @@ return {
                 Color = "textures/uranus.jpg",
             },
         },
-        --Ephemeris = {
-        --    Type = "Spice",
-        --    Body = "URANUS BARYCENTER",
-        --    Reference = "ECLIPJ2000",
-        --    Observer = "SUN",
-        --    Kernels = {
-        --        "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
-        --    }
-        --},
-        Rotation = {
-            Type = "Spice",
-            Frame = "IAU_URANUS",
-            Reference = "ECLIPJ2000"
+        Transform = {
+            Translation = {
+                Type = "SpiceEphemeris",
+                Body = "URANUS BARYCENTER",
+                Reference = "ECLIPJ2000",
+                Observer = "SUN",
+                Kernels = {
+                    "${OPENSPACE_DATA}/spice/de430_1850-2150.bsp"
+                }
+            },
+            Rotation = {
+                Type = "SpiceRotation",
+                SourceFrame = "IAU_URANUS",
+                DestinationFrame = "ECLIPJ2000",
+            },
+            Scale = {
+                Type = "StaticScale",
+                Scale = 1,
+            },
         },
         GuiName = "/Solar/Planets/Uranus"
     },

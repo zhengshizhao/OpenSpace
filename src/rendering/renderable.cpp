@@ -22,14 +22,12 @@
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                         *
  ****************************************************************************************/
 
-// open space includes
 #include <openspace/rendering/renderable.h>
 #include <openspace/util/factorymanager.h>
 #include <openspace/util/updatestructures.h>
 #include <openspace/util/spicemanager.h>
 #include <openspace/scene/scenegraphnode.h>
 
-// ghoul
 #include <ghoul/misc/dictionary.h>
 #include <ghoul/filesystem/filesystem.h>
 #include <ghoul/opengl/programobject.h>
@@ -37,7 +35,6 @@
 
 namespace {
     const std::string _loggerCat = "Renderable";
-    const std::string keyBody = "Body";
     const std::string keyStart = "StartTime";
     const std::string keyEnd = "EndTime";
     const std::string KeyType = "Type";
@@ -72,70 +69,55 @@ Renderable* Renderable::createFromDictionary(const ghoul::Dictionary& dictionary
 
 Renderable::Renderable()
     : _enabled("enabled", "Is Enabled", true)
+    , _renderBin(RenderBin::Opaque)
     , _startTime("")
     , _endTime("")
-    , _targetBody("")
-    , _hasBody(false)
     , _hasTimeInterval(false)
-{
-
-}
+{}
 
 Renderable::Renderable(const ghoul::Dictionary& dictionary)
     : _enabled("enabled", "Is Enabled", true)
+    , _renderBin(RenderBin::Opaque)
     , _startTime("")
     , _endTime("")
-    , _targetBody("")
-    , _hasBody(false)
     , _hasTimeInterval(false)
 {
     setName("renderable");
-#ifndef NDEBUG
-    std::string name;
-    ghoul_assert(dictionary.getValue(SceneGraphNode::KeyName, name),
-                 "Scenegraphnode need to specify '" << SceneGraphNode::KeyName
-        << "' because renderables is going to use this for debugging!");
-#endif
+
+    ghoul_assert(
+        dictionary.hasKeyAndValue<std::string>(SceneGraphNode::KeyName),
+        "SceneGraphNode must specify '" << SceneGraphNode::KeyName << "'"
+    );
 
     dictionary.getValue(keyStart, _startTime);
     dictionary.getValue(keyEnd, _endTime);
 
-    if (_startTime != "" && _endTime != "")
+    if (_startTime != "" && _endTime != "") {
         _hasTimeInterval = true;
+    }
 
     addProperty(_enabled);
 }
 
-Renderable::~Renderable() {
+Renderable::~Renderable() {}
+
+void Renderable::setBoundingSphere(PowerScaledScalar boundingSphere) {
+    boundingSphere_ = std::move(boundingSphere);
 }
 
-void Renderable::setBoundingSphere(const PowerScaledScalar& boundingSphere)
-{
-    boundingSphere_ = boundingSphere;
-}
-
-const PowerScaledScalar& Renderable::getBoundingSphere()
-{
+PowerScaledScalar Renderable::getBoundingSphere() {
     return boundingSphere_;
 }
 
-void Renderable::update(const UpdateData&)
-{
-}
+void Renderable::update(const UpdateData&) {}
 
-void Renderable::render(const RenderData& data, RendererTasks& tasks)
-{
-    (void) tasks;
+void Renderable::render(const RenderData& data, RendererTasks&) {
     render(data);
 }
 
-void Renderable::render(const RenderData& data)
-{
-}
+void Renderable::render(const RenderData& data) {}
 
-void Renderable::postRender(const RenderData& data)
-{
-}
+void Renderable::postRender(const RenderData& data) {}
 
 void Renderable::setPscUniforms(
     ghoul::opengl::ProgramObject& program, 
@@ -148,16 +130,24 @@ void Renderable::setPscUniforms(
     program.setUniform("scaling", camera.scaling());
 }
 
+Renderable::RenderBin Renderable::renderBin() const {
+    return _renderBin;
+}
+
+void Renderable::setRenderBin(RenderBin bin) {
+    _renderBin = bin;
+}
+
+bool Renderable::matchesRenderBinMask(int binMask) {
+    return binMask & static_cast<int>(renderBin());
+}
+
 bool Renderable::isVisible() const {
     return _enabled;
 }
 
 bool Renderable::hasTimeInterval() {
     return _hasTimeInterval;
-}
-
-bool Renderable::hasBody() {
-    return _hasBody;
 }
 
 bool Renderable::getInterval(double& start, double& end) {
@@ -168,20 +158,6 @@ bool Renderable::getInterval(double& start, double& end) {
     }
     else
         return false;
-}
-
-bool Renderable::getBody(std::string& body) {
-    if (_hasBody) {
-        body = _targetBody;
-        return true;
-    }
-    else
-        return false;
-}
-
-void Renderable::setBody(std::string& body) {
-    _targetBody = body;
-    _hasBody = true;
 }
 
 bool Renderable::isReady() const {

@@ -38,7 +38,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-
 namespace openspace {
     class SyncBuffer;
 
@@ -131,7 +130,10 @@ namespace openspace {
         void preSynchronization();
         void serialize(SyncBuffer* syncBuffer);
         void deserialize(SyncBuffer* syncBuffer);
-
+        
+        void serialize(std::ostream& os) const;
+        void deserialize(std::istream& is);
+        
         /**
         Handles SGCT's internal matrices. Also caches a calculated viewProjection
         matrix. This is the data that is different for different cameras within
@@ -181,6 +183,7 @@ namespace openspace {
         const glm::mat4& projectionMatrix() const;
         [[deprecated("Replaced by Camera::SgctInternal::viewProjectionMatrix()")]]
         const glm::mat4& viewProjectionMatrix() const;
+
     private:
         /**
         Class encapsulating data that needs to be synched between SGCT nodes.
@@ -218,6 +221,7 @@ namespace openspace {
 
         // Cached data
         mutable Cached<Vec3> _cachedViewDirection;
+        mutable Cached<Vec3> _cachedLookupVector;
         mutable Cached<Mat4> _cachedViewRotationMatrix;
         mutable Cached<Mat4> _cachedCombinedViewMatrix;
         mutable Cached<float> _cachedSinMaxFov;
